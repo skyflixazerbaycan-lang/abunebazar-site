@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Check, Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X } from "lucide-react";
+import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
   { id: "all", label: "Hamısı" },
@@ -7,18 +8,6 @@ const CATEGORIES = [
   { id: "music", label: "Musiqi" },
   { id: "ai", label: "AI Alətləri" },
 ];
-
-const PRODUCTS = [
-  { name: "Netflix Premium", plan: "4K · 4 ekran", price: "9.90", period: "AY", code: "NFX-4K-04", category: "streaming" },
-  { name: "Disney+", plan: "4K · 4 ekran", price: "7.90", period: "AY", code: "DNP-4K-04", category: "streaming" },
-  { name: "Apple TV+", plan: "4K · Ailə paylaşımı", price: "6.90", period: "AY", code: "ATV-4K-01", category: "streaming" },
-  { name: "Spotify Premium", plan: "Fərdi hesab", price: "4.90", period: "AY", code: "SPT-IND-01", category: "music" },
-  { name: "YouTube Premium", plan: "Reklamsız + Music", price: "5.90", period: "AY", code: "YTB-PRM-01", category: "music" },
-  { name: "Apple Music", plan: "Fərdi hesab", price: "4.50", period: "AY", code: "APL-MUS-01", category: "music" },
-  { name: "ChatGPT Plus", plan: "GPT-5 · Prioritet", price: "24.90", period: "AY", code: "OAI-PLS-01", category: "ai" },
-];
-
-const FEATURED = [PRODUCTS[0], PRODUCTS[3], PRODUCTS[1], PRODUCTS[6]];
 
 const STEPS = [
   { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
@@ -33,6 +22,8 @@ const NAV_ITEMS = [
   { key: "etibar", label: "Etibarlılıq" },
   { key: "elaqe", label: "Əlaqə" },
 ];
+
+const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin"];
 
 function useGoogleFonts() {
   useEffect(() => {
@@ -50,7 +41,7 @@ function useGoogleFonts() {
 function useHashRoute() {
   const getPage = () => {
     const h = window.location.hash.replace("#", "");
-    return NAV_ITEMS.some((n) => n.key === h) ? h : "home";
+    return ALL_PAGES.includes(h) ? h : "home";
   };
   const [page, setPage] = useState(getPage);
 
@@ -70,6 +61,30 @@ function useHashRoute() {
   };
 
   return [page, go];
+}
+
+function useAppData() {
+  const [products, setProducts] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [loaded, setLoaded] = useState(false);
+
+  async function reload() {
+    const { data: prod } = await supabase.from("products").select("*").order("sort_order");
+    if (prod) setProducts(prod);
+    const { data: sett } = await supabase.from("settings").select("*");
+    if (sett) {
+      const obj = {};
+      sett.forEach((s) => (obj[s.key] = s.value));
+      setSettings(obj);
+    }
+    setLoaded(true);
+  }
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  return { products, settings, reload, loaded };
 }
 
 function Reveal({ children, delay = 0, className = "" }) {
@@ -144,18 +159,24 @@ function PageHead({ kicker, title, sub }) {
   );
 }
 
-function HeroSlideshow() {
+function HeroSlideshow({ products }) {
   const [i, setI] = useState(0);
+  const slides = products.slice(0, 4);
 
   useEffect(() => {
-    const t = setInterval(() => setI((v) => (v + 1) % FEATURED.length), 3600);
+    if (slides.length < 2) return;
+    const t = setInterval(() => setI((v) => (v + 1) % slides.length), 3600);
     return () => clearInterval(t);
-  }, []);
+  }, [slides.length]);
+
+  if (slides.length === 0) {
+    return <div className="ab-slideshow" />;
+  }
 
   return (
     <div className="ab-slideshow">
-      {FEATURED.map((p, idx) => (
-        <div key={p.code} className={`ab-slide ${idx === i ? "active" : ""}`}>
+      {slides.map((p, idx) => (
+        <div key={p.id} className={`ab-slide ${idx === i ? "active" : ""}`}>
           <div className="ab-slide-eyebrow">PREMIUM ABUNƏLİK</div>
           <div className="ab-slide-name">{p.name}</div>
           <div className="ab-slide-plan">{p.plan}</div>
@@ -165,7 +186,7 @@ function HeroSlideshow() {
         </div>
       ))}
       <div className="ab-slide-dots">
-        {FEATURED.map((_, idx) => (
+        {slides.map((_, idx) => (
           <button
             key={idx}
             className={`ab-dot ${idx === i ? "active" : ""}`}
@@ -178,7 +199,7 @@ function HeroSlideshow() {
   );
 }
 
-function HomePage({ go }) {
+function HomePage({ go, products }) {
   return (
     <>
       <div className="ab-screen">
@@ -213,15 +234,15 @@ function HomePage({ go }) {
             </div>
           </div>
 
-          <HeroSlideshow />
+          <HeroSlideshow products={products} />
         </div>
       </div>
 
       <section className="ab-section" style={{ paddingTop: 60 }}>
         <PageHead kicker="POPULYAR" title="Ən çox seçilən paketlər" sub="Tam siyahı üçün Paketlər səhifəsinə keç." />
         <div className="ab-grid">
-          {PRODUCTS.slice(0, 3).map((p, i) => (
-            <Reveal key={p.code} delay={i * 70}>
+          {products.slice(0, 3).map((p, i) => (
+            <Reveal key={p.id} delay={i * 70}>
               <TicketCard p={p} />
             </Reveal>
           ))}
@@ -238,9 +259,9 @@ function HomePage({ go }) {
   );
 }
 
-function PaketlerPage() {
+function PaketlerPage({ products }) {
   const [cat, setCat] = useState("all");
-  const filtered = cat === "all" ? PRODUCTS : PRODUCTS.filter((p) => p.category === cat);
+  const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
   return (
     <section className="ab-section ab-page-pad">
@@ -262,10 +283,11 @@ function PaketlerPage() {
       </Reveal>
       <div className="ab-grid">
         {filtered.map((p, i) => (
-          <Reveal key={p.code} delay={i * 60}>
+          <Reveal key={p.id} delay={i * 60}>
             <TicketCard p={p} />
           </Reveal>
         ))}
+        {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>Bu kateqoriyada hələ paket yoxdur.</p>}
       </div>
     </section>
   );
@@ -320,11 +342,11 @@ function EtibarPage() {
   );
 }
 
-function ElaqePage() {
+function ElaqePage({ settings }) {
   const items = [
-    { icon: MessageCircle, title: "Telegram", text: "@skyflixazerbaycan_bot — ən sürətli cavab kanalı." },
-    { icon: MessageCircle, title: "WhatsApp", text: "+994 XX XXX XX XX — sifariş və dəstək üçün." },
-    { icon: Star, title: "Instagram", text: "@skyflixazerbaycan — yeniliklər və kampaniyalar." },
+    { icon: MessageCircle, title: "Telegram", text: `${settings.contact_telegram || "@skyflixazerbaycan_bot"} — ən sürətli cavab kanalı.` },
+    { icon: MessageCircle, title: "WhatsApp", text: `${settings.contact_whatsapp || "+994 XX XXX XX XX"} — sifariş və dəstək üçün.` },
+    { icon: Star, title: "Instagram", text: `${settings.contact_instagram || "@skyflixazerbaycan"} — yeniliklər və kampaniyalar.` },
   ];
   return (
     <section className="ab-section ab-page-pad">
@@ -370,11 +392,269 @@ function CtaBanner({ go }) {
   );
 }
 
+function AdminPage({ onDataChanged }) {
+  const [session, setSession] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  const [products, setProducts] = useState([]);
+  const [settings, setSettings] = useState({
+    contact_telegram: "",
+    contact_whatsapp: "",
+    contact_instagram: "",
+  });
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    plan: "",
+    price: "",
+    period: "AY",
+    code: "",
+    category: "streaming",
+  });
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setCheckingSession(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) loadData();
+  }, [session]);
+
+  async function loadData() {
+    const { data: prod } = await supabase.from("products").select("*").order("sort_order");
+    if (prod) setProducts(prod);
+    const { data: sett } = await supabase.from("settings").select("*");
+    if (sett) {
+      const obj = {};
+      sett.forEach((s) => (obj[s.key] = s.value));
+      setSettings((prev) => ({ ...prev, ...obj }));
+    }
+  }
+
+  function flash(msg) {
+    setStatus(msg);
+    setTimeout(() => setStatus(""), 2200);
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoginError("Email və ya şifrə yanlışdır.");
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
+
+  function updateField(id, field, value) {
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  }
+
+  async function saveProduct(p) {
+    flash("Yadda saxlanılır...");
+    const { error } = await supabase
+      .from("products")
+      .update({
+        name: p.name,
+        plan: p.plan,
+        price: p.price,
+        period: p.period,
+        code: p.code,
+        category: p.category,
+      })
+      .eq("id", p.id);
+    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
+    if (!error) onDataChanged();
+  }
+
+  async function deleteProduct(id) {
+    if (!window.confirm("Bu məhsulu silmək istədiyinizə əminsiniz?")) return;
+    await supabase.from("products").delete().eq("id", id);
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    onDataChanged();
+  }
+
+  async function addProduct() {
+    if (!newProduct.name || !newProduct.price) {
+      flash("Ad və qiymət mütləqdir.");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("products")
+      .insert({ ...newProduct, sort_order: products.length + 1 })
+      .select();
+    if (!error && data) {
+      setProducts((prev) => [...prev, ...data]);
+      setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming" });
+      flash("Məhsul əlavə olundu ✓");
+      onDataChanged();
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  async function saveSettings() {
+    flash("Yadda saxlanılır...");
+    const rows = Object.entries(settings).map(([key, value]) => ({ key, value }));
+    const { error } = await supabase.from("settings").upsert(rows);
+    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
+    if (!error) onDataChanged();
+  }
+
+  if (checkingSession) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <p>Yüklənir...</p>
+      </section>
+    );
+  }
+
+  if (!session) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <div className="ad-login-wrap">
+          <PageHead kicker="ADMIN" title="Admin panelinə giriş" />
+          <form onSubmit={handleLogin} className="ad-login">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="Şifrə"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {loginError && <p className="ad-error">{loginError}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
+              Daxil ol
+            </button>
+          </form>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="ab-section ab-page-pad">
+      <div className="ad-header">
+        <PageHead kicker="ADMIN" title="İdarəetmə paneli" />
+        <button className="ab-btn ab-btn-ghost" onClick={handleLogout}>
+          Çıxış
+        </button>
+      </div>
+
+      {status && <div className="ad-status">{status}</div>}
+
+      <h3 className="ad-section-title">Əlaqə keçidləri</h3>
+      <div className="ad-settings">
+        <label>
+          Telegram
+          <input
+            value={settings.contact_telegram || ""}
+            onChange={(e) => setSettings((s) => ({ ...s, contact_telegram: e.target.value }))}
+          />
+        </label>
+        <label>
+          WhatsApp
+          <input
+            value={settings.contact_whatsapp || ""}
+            onChange={(e) => setSettings((s) => ({ ...s, contact_whatsapp: e.target.value }))}
+          />
+        </label>
+        <label>
+          Instagram
+          <input
+            value={settings.contact_instagram || ""}
+            onChange={(e) => setSettings((s) => ({ ...s, contact_instagram: e.target.value }))}
+          />
+        </label>
+        <button className="ab-btn ab-btn-gold" onClick={saveSettings} style={{ alignSelf: "flex-start" }}>
+          Əlaqə məlumatlarını yadda saxla
+        </button>
+      </div>
+
+      <h3 className="ad-section-title">Məhsullar</h3>
+      <div className="ad-products">
+        {products.map((p) => (
+          <div className="ad-product-row" key={p.id}>
+            <input value={p.name} onChange={(e) => updateField(p.id, "name", e.target.value)} placeholder="Ad" />
+            <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
+            <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
+            <select value={p.category} onChange={(e) => updateField(p.id, "category", e.target.value)}>
+              <option value="streaming">Streaming</option>
+              <option value="music">Musiqi</option>
+              <option value="ai">AI Alətləri</option>
+            </select>
+            <button className="ab-btn ab-btn-ghost" onClick={() => saveProduct(p)}>
+              Saxla
+            </button>
+            <button className="ad-delete" onClick={() => deleteProduct(p.id)}>
+              Sil
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="ad-section-title">Yeni məhsul əlavə et</h3>
+      <div className="ad-product-row">
+        <input
+          value={newProduct.name}
+          onChange={(e) => setNewProduct((n) => ({ ...n, name: e.target.value }))}
+          placeholder="Ad"
+        />
+        <input
+          value={newProduct.plan}
+          onChange={(e) => setNewProduct((n) => ({ ...n, plan: e.target.value }))}
+          placeholder="Plan"
+        />
+        <input
+          value={newProduct.price}
+          onChange={(e) => setNewProduct((n) => ({ ...n, price: e.target.value }))}
+          placeholder="Qiymət"
+        />
+        <input
+          value={newProduct.code}
+          onChange={(e) => setNewProduct((n) => ({ ...n, code: e.target.value }))}
+          placeholder="Kod"
+        />
+        <select
+          value={newProduct.category}
+          onChange={(e) => setNewProduct((n) => ({ ...n, category: e.target.value }))}
+        >
+          <option value="streaming">Streaming</option>
+          <option value="music">Musiqi</option>
+          <option value="ai">AI Alətləri</option>
+        </select>
+        <button className="ab-btn ab-btn-gold" onClick={addProduct}>
+          Əlavə et
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   useGoogleFonts();
   const [page, go] = useHashRoute();
   const [navSolid, setNavSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { products, settings, reload, loaded } = useAppData();
 
   useEffect(() => {
     const onScroll = () => setNavSolid(window.scrollY > 24);
@@ -414,7 +694,6 @@ export default function App() {
         }
         .ab-mono{ font-family:'JetBrains Mono',monospace; }
 
-        /* SCROLL REVEAL */
         .ab-reveal{
           opacity:0;
           transform:translateY(-26px);
@@ -422,7 +701,6 @@ export default function App() {
         }
         .ab-reveal-in{ opacity:1; transform:translateY(0); }
 
-        /* NAV */
         .ab-nav{
           position:sticky; top:0; z-index:40;
           display:flex; align-items:center; justify-content:space-between;
@@ -494,7 +772,6 @@ export default function App() {
         .ab-page{ animation:ab-fadein .32s ease both; }
         .ab-page-pad{ padding-top:70px; }
 
-        /* VIDEO-LIKE SCREEN HERO */
         .ab-screen{
           position:relative;
           margin:20px 4vw 0;
@@ -548,7 +825,6 @@ export default function App() {
           opacity:.05; mix-blend-mode:overlay; pointer-events:none;
         }
 
-        /* HERO (inside screen) */
         .ab-hero{
           position:relative; z-index:1;
           padding:76px 6vw 60px;
@@ -583,7 +859,6 @@ export default function App() {
         .ab-trustrow{ display:flex; gap:22px; flex-wrap:wrap; font-size:13px; color:var(--muted); }
         .ab-trustrow span{ display:inline-flex; align-items:center; gap:7px; }
 
-        /* SLIDESHOW */
         .ab-slideshow{ position:relative; height:290px; }
         .ab-slide{
           position:absolute; inset:0;
@@ -606,14 +881,12 @@ export default function App() {
         .ab-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); border:none; cursor:pointer; transition:all .25s ease; padding:0; }
         .ab-dot.active{ background:#FFFFFF; width:22px; border-radius:5px; }
 
-        /* SECTIONS */
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
         .ab-kicker{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--gold); letter-spacing:.08em; margin-bottom:10px; }
         .ab-h2{ font-size:clamp(24px,3.4vw,34px); font-weight:700; margin:0 0 12px; }
         .ab-section-sub{ color:var(--muted); font-size:15.5px; line-height:1.6; }
 
-        /* CATEGORY PILLS */
         .ab-cat-pills{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:32px; }
         .ab-pill{
           padding:9px 18px; border-radius:100px; border:1px solid var(--line);
@@ -623,7 +896,6 @@ export default function App() {
         .ab-pill:hover{ border-color:var(--gold); color:var(--text); }
         .ab-pill.active{ background:var(--gold); border-color:var(--gold); color:#FFFFFF; }
 
-        /* STEPS */
         .ab-steps{ display:grid; gap:28px; }
         @media(min-width:800px){ .ab-steps{ grid-template-columns:repeat(3,1fr); } }
         .ab-step{ border:1px solid var(--line); border-radius:16px; padding:26px 24px; background:var(--surface); position:relative; }
@@ -631,7 +903,6 @@ export default function App() {
         .ab-step h3{ font-size:19px; margin:0 0 8px; }
         .ab-step p{ color:var(--muted); font-size:14.5px; margin:0; line-height:1.55; }
 
-        /* TICKET GRID */
         .ab-grid{ display:grid; gap:22px; }
         @media(min-width:640px){ .ab-grid{ grid-template-columns:repeat(2,1fr); } }
         @media(min-width:1040px){ .ab-grid{ grid-template-columns:repeat(3,1fr); } }
@@ -660,7 +931,6 @@ export default function App() {
         .ab-price-cur{ font-size:13px; color:var(--gold); margin-right:2px; }
         .ab-price-per{ font-size:12px; color:var(--muted); }
 
-        /* TRUST */
         .ab-trust{ display:grid; gap:20px; }
         @media(min-width:800px){ .ab-trust{ grid-template-columns:repeat(3,1fr); } }
         .ab-trust-item{ display:flex; gap:14px; padding:22px; border:1px solid var(--line); border-radius:14px; }
@@ -668,7 +938,6 @@ export default function App() {
         .ab-trust-item h4{ margin:0 0 5px; font-size:15.5px; font-family:'Space Grotesk',sans-serif; }
         .ab-trust-item p{ margin:0; color:var(--muted); font-size:13.5px; line-height:1.5; }
 
-        /* CONTACT PAGE */
         .ab-contact-grid{ display:grid; gap:16px; }
         @media(min-width:700px){ .ab-contact-grid{ grid-template-columns:repeat(3,1fr); } }
         .ab-contact-card{
@@ -683,7 +952,6 @@ export default function App() {
         .ab-contact-card p{ margin:0; color:var(--muted); font-size:13.5px; line-height:1.5; }
         .ab-contact-arrow{ position:absolute; top:20px; right:18px; color:var(--muted); }
 
-        /* CTA BANNER */
         .ab-cta{
           margin:0 6vw 90px; padding:46px 6vw; border-radius:22px;
           background:linear-gradient(120deg, rgba(225,18,42,0.14), rgba(140,22,32,0.10));
@@ -693,7 +961,6 @@ export default function App() {
         .ab-cta h3{ font-size:24px; margin:0 0 6px; }
         .ab-cta p{ color:var(--muted); margin:0; font-size:14.5px; }
 
-        /* FOOTER */
         .ab-footer{
           border-top:1px solid var(--line); padding:36px 6vw; display:flex; flex-wrap:wrap;
           gap:16px; justify-content:space-between; align-items:center; color:var(--muted); font-size:13px;
@@ -701,9 +968,46 @@ export default function App() {
         .ab-footer button{ background:none; border:none; cursor:pointer; font-family:'Inter',sans-serif; }
         .ab-footer a, .ab-footer button{ color:var(--muted); text-decoration:none; }
         .ab-footer a:hover, .ab-footer button:hover{ color:var(--text); }
+
+        .ad-login-wrap{ max-width:420px; margin:0 auto; }
+        .ad-login{ display:flex; flex-direction:column; gap:12px; }
+        .ad-login input{
+          padding:12px 14px; border-radius:10px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:14px; background:var(--surface); color:var(--text);
+        }
+        .ad-error{ color:var(--gold); font-size:13px; margin:0; }
+        .ad-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+        .ad-status{
+          display:inline-block; background:var(--surface2); color:var(--text);
+          padding:8px 14px; border-radius:8px; font-size:13.5px; margin-bottom:20px;
+        }
+        .ad-section-title{ font-size:19px; margin:36px 0 16px; font-family:'Space Grotesk',sans-serif; }
+        .ad-settings{ display:flex; flex-direction:column; gap:14px; max-width:420px; }
+        .ad-settings label{ display:flex; flex-direction:column; gap:6px; font-size:13.5px; color:var(--muted); }
+        .ad-settings input{
+          padding:11px 13px; border-radius:9px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:14px; background:var(--surface); color:var(--text);
+        }
+        .ad-products{ display:flex; flex-direction:column; gap:12px; }
+        .ad-product-row{
+          display:grid; gap:8px; align-items:center;
+          grid-template-columns:1fr;
+          border:1px solid var(--line); border-radius:12px; padding:12px; background:var(--surface);
+        }
+        @media(min-width:900px){
+          .ad-product-row{ grid-template-columns:1.4fr 1.4fr 0.8fr 1fr auto auto; }
+        }
+        .ad-product-row input, .ad-product-row select{
+          padding:9px 10px; border-radius:8px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:13.5px; background:var(--bg); color:var(--text);
+        }
+        .ad-delete{
+          background:transparent; border:1px solid rgba(225,18,42,0.4); color:var(--gold);
+          border-radius:8px; padding:9px 14px; cursor:pointer; font-size:13px; font-weight:600;
+        }
+        .ad-delete:hover{ background:rgba(225,18,42,0.08); }
       `}</style>
 
-      {/* NAV */}
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
         <button className="ab-brand" onClick={() => navigate("home")}>
           <span className="ab-brand-mark">
@@ -753,16 +1057,15 @@ export default function App() {
         </div>
       )}
 
-      {/* PAGE CONTENT */}
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} />}
-        {page === "paketler" && <PaketlerPage />}
+        {page === "home" && <HomePage go={go} products={products} />}
+        {page === "paketler" && <PaketlerPage products={products} />}
         {page === "necehisleyir" && <NeceIsleyirPage />}
         {page === "etibar" && <EtibarPage />}
-        {page === "elaqe" && <ElaqePage />}
+        {page === "elaqe" && <ElaqePage settings={settings} />}
+        {page === "admin" && <AdminPage onDataChanged={reload} />}
       </main>
 
-      {/* FOOTER */}
       <footer className="ab-footer">
         <button className="ab-brand" style={{ fontSize: 15 }} onClick={() => navigate("home")}>
           <span className="ab-brand-mark" style={{ width: 20, height: 20 }}>
