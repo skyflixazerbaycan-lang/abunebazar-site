@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
   { id: "all", label: "Hamısı" },
-  { id: "streaming", label: "Film" },
+  { id: "streaming", label: "Streaming" },
   { id: "music", label: "Musiqi" },
   { id: "ai", label: "AI Alətləri" },
 ];
@@ -12,7 +12,7 @@ const CATEGORIES = [
 const STEPS = [
   { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
   { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "24 saat ərzində hesab detalların çatır." },
+  { n: "03", title: "Al", text: "5 dəqiqə ərzində hesab detalların çatır." },
 ];
 
 const NAV_ITEMS = [
@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { key: "elaqe", label: "Əlaqə" },
 ];
 
-const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin", "hesab"];
+const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin", "hesab", "sebet"];
 
 const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
 
@@ -124,7 +124,7 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p }) {
+function TicketCard({ p, onAdd }) {
   return (
     <div className="ab-ticket">
       <div className="ab-ticket-top">
@@ -147,6 +147,11 @@ function TicketCard({ p }) {
           <span className="ab-price-per">/{p.period}</span>
         </div>
       </div>
+      {onAdd && (
+        <button className="ab-ticket-addbtn" onClick={() => onAdd(p)}>
+          <ShoppingCart size={15} /> Səbətə əlavə et
+        </button>
+      )}
     </div>
   );
 }
@@ -201,7 +206,7 @@ function HeroSlideshow({ products }) {
   );
 }
 
-function HomePage({ go, products }) {
+function HomePage({ go, products, onAdd }) {
   return (
     <>
       <div className="ab-screen">
@@ -245,7 +250,7 @@ function HomePage({ go, products }) {
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} />
+              <TicketCard p={p} onAdd={onAdd} />
             </Reveal>
           ))}
         </div>
@@ -261,7 +266,7 @@ function HomePage({ go, products }) {
   );
 }
 
-function PaketlerPage({ products }) {
+function PaketlerPage({ products, onAdd }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
@@ -286,7 +291,7 @@ function PaketlerPage({ products }) {
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} />
+            <TicketCard p={p} onAdd={onAdd} />
           </Reveal>
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>Bu kateqoriyada hələ paket yoxdur.</p>}
@@ -385,6 +390,74 @@ function CtaBanner({ go }) {
         </button>
       </div>
     </Reveal>
+  );
+}
+
+function SebetPage({ cart, updateQty, removeFromCart, settings }) {
+  const total = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
+
+  const rawNumber = settings.contact_whatsapp || "517873090";
+  const digits = rawNumber.replace(/[^0-9]/g, "");
+  const lines = cart.map(
+    (item) => `- ${item.name} x${item.qty} — ${(parseFloat(item.price) * item.qty).toFixed(2)} ₼`
+  );
+  const message = `Salam! Sifariş etmək istəyirəm:\n${lines.join("\n")}\n\nCəmi: ${total.toFixed(2)} ₼`;
+  const waLink = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+
+  if (cart.length === 0) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <PageHead kicker="SƏBƏT" title="Səbətiniz boşdur" sub="Paketlər səhifəsindən məhsul əlavə edin." />
+      </section>
+    );
+  }
+
+  return (
+    <section className="ab-section ab-page-pad">
+      <PageHead kicker="SƏBƏT" title="Səbətim" sub="Miqdarı tənzimlə və sifarişi WhatsApp ilə tamamla." />
+
+      <div className="ab-cart-list">
+        {cart.map((item) => (
+          <div className="ab-cart-row" key={item.id}>
+            <div className="ab-cart-info">
+              <div className="ab-cart-name">{item.name}</div>
+              <div className="ab-cart-unit">
+                {item.price} ₼ /{item.period}
+              </div>
+            </div>
+            <div className="ab-cart-qty">
+              <button onClick={() => updateQty(item.id, item.qty - 1)} aria-label="Azalt">
+                <Minus size={13} />
+              </button>
+              <span>{item.qty}</span>
+              <button onClick={() => updateQty(item.id, item.qty + 1)} aria-label="Artır">
+                <Plus size={13} />
+              </button>
+            </div>
+            <div className="ab-cart-linetotal">{(parseFloat(item.price) * item.qty).toFixed(2)} ₼</div>
+            <button className="ab-cart-remove" onClick={() => removeFromCart(item.id)} aria-label="Sil">
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="ab-cart-summary">
+        <div className="ab-cart-total-row">
+          <span>Cəmi</span>
+          <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
+        </div>
+        
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ab-btn ab-btn-gold"
+          style={{ width: "100%", justifyContent: "center", marginTop: 16 }}
+        >
+          <MessageCircle size={16} /> Sifarişi WhatsApp ilə tamamla
+        </a>
+      </div>
+    </section>
   );
 }
 
@@ -815,6 +888,45 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { products, settings, reload, loaded } = useAppData();
 
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem("skyflix_cart");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("skyflix_cart", JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
+
+  function addToCart(product) {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === product.id);
+      if (existing) {
+        return prev.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i));
+      }
+      return [...prev, { id: product.id, name: product.name, price: product.price, period: product.period, qty: 1 }];
+    });
+  }
+
+  function updateQty(id, qty) {
+    if (qty <= 0) {
+      setCart((prev) => prev.filter((i) => i.id !== id));
+    } else {
+      setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
+    }
+  }
+
+  function removeFromCart(id) {
+    setCart((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
+
   useEffect(() => {
     const onScroll = () => setNavSolid(window.scrollY > 24);
     window.addEventListener("scroll", onScroll);
@@ -895,6 +1007,50 @@ export default function App() {
         @media(min-width:800px){ .ab-menubtn{ display:none; } }
         .ab-accountbtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
         .ab-accountbtn:hover{ border-color:var(--muted); }
+        .ab-cartbtn{ position:relative; }
+        .ab-cart-badge{
+          position:absolute; top:-6px; right:-6px;
+          background:var(--gold); color:#FFFFFF; font-size:10.5px; font-weight:700;
+          min-width:18px; height:18px; border-radius:9px; line-height:1;
+          display:flex; align-items:center; justify-content:center; padding:0 4px;
+        }
+
+        .ab-ticket-addbtn{
+          width:100%; border:none; border-top:1px solid var(--line);
+          background:var(--surface2); color:var(--text);
+          padding:12px; font-size:13.5px; font-weight:600; cursor:pointer;
+          display:flex; align-items:center; justify-content:center; gap:7px;
+          font-family:'Inter',sans-serif;
+          transition:background .2s ease, color .2s ease;
+        }
+        .ab-ticket-addbtn:hover{ background:var(--gold); color:#FFFFFF; }
+
+        .ab-cart-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:28px; }
+        .ab-cart-row{
+          display:flex; flex-wrap:wrap; align-items:center; gap:16px;
+          border:1px solid var(--line); border-radius:12px; padding:16px;
+          background:var(--surface);
+        }
+        .ab-cart-info{ flex:1 1 160px; }
+        .ab-cart-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; }
+        .ab-cart-unit{ color:var(--muted); font-size:12.5px; margin-top:3px; }
+        .ab-cart-qty{ display:flex; align-items:center; gap:10px; }
+        .ab-cart-qty button{
+          width:28px; height:28px; border-radius:7px; border:1px solid var(--line);
+          background:var(--bg); cursor:pointer; color:var(--text);
+          display:flex; align-items:center; justify-content:center;
+        }
+        .ab-cart-qty button:hover{ border-color:var(--gold); }
+        .ab-cart-qty span{ font-family:'JetBrains Mono',monospace; font-size:14px; min-width:16px; text-align:center; }
+        .ab-cart-linetotal{
+          font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--gold);
+          font-size:14.5px; white-space:nowrap; min-width:80px; text-align:right;
+        }
+        .ab-cart-remove{ background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
+        .ab-cart-remove:hover{ color:var(--gold); }
+        .ab-cart-summary{ border-top:1px solid var(--line); padding-top:22px; max-width:440px; }
+        .ab-cart-total-row{ display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:600; font-family:'Space Grotesk',sans-serif; }
+        .ab-cart-total{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:22px; }
 
         .ab-mobilemenu{
           position:fixed; inset:0; z-index:50;
@@ -1188,6 +1344,10 @@ export default function App() {
           ))}
         </div>
         <div className="ab-navright">
+          <button className="ab-accountbtn ab-cartbtn" onClick={() => navigate("sebet")} aria-label="Səbət" title="Səbət">
+            <ShoppingCart size={18} />
+            {cartCount > 0 && <span className="ab-cart-badge">{cartCount}</span>}
+          </button>
           <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label="Hesabım" title="Hesabım">
             <User size={18} />
           </button>
@@ -1221,17 +1381,23 @@ export default function App() {
           <button className="ab-navlink" onClick={() => navigate("hesab")}>
             Hesabım
           </button>
+          <button className="ab-navlink" onClick={() => navigate("sebet")}>
+            Səbətim {cartCount > 0 ? `(${cartCount})` : ""}
+          </button>
         </div>
       )}
 
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} products={products} />}
-        {page === "paketler" && <PaketlerPage products={products} />}
+        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} />}
         {page === "necehisleyir" && <NeceIsleyirPage />}
         {page === "etibar" && <EtibarPage />}
         {page === "elaqe" && <ElaqePage settings={settings} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
         {page === "hesab" && <CustomerAuthPage />}
+        {page === "sebet" && (
+          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} />
+        )}
       </main>
 
       <footer className="ab-footer">
