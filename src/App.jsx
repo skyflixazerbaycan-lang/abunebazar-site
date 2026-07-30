@@ -224,7 +224,7 @@ function HomePage({ go, products }) {
                 Paketlərə bax
               </button>
               <button className="ab-btn ab-btn-onscreen-ghost" onClick={() => go("elaqe")}>
-                <MessageCircle size={16} /> Telegram ilə yaz
+                <MessageCircle size={16} /> WhatsApp ilə yaz
               </button>
             </div>
             <div className="ab-trustrow">
@@ -320,7 +320,7 @@ function EtibarPage() {
   const items = [
     { icon: Shield, title: "Zəmanət daxildir", text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir." },
     { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır." },
-    { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa Telegram üzərindən həftənin 7 günü cavab veririk." },
+    { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk." },
   ];
   return (
     <section className="ab-section ab-page-pad">
@@ -343,31 +343,28 @@ function EtibarPage() {
 }
 
 function ElaqePage({ settings }) {
-  const items = [
-    { icon: MessageCircle, title: "Telegram", text: `${settings.contact_telegram || "@skyflixazerbaycan_bot"} — ən sürətli cavab kanalı.` },
-    { icon: MessageCircle, title: "WhatsApp", text: `${settings.contact_whatsapp || "+994 XX XXX XX XX"} — sifariş və dəstək üçün.` },
-    { icon: Star, title: "Instagram", text: `${settings.contact_instagram || "@skyflixazerbaycan"} — yeniliklər və kampaniyalar.` },
-  ];
+  const rawNumber = settings.contact_whatsapp || "517873090";
+  const digits = rawNumber.replace(/[^0-9]/g, "");
+  const waLink = `https://wa.me/${digits}`;
+
   return (
     <section className="ab-section ab-page-pad">
       <PageHead
         kicker="ƏLAQƏ"
         title="Sifariş üçün yaz"
-        sub="Aşağıdakı kanallardan biri ilə əlaqə saxla, cavab adətən bir neçə dəqiqə çəkir."
+        sub="WhatsApp üzərindən yaz — cavab adətən bir neçə dəqiqə çəkir."
       />
       <div className="ab-contact-grid">
-        {items.map((it, i) => (
-          <Reveal key={it.title} delay={i * 90}>
-            <a href="#" className="ab-contact-card">
-              <it.icon size={22} strokeWidth={1.75} />
-              <div>
-                <h4>{it.title}</h4>
-                <p>{it.text}</p>
-              </div>
-              <ChevronRight size={16} className="ab-contact-arrow" />
-            </a>
-          </Reveal>
-        ))}
+        <Reveal>
+          <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-contact-card">
+            <MessageCircle size={22} strokeWidth={1.75} />
+            <div>
+              <h4>WhatsApp</h4>
+              <p>Sifariş və dəstək üçün birbaşa yaz.</p>
+            </div>
+            <ChevronRight size={16} className="ab-contact-arrow" />
+          </a>
+        </Reveal>
       </div>
     </section>
   );
@@ -382,10 +379,7 @@ function CtaBanner({ go }) {
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button className="ab-btn ab-btn-gold" onClick={() => go("elaqe")}>
-          <MessageCircle size={16} /> Telegram
-        </button>
-        <button className="ab-btn ab-btn-ghost" onClick={() => go("elaqe")}>
-          Bütün kanallar
+          <MessageCircle size={16} /> WhatsApp
         </button>
       </div>
     </Reveal>
@@ -401,9 +395,7 @@ function AdminPage({ onDataChanged }) {
 
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState({
-    contact_telegram: "",
     contact_whatsapp: "",
-    contact_instagram: "",
   });
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -561,31 +553,17 @@ function AdminPage({ onDataChanged }) {
 
       {status && <div className="ad-status">{status}</div>}
 
-      <h3 className="ad-section-title">Əlaqə keçidləri</h3>
+      <h3 className="ad-section-title">Əlaqə keçidi</h3>
       <div className="ad-settings">
         <label>
-          Telegram
-          <input
-            value={settings.contact_telegram || ""}
-            onChange={(e) => setSettings((s) => ({ ...s, contact_telegram: e.target.value }))}
-          />
-        </label>
-        <label>
-          WhatsApp
+          WhatsApp nömrəsi (yalnız rəqəmlər, ölkə kodu ilə — məs. 994517873090)
           <input
             value={settings.contact_whatsapp || ""}
             onChange={(e) => setSettings((s) => ({ ...s, contact_whatsapp: e.target.value }))}
           />
         </label>
-        <label>
-          Instagram
-          <input
-            value={settings.contact_instagram || ""}
-            onChange={(e) => setSettings((s) => ({ ...s, contact_instagram: e.target.value }))}
-          />
-        </label>
         <button className="ab-btn ab-btn-gold" onClick={saveSettings} style={{ alignSelf: "flex-start" }}>
-          Əlaqə məlumatlarını yadda saxla
+          Əlaqə məlumatını yadda saxla
         </button>
       </div>
 
