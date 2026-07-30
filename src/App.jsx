@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
@@ -127,6 +127,7 @@ function Notch({ side }) {
 function TicketCard({ p, onAdd }) {
   return (
     <div className="ab-ticket">
+      {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
       <div className="ab-ticket-top">
         <div>
           <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
@@ -167,12 +168,12 @@ function PageHead({ kicker, title, sub }) {
 }
 
 function HeroSlideshow({ products }) {
-  const [i, setI] = useState(0);
-  const slides = products.slice(0, 4);
+  const [active, setActive] = useState(0);
+  const slides = products.slice(0, 6);
 
   useEffect(() => {
     if (slides.length < 2) return;
-    const t = setInterval(() => setI((v) => (v + 1) % slides.length), 3600);
+    const t = setInterval(() => setActive((v) => (v + 1) % slides.length), 3200);
     return () => clearInterval(t);
   }, [slides.length]);
 
@@ -182,22 +183,39 @@ function HeroSlideshow({ products }) {
 
   return (
     <div className="ab-slideshow">
-      {slides.map((p, idx) => (
-        <div key={p.id} className={`ab-slide ${idx === i ? "active" : ""}`}>
-          <div className="ab-slide-eyebrow">PREMIUM ABUNƏLİK</div>
-          <div className="ab-slide-name">{p.name}</div>
-          <div className="ab-slide-plan">{p.plan}</div>
-          <div className="ab-slide-price">
-            {p.price} ₼ <span>/AY</span>
-          </div>
-        </div>
-      ))}
+      <div className="ab-slideshow-track">
+        {slides.map((p, idx) => {
+          let offset = idx - active;
+          if (offset > slides.length / 2) offset -= slides.length;
+          if (offset < -slides.length / 2) offset += slides.length;
+          const abs = Math.abs(offset);
+          const cardStyle = {
+            transform: `translate(-50%,-50%) translateX(${offset * 128}px) rotateY(${offset * -30}deg) scale(${1 - abs * 0.16})`,
+            zIndex: 10 - abs,
+            opacity: abs > 2 ? 0 : 1 - abs * 0.28,
+            pointerEvents: abs > 2 ? "none" : "auto",
+          };
+          return (
+            <div key={p.id} className="ab-slide-3d" style={cardStyle} onClick={() => setActive(idx)}>
+              {p.image_url ? (
+                <div className="ab-slide-3d-img" style={{ backgroundImage: `url(${p.image_url})` }} />
+              ) : (
+                <div className="ab-slide-3d-icon">
+                  <Ticket size={24} strokeWidth={1.75} />
+                </div>
+              )}
+              <div className="ab-slide-3d-name">{p.name}</div>
+              <div className="ab-slide-3d-price">{p.price} ₼</div>
+            </div>
+          );
+        })}
+      </div>
       <div className="ab-slide-dots">
         {slides.map((_, idx) => (
           <button
             key={idx}
-            className={`ab-dot ${idx === i ? "active" : ""}`}
-            onClick={() => setI(idx)}
+            className={`ab-dot ${idx === active ? "active" : ""}`}
+            onClick={() => setActive(idx)}
             aria-label={`Slayd ${idx + 1}`}
           />
         ))}
@@ -447,13 +465,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
           <span>Cəmi</span>
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
-        
-        <a href={waLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ab-btn ab-btn-gold"
-          style={{ width: "100%", justifyContent: "center", marginTop: 16 }}
-        >
+        <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }}>
           <MessageCircle size={16} /> Sifarişi WhatsApp ilə tamamla
         </a>
       </div>
@@ -629,6 +641,72 @@ function CustomerAuthPage() {
   );
 }
 
+function VideoWidget({ videoId }) {
+  const playerRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    function createPlayer() {
+      playerRef.current = new window.YT.Player("ab-yt-player", {
+        videoId,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          loop: 1,
+          playlist: videoId,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+        },
+        events: {
+          onReady: (e) => {
+            e.target.playVideo();
+            setPlaying(true);
+          },
+        },
+      });
+    }
+    if (window.YT && window.YT.Player) {
+      createPlayer();
+    } else {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+      window.onYouTubeIframeAPIReady = createPlayer;
+    }
+  }, [videoId]);
+
+  function handleClick() {
+    const p = playerRef.current;
+    if (!p) return;
+    if (muted) {
+      p.unMute();
+      p.playVideo();
+      setMuted(false);
+      setPlaying(true);
+      return;
+    }
+    if (playing) {
+      p.pauseVideo();
+      setPlaying(false);
+    } else {
+      p.playVideo();
+      setPlaying(true);
+    }
+  }
+
+  return (
+    <div className="ab-video-widget" onClick={handleClick}>
+      <div id="ab-yt-player" />
+      <div className="ab-video-widget-overlay">
+        {muted ? <VolumeX size={18} /> : playing ? <Pause size={18} /> : <Play size={18} />}
+      </div>
+    </div>
+  );
+}
+
 function AdminPage({ onDataChanged }) {
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -647,6 +725,7 @@ function AdminPage({ onDataChanged }) {
     period: "AY",
     code: "",
     category: "streaming",
+    image_url: "",
   });
   const [status, setStatus] = useState("");
 
@@ -707,6 +786,7 @@ function AdminPage({ onDataChanged }) {
         period: p.period,
         code: p.code,
         category: p.category,
+        image_url: p.image_url,
       })
       .eq("id", p.id);
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
@@ -828,6 +908,7 @@ function AdminPage({ onDataChanged }) {
             <input value={p.name} onChange={(e) => updateField(p.id, "name", e.target.value)} placeholder="Ad" />
             <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
             <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
+            <input value={p.image_url || ""} onChange={(e) => updateField(p.id, "image_url", e.target.value)} placeholder="Şəkil linki (URL)" />
             <select value={p.category} onChange={(e) => updateField(p.id, "category", e.target.value)}>
               <option value="streaming">Streaming</option>
               <option value="music">Musiqi</option>
@@ -864,6 +945,11 @@ function AdminPage({ onDataChanged }) {
           value={newProduct.code}
           onChange={(e) => setNewProduct((n) => ({ ...n, code: e.target.value }))}
           placeholder="Kod"
+        />
+        <input
+          value={newProduct.image_url}
+          onChange={(e) => setNewProduct((n) => ({ ...n, image_url: e.target.value }))}
+          placeholder="Şəkil linki (URL)"
         />
         <select
           value={newProduct.category}
@@ -940,6 +1026,7 @@ export default function App() {
 
   return (
     <div className="ab-root">
+      <VideoWidget videoId="xYRb1Cg8teU" />
       <style>{`
         :root{
           --bg:#FFFFFF;
@@ -1177,26 +1264,39 @@ export default function App() {
         .ab-trustrow span{ display:inline-flex; align-items:center; gap:7px; }
 
         .ab-slideshow{ position:relative; height:290px; }
-        .ab-slide{
-          position:absolute; inset:0;
-          display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.16);
-          border-radius:20px;
-          backdrop-filter:blur(8px);
-          opacity:0; transform:translateY(18px) scale(.97);
-          transition:opacity .6s ease, transform .6s ease;
-          pointer-events:none;
+        .ab-slideshow-track{ position:relative; height:230px; perspective:1000px; }
+        .ab-slide-3d{
+          position:absolute; top:46%; left:50%;
+          width:148px; padding:14px;
+          background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); border-radius:16px;
+          backdrop-filter:blur(6px);
+          text-align:center; cursor:pointer;
+          transition:transform .5s ease, opacity .5s ease;
         }
-        .ab-slide.active{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
-        .ab-slide-eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.1em; color:rgba(255,255,255,0.55); margin-bottom:12px; }
-        .ab-slide-name{ font-family:'Space Grotesk',sans-serif; font-size:27px; font-weight:700; }
-        .ab-slide-plan{ color:rgba(255,255,255,0.72); font-size:14px; margin-top:7px; }
-        .ab-slide-price{ font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:700; color:#FF6B6B; margin-top:18px; }
-        .ab-slide-price span{ font-size:13px; color:rgba(255,255,255,0.6); font-weight:400; }
+        .ab-slide-3d-img{ width:100%; height:70px; border-radius:10px; background-size:cover; background-position:center; margin-bottom:10px; }
+        .ab-slide-3d-icon{
+          width:100%; height:70px; border-radius:10px; background:rgba(255,255,255,0.1);
+          display:flex; align-items:center; justify-content:center; margin-bottom:10px; color:#FF6B6B;
+        }
+        .ab-slide-3d-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px; color:#FFFFFF; }
+        .ab-slide-3d-price{ font-family:'JetBrains Mono',monospace; color:#FF6B6B; font-size:13px; margin-top:5px; }
         .ab-slide-dots{ position:absolute; bottom:16px; left:0; right:0; display:flex; justify-content:center; gap:8px; }
         .ab-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); border:none; cursor:pointer; transition:all .25s ease; padding:0; }
         .ab-dot.active{ background:#FFFFFF; width:22px; border-radius:5px; }
+
+        .ab-ticket-img{ width:100%; height:130px; background-size:cover; background-position:center; }
+
+        .ab-video-widget{
+          position:fixed; bottom:22px; right:22px; z-index:60;
+          width:84px; height:84px; border-radius:50%; overflow:hidden;
+          border:3px solid var(--gold); box-shadow:0 10px 24px -8px rgba(225,18,42,0.5);
+          cursor:pointer; background:#000;
+        }
+        .ab-video-widget iframe{ width:100%; height:100%; pointer-events:none; }
+        .ab-video-widget-overlay{
+          position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+          background:rgba(0,0,0,0.28); color:#FFFFFF;
+        }
 
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
