@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
   { id: "all", label: "Hamısı" },
-  { id: "streaming", label: "Streaming" },
+  { id: "streaming", label: "Film" },
   { id: "music", label: "Musiqi" },
   { id: "ai", label: "AI Alətləri" },
 ];
@@ -12,7 +12,7 @@ const CATEGORIES = [
 const STEPS = [
   { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
   { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "5 dəqiqə ərzində hesab detalların çatır." },
+  { n: "03", title: "Al", text: "24 saat ərzində hesab detalların çatır." },
 ];
 
 const NAV_ITEMS = [
@@ -23,7 +23,9 @@ const NAV_ITEMS = [
   { key: "elaqe", label: "Əlaqə" },
 ];
 
-const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin"];
+const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin", "hesab"];
+
+const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
 
 function useGoogleFonts() {
   useEffect(() => {
@@ -375,7 +377,7 @@ function CtaBanner({ go }) {
     <Reveal className="ab-cta">
       <div>
         <h3>Paketini seç, bu gün izləməyə başla</h3>
-        <p>Sifariş üçün Telegram və ya WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.</p>
+        <p>Sifariş üçün WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.</p>
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button className="ab-btn ab-btn-gold" onClick={() => go("elaqe")}>
@@ -383,6 +385,174 @@ function CtaBanner({ go }) {
         </button>
       </div>
     </Reveal>
+  );
+}
+
+function CustomerAuthPage() {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setChecking(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError("Email və ya şifrə yanlışdır.");
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (password !== confirmPassword) {
+      setError("Şifrələr uyğun gəlmir.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Şifrə ən azı 6 simvol olmalıdır.");
+      return;
+    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+    if (error) {
+      setError(error.message || "Qeydiyyat zamanı xəta baş verdi.");
+      return;
+    }
+    if (!data.session) {
+      setNotice("Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.");
+    }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
+
+  if (checking) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <p>Yüklənir...</p>
+      </section>
+    );
+  }
+
+  if (session) {
+    const u = session.user;
+    return (
+      <section className="ab-section ab-page-pad">
+        <div className="ad-login-wrap">
+          <PageHead kicker="HESABIM" title="Salam!" sub={u.user_metadata?.full_name || u.email} />
+          <div className="ad-settings">
+            <label>
+              Email
+              <input value={u.email} disabled />
+            </label>
+            {u.user_metadata?.full_name && (
+              <label>
+                Ad Soyad
+                <input value={u.user_metadata.full_name} disabled />
+              </label>
+            )}
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>
+            Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.
+          </p>
+          <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
+            Çıxış
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="ab-section ab-page-pad">
+      <div className="ad-login-wrap">
+        <PageHead kicker="HESAB" title={mode === "login" ? "Daxil ol" : "Qeydiyyatdan keç"} />
+        <div className="ab-cat-pills" style={{ marginBottom: 22 }}>
+          <button
+            className={`ab-pill ${mode === "login" ? "active" : ""}`}
+            onClick={() => {
+              setMode("login");
+              setError("");
+              setNotice("");
+            }}
+          >
+            Daxil ol
+          </button>
+          <button
+            className={`ab-pill ${mode === "register" ? "active" : ""}`}
+            onClick={() => {
+              setMode("register");
+              setError("");
+              setNotice("");
+            }}
+          >
+            Qeydiyyat
+          </button>
+        </div>
+
+        {mode === "login" ? (
+          <form onSubmit={handleLogin} className="ad-login">
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input
+              type="password"
+              placeholder="Şifrə"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {error && <p className="ad-error">{error}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
+              Daxil ol
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleRegister} className="ad-login">
+            <input type="text" placeholder="Ad Soyad" value={name} onChange={(e) => setName(e.target.value)} required />
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input
+              type="password"
+              placeholder="Şifrə"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="Şifrəni təkrarla"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {error && <p className="ad-error">{error}</p>}
+            {notice && <p style={{ color: "var(--teal)", fontSize: 13, margin: 0 }}>{notice}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
+              Qeydiyyatdan keç
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -538,6 +708,17 @@ function AdminPage({ onDataChanged }) {
             </button>
           </form>
         </div>
+      </section>
+    );
+  }
+
+  if (session.user.email !== ADMIN_EMAIL) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <PageHead kicker="ADMIN" title="İcazə yoxdur" sub="Bu hesabın admin panelinə girişi yoxdur." />
+        <button className="ab-btn ab-btn-ghost" onClick={handleLogout}>
+          Çıxış
+        </button>
       </section>
     );
   }
@@ -712,6 +893,8 @@ export default function App() {
         .ab-navright{ display:flex; align-items:center; gap:10px; }
         .ab-menubtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
         @media(min-width:800px){ .ab-menubtn{ display:none; } }
+        .ab-accountbtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
+        .ab-accountbtn:hover{ border-color:var(--muted); }
 
         .ab-mobilemenu{
           position:fixed; inset:0; z-index:50;
@@ -1005,6 +1188,9 @@ export default function App() {
           ))}
         </div>
         <div className="ab-navright">
+          <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label="Hesabım" title="Hesabım">
+            <User size={18} />
+          </button>
           <button className="ab-btn ab-btn-gold" onClick={() => navigate("elaqe")}>
             Sifariş et <ChevronRight size={15} />
           </button>
@@ -1032,6 +1218,9 @@ export default function App() {
               {item.label}
             </button>
           ))}
+          <button className="ab-navlink" onClick={() => navigate("hesab")}>
+            Hesabım
+          </button>
         </div>
       )}
 
@@ -1042,6 +1231,7 @@ export default function App() {
         {page === "etibar" && <EtibarPage />}
         {page === "elaqe" && <ElaqePage settings={settings} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
+        {page === "hesab" && <CustomerAuthPage />}
       </main>
 
       <footer className="ab-footer">
