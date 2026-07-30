@@ -448,7 +448,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
         
-          href={waLink}
+        <a href={waLink}
           target="_blank"
           rel="noopener noreferrer"
           className="ab-btn ab-btn-gold"
