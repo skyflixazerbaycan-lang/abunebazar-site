@@ -412,6 +412,12 @@ function CtaBanner({ go }) {
 }
 
 function SebetPage({ cart, updateQty, removeFromCart, settings }) {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+  }, []);
+
   const total = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
 
   const rawNumber = settings.contact_whatsapp || "517873090";
@@ -465,7 +471,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
           <span>Cəmi</span>
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
-        <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }}>
+        <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => { supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {}); }}>
           <MessageCircle size={16} /> Sifarişi WhatsApp ilə tamamla
         </a>
       </div>
@@ -642,13 +648,18 @@ function CustomerAuthPage() {
 }
 
 function VideoWidget({ videoId }) {
+  const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
 
   useEffect(() => {
+    if (!wrapperRef.current) return;
+    const target = document.createElement("div");
+    wrapperRef.current.appendChild(target);
+
     function createPlayer() {
-      playerRef.current = new window.YT.Player("ab-yt-player", {
+      playerRef.current = new window.YT.Player(target, {
         videoId,
         playerVars: {
           autoplay: 1,
@@ -676,6 +687,17 @@ function VideoWidget({ videoId }) {
       document.body.appendChild(tag);
       window.onYouTubeIframeAPIReady = createPlayer;
     }
+
+    return () => {
+      if (playerRef.current && playerRef.current.destroy) {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {}
+      }
+      if (wrapperRef.current && target.parentNode === wrapperRef.current) {
+        wrapperRef.current.removeChild(target);
+      }
+    };
   }, [videoId]);
 
   function handleClick() {
@@ -699,7 +721,7 @@ function VideoWidget({ videoId }) {
 
   return (
     <div className="ab-video-widget" onClick={handleClick}>
-      <div id="ab-yt-player" />
+      <div ref={wrapperRef} className="ab-video-widget-inner" />
       <div className="ab-video-widget-overlay">
         {muted ? <VolumeX size={18} /> : playing ? <Pause size={18} /> : <Play size={18} />}
       </div>
@@ -728,6 +750,8 @@ function AdminPage({ onDataChanged }) {
     image_url: "",
   });
   const [status, setStatus] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -753,6 +777,10 @@ function AdminPage({ onDataChanged }) {
       sett.forEach((s) => (obj[s.key] = s.value));
       setSettings((prev) => ({ ...prev, ...obj }));
     }
+    const { data: profs } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    if (profs) setCustomers(profs);
+    const { data: ords } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (ords) setOrders(ords);
   }
 
   function flash(msg) {
@@ -962,6 +990,39 @@ function AdminPage({ onDataChanged }) {
         <button className="ab-btn ab-btn-gold" onClick={addProduct}>
           Əlavə et
         </button>
+      </div>
+
+      <h3 className="ad-section-title">Müştərilər ({customers.length})</h3>
+      <div className="ad-products">
+        {customers.map((c) => (
+          <div className="ad-customer-row" key={c.id}>
+            <span className="ad-customer-email">{c.email}</span>
+            <span className="ad-customer-name">{c.full_name || "—"}</span>
+            <span className="ad-customer-date">{new Date(c.created_at).toLocaleDateString("az-AZ")}</span>
+          </div>
+        ))}
+        {customers.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ qeydiyyatdan keçən yoxdur.</p>}
+      </div>
+
+      <h3 className="ad-section-title">Sifarişlər ({orders.length})</h3>
+      <div className="ad-products">
+        {orders.map((o) => (
+          <div className="ad-order-row" key={o.id}>
+            <div className="ad-order-head">
+              <span className="ad-customer-email">{o.customer_email || "Qonaq"}</span>
+              <span className="ad-order-total">{Number(o.total).toFixed(2)} ₼</span>
+              <span className="ad-customer-date">{new Date(o.created_at).toLocaleString("az-AZ")}</span>
+            </div>
+            <div className="ad-order-items">
+              {(o.items || []).map((it, i) => (
+                <span key={i} className="ad-order-item">
+                  {it.name} x{it.qty}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+        {orders.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ sifariş yoxdur.</p>}
       </div>
     </section>
   );
@@ -1292,7 +1353,8 @@ export default function App() {
           border:3px solid var(--gold); box-shadow:0 10px 24px -8px rgba(225,18,42,0.5);
           cursor:pointer; background:#000;
         }
-        .ab-video-widget iframe{ width:100%; height:100%; pointer-events:none; }
+        .ab-video-widget-inner{ width:100%; height:100%; }
+        .ab-video-widget-inner iframe{ width:100%; height:100%; pointer-events:none; }
         .ab-video-widget-overlay{
           position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
           background:rgba(0,0,0,0.28); color:#FFFFFF;
@@ -1423,6 +1485,25 @@ export default function App() {
           border-radius:8px; padding:9px 14px; cursor:pointer; font-size:13px; font-weight:600;
         }
         .ad-delete:hover{ background:rgba(225,18,42,0.08); }
+
+        .ad-customer-row{
+          display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+          border:1px solid var(--line); border-radius:12px; padding:12px 16px; background:var(--surface);
+          font-size:13.5px;
+        }
+        .ad-customer-email{ font-weight:600; color:var(--text); }
+        .ad-customer-name{ color:var(--muted); }
+        .ad-customer-date{ color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin-left:auto; }
+
+        .ad-order-row{
+          border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--surface);
+        }
+        .ad-order-head{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; font-size:13.5px; }
+        .ad-order-total{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-weight:700; }
+        .ad-order-items{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+        .ad-order-item{
+          background:var(--surface2); border-radius:100px; padding:5px 12px; font-size:12px; color:var(--text);
+        }
       `}</style>
 
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
