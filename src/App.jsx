@@ -783,6 +783,39 @@ function AdminPage({ onDataChanged }) {
     if (ords) setOrders(ords);
   }
 
+  async function uploadImage(file) {
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(fileName, file, { upsert: true });
+    if (error) {
+      flash("Şəkil yüklənmədi: " + error.message);
+      return null;
+    }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(fileName);
+    return data.publicUrl;
+  }
+
+  async function handleExistingImageFile(id, file) {
+    if (!file) return;
+    flash("Şəkil yüklənir...");
+    const url = await uploadImage(file);
+    if (url) {
+      updateField(id, "image_url", url);
+      await supabase.from("products").update({ image_url: url }).eq("id", id);
+      flash("Şəkil yükləndi ✓");
+    }
+  }
+
+  async function handleNewImageFile(file) {
+    if (!file) return;
+    flash("Şəkil yüklənir...");
+    const url = await uploadImage(file);
+    if (url) {
+      setNewProduct((n) => ({ ...n, image_url: url }));
+      flash("Şəkil yükləndi ✓");
+    }
+  }
+
   function flash(msg) {
     setStatus(msg);
     setTimeout(() => setStatus(""), 2200);
@@ -937,6 +970,16 @@ function AdminPage({ onDataChanged }) {
             <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
             <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
             <input value={p.image_url || ""} onChange={(e) => updateField(p.id, "image_url", e.target.value)} placeholder="Şəkil linki (URL)" />
+            <input
+              type="file"
+              accept="image/*"
+              id={`img-${p.id}`}
+              style={{ display: "none" }}
+              onChange={(e) => handleExistingImageFile(p.id, e.target.files[0])}
+            />
+            <button className="ab-btn ab-btn-ghost" onClick={() => document.getElementById(`img-${p.id}`).click()}>
+              Şəkil seç
+            </button>
             <select value={p.category} onChange={(e) => updateField(p.id, "category", e.target.value)}>
               <option value="streaming">Streaming</option>
               <option value="music">Musiqi</option>
@@ -979,6 +1022,16 @@ function AdminPage({ onDataChanged }) {
           onChange={(e) => setNewProduct((n) => ({ ...n, image_url: e.target.value }))}
           placeholder="Şəkil linki (URL)"
         />
+        <input
+          type="file"
+          accept="image/*"
+          id="img-new"
+          style={{ display: "none" }}
+          onChange={(e) => handleNewImageFile(e.target.files[0])}
+        />
+        <button className="ab-btn ab-btn-ghost" onClick={() => document.getElementById("img-new").click()}>
+          Şəkil seç
+        </button>
         <select
           value={newProduct.category}
           onChange={(e) => setNewProduct((n) => ({ ...n, category: e.target.value }))}
