@@ -344,7 +344,7 @@ function NeceIsleyirPage() {
 function EtibarPage() {
   const items = [
     { icon: Shield, title: "Zəmanət daxildir", text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir." },
-    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır." },
+    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 24 saat ərzində çatır." },
     { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk." },
   ];
   return (
