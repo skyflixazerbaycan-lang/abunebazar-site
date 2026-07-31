@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { key: "paketler", label: "Paketlər" },
   { key: "necehisleyir", label: "Necə işləyir" },
   { key: "etibar", label: "Etibarlılıq" },
+  { key: "qaydalar", label: "Qaydalar" },
   { key: "elaqe", label: "Əlaqə" },
 ];
 
@@ -479,44 +480,85 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
   );
 }
 
-const SITE_RULES = [
+const RULE_GROUPS = [
   {
-    title: "Çatdırılma müddəti",
-    text: "Ödəniş təsdiqləndikdən sonra sifarişiniz adətən 24 saat ərzində təhvil verilir. Yüklənmənin yüksək olduğu dövrlərdə bu müddət maksimum 3 iş gününə qədər uzana bilər.",
+    heading: "Sifariş, Məhsul və Geri Ödəniş Qaydaları",
+    items: [
+      { n: "1.0", text: "Sifariş, satıcı ödənişi təsdiq etdikdən sonra 24 saat ərzində müştəriyə çatdırılır." },
+      { n: "1.1", text: "Sifarişlərin sıx olduğu zamanlar çatdırılmada gecikmələr yaşana bilər. Gecikmə maksimum 3 iş günü təşkil edə bilər. Bu müddətdən sonra müştəri ödənişi geri tələb edə bilər." },
+      { n: "1.2", text: "Sifarişlər sıra ilə çatdırılır. Müştəri sifariş verdikdən dərhal sonra hesabın gec çatdırılması ilə bağlı narazılıq bildirib ödənişi geri tələb edə bilməz. Yalnız 1.0 və 1.1 bəndlərində qeyd edilən müddət keçdikdən sonra ödənişi geri tələb edə bilər." },
+      { n: "1.3", text: "18 yaşından aşağı şəxslərin bizdən alış-veriş etməsi qadağandır. Ailə üzvünün kart məlumatlarından icazəsiz istifadə edərək bizə aid hesablara ödəniş etməsinə görə məsuliyyət daşımırıq." },
+      { n: "1.4", text: "Satılan məhsullar rəqəmsal olduğuna görə, istisna hallar xaricində geri ödəniş edilmir. Abunəlik aktiv olduğu halda, müştərinin cihazı və ya digər xarici səbəblərlə əlaqədar hesabdan istifadə edə bilmədiyi hallarda ödəniş geri qaytarılmır. Belə hallarda müştəriyə hesabla bağlı sübut göndərilir. İstisna hallarda, qeyd edilən abunəlik müddəti təmin edilə bilmirsə, istifadə olunan hissə çıxılmaqla qalan məbləğ geri qaytarılır." },
+      { n: "1.5", text: "Bəzi məhsullar ortaq hesab şəklində olduğuna görə, onlar üzrə ödənişin geri qaytarılması həyata keçirilmir." },
+      { n: "1.6", text: "Məhsullarımız qlobal xarakter daşıyır, lakin bəzi ölkələrdə müxtəlif səbəblərdən bəzi məhsullardan istifadə mümkün olmur. Müştəri bundan xəbərsiz olsa belə, ya da yalnız yoxlamaq məqsədilə alıb sonra geri ödəniş tələb edə bilməz." },
+      { n: "1.7", text: "Müştəri, sifarişindən öncə əlavə ödəniş (2.99 AZN) edərək sifarişini VIP sıraya çəkib tezləşdirə bilər." },
+      { n: "1.8", text: "1.7-ci bənddə qeyd olunan VIP sıra imkanı Netflix, BluTv, Disney+, Amazon Prime Video və Duolingo Plus məhsullarına şamil edilir." },
+      { n: "1.9", text: "Bizə aid bank kartlarına səhvən ödəniş göndərildikdə, məbləğdən asılı olmayaraq geri ödəniş tələb olunarsa, 2 AZN komissiya çıxılaraq qalan məbləğ geri göndərilir." },
+    ],
   },
   {
-    title: "Geri ödəniş siyasəti",
-    text: "Satılan məhsullar rəqəmsal xarakter daşıdığından, açıq şəkildə qeyd olunan istisna hallar xaricində satışdan sonra geri ödəniş edilmir.",
+    heading: "Ödəniş Qaydaları",
+    items: [
+      { n: "2.0", text: "Sizə göstərilən kart hesabından fərqli bir hesaba ödəniş edilərsə, ödəniş qəbul olunmayacaq. Köhnə bank hesablarına edilən ödənişlər qəbul edilmir. Göstərilən hesaba ödəniş edilənə qədər sifariş çatdırılmır." },
+      { n: "2.1", text: "Ödənişdən sonra 24 saat ərzində qəbzin şəkli bizə göndərilməlidir. Bu müddət keçərsə, ödəniş təsdiqlənməyəcək və sifariş çatdırılmayacaq." },
+      { n: "2.2", text: "Terminal vasitəsilə ödəniş zamanı qəbz verilmirsə, müvafiq terminal şirkəti ilə əlaqə saxlayıb qəbzin elektron nüsxəsini 24 saat ərzində tələb edib bizə göndərməlisiniz. Bu vəziyyətlə qarşılaşan müştəri 3 gün ərzində qəbz təqdim etmirsə, sifariş qeydə alınmır və ödəniş təsdiqlənmir." },
+    ],
   },
   {
-    title: "Fərdi istifadə şərti",
-    text: "Təqdim olunan hər hesab yalnız bir istifadəçi üçün nəzərdə tutulub. Hesabın üçüncü şəxslərlə (ailə üzvü, dost və s.) paylaşılması qəti qadağandır və aşkarlandıqda əlaqə dərhal dayandırılır.",
+    heading: "Məhsul Qaydaları",
+    items: [
+      { n: "2.3", text: "FaceApp yalnız iOS cihazları (məsələn, iPhone) ilə uyğundur. Bu məhsul üçün öz iCloud hesabınızdan çıxıb bizim hesabımıza daxil olmalı, sonra öz hesabınıza geri qayıtmalısınız. iCloud dəyişimi zamanı itirilən şəkil və ya digər məlumatlara görə məsuliyyət daşımırıq. Ödənişdən sonra yaranan yaddaş dolması, ehtiyat nüsxənin alınmaması və bənzər problemlərə görə də məsuliyyət daşınmır, buna görə geri ödəniş edilmir. FaceApp Android cihazları ilə uyğun deyil; Android istifadəçisi ödənişdən sonra geri ödəniş tələb edə bilməz. Ortaq istifadə olunan digər məhsullarımıza ChatGPT, Prime Video, BluTv, Exxen, Disney+, Netflix, PC oyunları və MUBI daxildir. Disney+ abunəliyi Azərbaycanda aktiv olmadığından, yalnız VPN vasitəsilə istifadə oluna bilər." },
+      { n: "2.4", text: "Ortaq istifadə olunan məhsullardakı otaq (room) formatı fərdi şəkildə təqdim olunmur. YouTube Premium-un hədiyyə şəklində verilən paylaşımlı hesabında baş verən əməliyyatlara görə məsuliyyət daşınmır, eləcə də cihaz sıfırlanması və digər xarici proseslərə görə heç bir məsuliyyət qəbul edilmir. Müştəri, ödənişdən əvvəl mağaza qaydalarının təqdim edilməsi əsasında bütün qaydaları qəbul edərək hesaba daxil olur." },
+      { n: "2.5", text: "2.3-cü bəndə əsasən, təqdim olunan hesabların e-poçtunu, şifrəsini, otaq adını, otaq şifrəsini və otaq dilini dəyişdirmək qadağandır." },
+      { n: "2.6", text: "Spotify, Canva və Duolingo Plus hesabları müştəriyə fərdi məxsus olur. 33 AZN dəyərində olan YouTube Premium hesabı tərəfimizdən təqdim olunur və hər ay, ya da hər iki aydan bir yenilənir." },
+      { n: "2.7", text: "Bizdən alınan məhsullar 1 nəfərlik istifadə üçün nəzərdə tutulub. İkinci şəxsə verilməsi qadağandır. Netflix, BluTv, Prime Video, Storytel, YouTube Premium və digər bütün streaming abunəliklərinə yalnız 1 nəfər daxil ola bilər. Dosta, tanışa və ya ailə üzvünə vermək qəti qadağandır. Sifariş qəbul edilib hesab təhvil verildikdən sonra bu qaydaya əsasən ödənilən məbləğ geri qaytarılmır." },
+    ],
   },
   {
-    title: "Hesab təfərrüatlarının toxunulmazlığı",
-    text: "Təqdim olunan profil/otaq adı, şifrə, dil və digər parametrlərin dəyişdirilməsi qadağandır. Bu, xidmətin bütün müştərilər üçün fasiləsiz işləməsini təmin edir.",
+    heading: "Mağaza Qaydaları",
+    items: [
+      { n: "2.8", text: "Səbəbindən asılı olmayaraq, satıcı ilə ünsiyyət zamanı qeyri-etik ifadələr işlədilməsi halında abunəlik dayandırılır, ödənilmiş məbləğ bloklanır və müştəri mağazadan ömürlük uzaqlaşdırılır. Alınan məhsulda problem yaranarsa, iş saatları çərçivəsində (hər gün 12:00–00:00) 7 iş günü ərzində problem həll olunmadığı halda, istifadə edilən müddət çıxılmaqla qalan məbləğ geri qaytarılır." },
+      { n: "2.9", text: "Saxta qəbz təqdim edərək fırıldaqçılıq fəaliyyəti ilə məşğul olan müştərilər mağazadan ömürlük uzaqlaşdırılır." },
+      { n: "3.0", text: "Ödənişini vaxtında etməyən müştərilərin abunəliyi əvvəlcədən xəbərdarlıq edilmədən dayandırılır." },
+      { n: "3.1", text: "Satın alınmış hesabları oğurlayan şəxslər mağazadan uzaqlaşdırılır və onlara aid bütün məlumatlar (ad, soyad, bank hesabı) müvafiq dövlət qurumlarına təqdim olunaraq hüquqi tədbir görülür." },
+      { n: "3.2", text: "Ortaq hesablarda digər müştəriləri narahat edəcək davranışa yol verən müştəri mağazadan ömürlük uzaqlaşdırılır və ödənişi bloklanır." },
+    ],
   },
   {
-    title: "Yaş məhdudiyyəti",
-    text: "Xidmətlərimizdən yalnız 18 yaşını tamamlamış şəxslər istifadə edə bilər. Ailə üzvlərinin ödəniş vasitələrindən icazəsiz istifadəyə görə məsuliyyət daşınmır.",
-  },
-  {
-    title: "Paylaşılan hesablar",
-    text: "Bəzi məhsullar ortaq istifadə modelində təqdim olunur. Bu hesablarda baş verən texniki hallara (cihaz sıfırlanması və digər xarici amillərə) görə məsuliyyət daşınmır.",
-  },
-  {
-    title: "Qarşılıqlı hörmət",
-    text: "Dəstək komandası ilə ünsiyyətdə nəzakətli münasibət tələb olunur. Etik olmayan davranış aşkarlandıqda hesab dayandırılır və ödənilmiş məbləğ bloklanır.",
-  },
-  {
-    title: "Fırıldaqçılığa qarşı sərt siyasət",
-    text: "Saxta ödəniş sübutu təqdim etmək, hesab oğurluğu cəhdi və ya digər dələduzluq fəaliyyəti aşkarlandıqda müştəri platformadan ömürlük məhdudlaşdırılır və qanuni tədbirlərə müraciət oluna bilər.",
-  },
-  {
-    title: "Qlobal əlçatanlıq",
-    text: "Məhsullarımız qlobal xarakter daşıyır, lakin bəzi bölgələrdə xidmət provayderinin öz məhdudiyyətlərinə görə əlçatanlıq fərqli ola bilər.",
+    heading: "Netflix Otaq Qaydaları",
+    items: [
+      { n: "N.1", text: "Otağın adını, şifrəsini və ya şəklini dəyişdirmək qadağandır. Sizə verilən otaq daxil olmaqla, heç bir otağın məlumatı dəyişdirilməməlidir." },
+      { n: "N.2", text: "Aldığınız hesab 1 nəfərlik istifadə üçündür. Onun ailə üzvünüzə, dostunuza və ya digər hər hansı şəxsə verilməsi qadağandır. Bu, sistem tərəfindən izlənilir və aşkarlandığı an hesabdan çıxarılırsınız." },
+      { n: "N.3", text: "Yalnız özünüzə aid cihazlardan qoşularaq, eyni anda birdən çox cihazda baxmamaq şərtilə izləyə bilərsiniz. Televizorda film açıqdırsa, eyni zamanda telefondan da daxil olub baxmaq qadağandır — yalnız 1 cihaz eyni anda aktiv ola bilər." },
+      { n: "N.4", text: "Otağın menyu dili yalnız Türk dilində olmalıdır. Menyu dilini Rus, İngilis və ya başqa bir dilə dəyişdirmək qadağandır." },
+    ],
   },
 ];
+
+function QaydalarPage() {
+  return (
+    <section className="ab-section ab-page-pad">
+      <PageHead
+        kicker="QAYDALAR"
+        title="Xidmət Şərtləri və Qaydalar"
+        sub="SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."
+      />
+      <div className="ab-rules-page">
+        {RULE_GROUPS.map((group, gi) => (
+          <Reveal key={gi} delay={gi * 60} className="ab-rule-group">
+            <h4 className="ab-rule-group-title">{group.heading}</h4>
+            {group.items.map((r, i) => (
+              <div className="ab-rule-item" key={i}>
+                <span className="ab-rule-num">{r.n}</span>
+                <p>{r.text}</p>
+              </div>
+            ))}
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function RulesModal({ onClose }) {
   return (
@@ -529,16 +571,18 @@ function RulesModal({ onClose }) {
           </button>
         </div>
         <p className="ab-modal-intro">
-          SkyFlix Azerbaycan olaraq, premium təcrübənizi qorumaq üçün aşağıdakı qaydalar tətbiq olunur.
+          SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.
         </p>
         <div className="ab-modal-body">
-          {SITE_RULES.map((r, i) => (
-            <div className="ab-rule-item" key={i}>
-              <span className="ab-rule-num">{String(i + 1).padStart(2, "0")}</span>
-              <div>
-                <h4>{r.title}</h4>
-                <p>{r.text}</p>
-              </div>
+          {RULE_GROUPS.map((group, gi) => (
+            <div key={gi} className="ab-rule-group">
+              <h4 className="ab-rule-group-title">{group.heading}</h4>
+              {group.items.map((r, i) => (
+                <div className="ab-rule-item" key={i}>
+                  <span className="ab-rule-num">{r.n}</span>
+                  <p>{r.text}</p>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -1678,11 +1722,19 @@ export default function App() {
         .ab-modal-head h3{ font-size:20px; margin:0; font-family:'Space Grotesk',sans-serif; }
         .ab-modal-close{ background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
         .ab-modal-intro{ color:var(--muted); font-size:14px; margin:0 0 22px; }
-        .ab-modal-body{ display:flex; flex-direction:column; gap:16px; }
-        .ab-rule-item{ display:flex; gap:12px; }
-        .ab-rule-num{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:13px; flex-shrink:0; margin-top:2px; }
-        .ab-rule-item h4{ font-size:14.5px; margin:0 0 4px; font-family:'Space Grotesk',sans-serif; }
-        .ab-rule-item p{ font-size:13px; color:var(--muted); margin:0; line-height:1.55; }
+        .ab-modal-body{ display:flex; flex-direction:column; gap:22px; }
+        .ab-rule-group-title{
+          font-size:14px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:.04em;
+          margin:0 0 12px; font-family:'Space Grotesk',sans-serif;
+          border-bottom:1px solid var(--line); padding-bottom:8px;
+        }
+        .ab-rule-item{ display:flex; gap:10px; margin-bottom:10px; }
+        .ab-rule-num{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:12px; flex-shrink:0; margin-top:2px; min-width:26px; }
+        .ab-rule-item p{ font-size:13px; color:var(--muted); margin:0; line-height:1.6; }
+
+        .ab-rules-page{ display:flex; flex-direction:column; gap:38px; max-width:760px; }
+        .ab-rules-page .ab-rule-group-title{ font-size:15px; }
+        .ab-rules-page .ab-rule-item p{ font-size:14px; }
       `}</style>
 
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
@@ -1752,6 +1804,7 @@ export default function App() {
         {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} />}
         {page === "necehisleyir" && <NeceIsleyirPage />}
         {page === "etibar" && <EtibarPage />}
+        {page === "qaydalar" && <QaydalarPage />}
         {page === "elaqe" && <ElaqePage settings={settings} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
         {page === "hesab" && <CustomerAuthPage />}
