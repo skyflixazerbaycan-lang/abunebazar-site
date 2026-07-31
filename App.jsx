@@ -12,7 +12,7 @@ const CATEGORIES = [
 const STEPS = [
   { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
   { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "24 saat ərzində hesab detalların çatır." },
+  { n: "03", title: "Al", text: "5 dəqiqə ərzində hesab detalların çatır." },
 ];
 
 const NAV_ITEMS = [
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { key: "paketler", label: "Paketlər" },
   { key: "necehisleyir", label: "Necə işləyir" },
   { key: "etibar", label: "Etibarlılıq" },
+  { key: "qaydalar", label: "Qaydalar" },
   { key: "elaqe", label: "Əlaqə" },
 ];
 
@@ -344,7 +345,7 @@ function NeceIsleyirPage() {
 function EtibarPage() {
   const items = [
     { icon: Shield, title: "Zəmanət daxildir", text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir." },
-    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 24 saat ərzində çatır." },
+    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır." },
     { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk." },
   ];
   return (
@@ -533,6 +534,31 @@ const RULE_GROUPS = [
     ],
   },
 ];
+
+function QaydalarPage() {
+  return (
+    <section className="ab-section ab-page-pad">
+      <PageHead
+        kicker="QAYDALAR"
+        title="Xidmət Şərtləri və Qaydalar"
+        sub="SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."
+      />
+      <div className="ab-rules-page">
+        {RULE_GROUPS.map((group, gi) => (
+          <Reveal key={gi} delay={gi * 60} className="ab-rule-group">
+            <h4 className="ab-rule-group-title">{group.heading}</h4>
+            {group.items.map((r, i) => (
+              <div className="ab-rule-item" key={i}>
+                <span className="ab-rule-num">{r.n}</span>
+                <p>{r.text}</p>
+              </div>
+            ))}
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function RulesModal({ onClose }) {
   return (
@@ -755,8 +781,7 @@ function CustomerAuthPage() {
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
+  const unmutedRef = useRef(false);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
@@ -779,7 +804,6 @@ function VideoWidget({ videoId }) {
         events: {
           onReady: (e) => {
             e.target.playVideo();
-            setPlaying(true);
           },
         },
       });
@@ -793,7 +817,25 @@ function VideoWidget({ videoId }) {
       window.onYouTubeIframeAPIReady = createPlayer;
     }
 
+    function unmuteOnInteract() {
+      if (unmutedRef.current) return;
+      const p = playerRef.current;
+      if (p && p.unMute) {
+        p.unMute();
+        p.playVideo();
+        unmutedRef.current = true;
+      }
+    }
+    window.addEventListener("click", unmuteOnInteract);
+    window.addEventListener("touchstart", unmuteOnInteract);
+    window.addEventListener("keydown", unmuteOnInteract);
+    window.addEventListener("scroll", unmuteOnInteract, { passive: true });
+
     return () => {
+      window.removeEventListener("click", unmuteOnInteract);
+      window.removeEventListener("touchstart", unmuteOnInteract);
+      window.removeEventListener("keydown", unmuteOnInteract);
+      window.removeEventListener("scroll", unmuteOnInteract);
       if (playerRef.current && playerRef.current.destroy) {
         try {
           playerRef.current.destroy();
@@ -805,33 +847,7 @@ function VideoWidget({ videoId }) {
     };
   }, [videoId]);
 
-  function handleClick() {
-    const p = playerRef.current;
-    if (!p) return;
-    if (muted) {
-      p.unMute();
-      p.playVideo();
-      setMuted(false);
-      setPlaying(true);
-      return;
-    }
-    if (playing) {
-      p.pauseVideo();
-      setPlaying(false);
-    } else {
-      p.playVideo();
-      setPlaying(true);
-    }
-  }
-
-  return (
-    <div className="ab-video-widget" onClick={handleClick}>
-      <div ref={wrapperRef} className="ab-video-widget-inner" />
-      <div className="ab-video-widget-overlay">
-        {muted ? <VolumeX size={18} /> : playing ? <Pause size={18} /> : <Play size={18} />}
-      </div>
-    </div>
-  );
+  return <div ref={wrapperRef} className="ab-video-widget-hidden" />;
 }
 
 function AdminPage({ onDataChanged }) {
@@ -1257,7 +1273,7 @@ export default function App() {
 
   return (
     <div className="ab-root">
-      <VideoWidget videoId="xYRb1Cg8teU" />
+      <VideoWidget videoId="jhgJV0Pg54Y" />
       <style>{`
         :root{
           --bg:#FFFFFF;
@@ -1517,18 +1533,7 @@ export default function App() {
 
         .ab-ticket-img{ width:100%; height:130px; background-size:cover; background-position:center; }
 
-        .ab-video-widget{
-          position:fixed; bottom:22px; right:22px; z-index:60;
-          width:84px; height:84px; border-radius:50%; overflow:hidden;
-          border:3px solid var(--gold); box-shadow:0 10px 24px -8px rgba(225,18,42,0.5);
-          cursor:pointer; background:#000;
-        }
-        .ab-video-widget-inner{ width:100%; height:100%; }
-        .ab-video-widget-inner iframe{ width:100%; height:100%; pointer-events:none; }
-        .ab-video-widget-overlay{
-          position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-          background:rgba(0,0,0,0.28); color:#FFFFFF;
-        }
+        .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
 
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
@@ -1705,6 +1710,10 @@ export default function App() {
         .ab-rule-item{ display:flex; gap:10px; margin-bottom:10px; }
         .ab-rule-num{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:12px; flex-shrink:0; margin-top:2px; min-width:26px; }
         .ab-rule-item p{ font-size:13px; color:var(--muted); margin:0; line-height:1.6; }
+
+        .ab-rules-page{ display:flex; flex-direction:column; gap:38px; max-width:760px; }
+        .ab-rules-page .ab-rule-group-title{ font-size:15px; }
+        .ab-rules-page .ab-rule-item p{ font-size:14px; }
       `}</style>
 
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
@@ -1774,6 +1783,7 @@ export default function App() {
         {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} />}
         {page === "necehisleyir" && <NeceIsleyirPage />}
         {page === "etibar" && <EtibarPage />}
+        {page === "qaydalar" && <QaydalarPage />}
         {page === "elaqe" && <ElaqePage settings={settings} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
         {page === "hesab" && <CustomerAuthPage />}
