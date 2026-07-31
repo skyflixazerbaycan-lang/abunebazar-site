@@ -479,6 +479,77 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
   );
 }
 
+const SITE_RULES = [
+  {
+    title: "Çatdırılma müddəti",
+    text: "Ödəniş təsdiqləndikdən sonra sifarişiniz adətən 24 saat ərzində təhvil verilir. Yüklənmənin yüksək olduğu dövrlərdə bu müddət maksimum 3 iş gününə qədər uzana bilər.",
+  },
+  {
+    title: "Geri ödəniş siyasəti",
+    text: "Satılan məhsullar rəqəmsal xarakter daşıdığından, açıq şəkildə qeyd olunan istisna hallar xaricində satışdan sonra geri ödəniş edilmir.",
+  },
+  {
+    title: "Fərdi istifadə şərti",
+    text: "Təqdim olunan hər hesab yalnız bir istifadəçi üçün nəzərdə tutulub. Hesabın üçüncü şəxslərlə (ailə üzvü, dost və s.) paylaşılması qəti qadağandır və aşkarlandıqda əlaqə dərhal dayandırılır.",
+  },
+  {
+    title: "Hesab təfərrüatlarının toxunulmazlığı",
+    text: "Təqdim olunan profil/otaq adı, şifrə, dil və digər parametrlərin dəyişdirilməsi qadağandır. Bu, xidmətin bütün müştərilər üçün fasiləsiz işləməsini təmin edir.",
+  },
+  {
+    title: "Yaş məhdudiyyəti",
+    text: "Xidmətlərimizdən yalnız 18 yaşını tamamlamış şəxslər istifadə edə bilər. Ailə üzvlərinin ödəniş vasitələrindən icazəsiz istifadəyə görə məsuliyyət daşınmır.",
+  },
+  {
+    title: "Paylaşılan hesablar",
+    text: "Bəzi məhsullar ortaq istifadə modelində təqdim olunur. Bu hesablarda baş verən texniki hallara (cihaz sıfırlanması və digər xarici amillərə) görə məsuliyyət daşınmır.",
+  },
+  {
+    title: "Qarşılıqlı hörmət",
+    text: "Dəstək komandası ilə ünsiyyətdə nəzakətli münasibət tələb olunur. Etik olmayan davranış aşkarlandıqda hesab dayandırılır və ödənilmiş məbləğ bloklanır.",
+  },
+  {
+    title: "Fırıldaqçılığa qarşı sərt siyasət",
+    text: "Saxta ödəniş sübutu təqdim etmək, hesab oğurluğu cəhdi və ya digər dələduzluq fəaliyyəti aşkarlandıqda müştəri platformadan ömürlük məhdudlaşdırılır və qanuni tədbirlərə müraciət oluna bilər.",
+  },
+  {
+    title: "Qlobal əlçatanlıq",
+    text: "Məhsullarımız qlobal xarakter daşıyır, lakin bəzi bölgələrdə xidmət provayderinin öz məhdudiyyətlərinə görə əlçatanlıq fərqli ola bilər.",
+  },
+];
+
+function RulesModal({ onClose }) {
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ab-modal-head">
+          <h3>Xidmət Şərtləri və Qaydalar</h3>
+          <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
+            <X size={18} />
+          </button>
+        </div>
+        <p className="ab-modal-intro">
+          SkyFlix Azerbaycan olaraq, premium təcrübənizi qorumaq üçün aşağıdakı qaydalar tətbiq olunur.
+        </p>
+        <div className="ab-modal-body">
+          {SITE_RULES.map((r, i) => (
+            <div className="ab-rule-item" key={i}>
+              <span className="ab-rule-num">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h4>{r.title}</h4>
+                <p>{r.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 18 }} onClick={onClose}>
+          Bağla
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CustomerAuthPage() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
@@ -489,6 +560,8 @@ function CustomerAuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -512,6 +585,10 @@ function CustomerAuthPage() {
     e.preventDefault();
     setError("");
     setNotice("");
+    if (!agreed) {
+      setError("Davam etmək üçün Xidmət Şərtləri və Qaydaları qəbul etməlisiniz.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Şifrələr uyğun gəlmir.");
       return;
@@ -635,6 +712,15 @@ function CustomerAuthPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
             />
+            <label className="ab-agree-row">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>
+                <button type="button" className="ab-rules-link" onClick={() => setShowRules(true)}>
+                  Xidmət Şərtləri və Qaydaları
+                </button>{" "}
+                qəbul edirəm
+              </span>
+            </label>
             {error && <p className="ad-error">{error}</p>}
             {notice && <p style={{ color: "var(--teal)", fontSize: 13, margin: 0 }}>{notice}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
@@ -643,6 +729,7 @@ function CustomerAuthPage() {
           </form>
         )}
       </div>
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </section>
   );
 }
@@ -1088,6 +1175,13 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { products, settings, reload, loaded } = useAppData();
 
+  const [session, setSession] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem("skyflix_cart");
@@ -1104,6 +1198,11 @@ export default function App() {
   }, [cart]);
 
   function addToCart(product) {
+    if (!session) {
+      window.alert("Səbətə əlavə etmək üçün əvvəlcə qeydiyyatdan keçməli və ya daxil olmalısınız.");
+      go("hesab");
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
@@ -1557,6 +1656,33 @@ export default function App() {
         .ad-order-item{
           background:var(--surface2); border-radius:100px; padding:5px 12px; font-size:12px; color:var(--text);
         }
+
+        .ab-agree-row{ display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--muted); cursor:pointer; }
+        .ab-agree-row input{ margin-top:3px; accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
+        .ab-rules-link{
+          background:none; border:none; padding:0; color:var(--gold); font-weight:600; cursor:pointer;
+          text-decoration:underline; font-size:13px; font-family:'Inter',sans-serif;
+        }
+
+        .ab-modal-overlay{
+          position:fixed; inset:0; z-index:80; background:rgba(26,18,16,0.55);
+          display:flex; align-items:center; justify-content:center; padding:20px;
+          animation:ab-fadein .2s ease both;
+        }
+        .ab-modal{
+          background:var(--bg); border-radius:20px; max-width:560px; width:100%;
+          max-height:85vh; overflow-y:auto; padding:28px;
+          box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+        }
+        .ab-modal-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+        .ab-modal-head h3{ font-size:20px; margin:0; font-family:'Space Grotesk',sans-serif; }
+        .ab-modal-close{ background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
+        .ab-modal-intro{ color:var(--muted); font-size:14px; margin:0 0 22px; }
+        .ab-modal-body{ display:flex; flex-direction:column; gap:16px; }
+        .ab-rule-item{ display:flex; gap:12px; }
+        .ab-rule-num{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:13px; flex-shrink:0; margin-top:2px; }
+        .ab-rule-item h4{ font-size:14.5px; margin:0 0 4px; font-family:'Space Grotesk',sans-serif; }
+        .ab-rule-item p{ font-size:13px; color:var(--muted); margin:0; line-height:1.55; }
       `}</style>
 
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
