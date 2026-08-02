@@ -3,30 +3,223 @@ import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
-  { id: "all", label: "Hamısı" },
-  { id: "streaming", label: "Streaming" },
-  { id: "music", label: "Musiqi" },
-  { id: "ai", label: "AI Alətləri" },
-];
-
-const STEPS = [
-  { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
-  { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "5 dəqiqə ərzində hesab detalların çatır." },
+  { id: "all", labelKey: "catAll" },
+  { id: "streaming", labelKey: "catStreaming" },
+  { id: "music", labelKey: "catMusic" },
+  { id: "ai", labelKey: "catAi" },
 ];
 
 const NAV_ITEMS = [
-  { key: "home", label: "Ana səhifə" },
-  { key: "paketler", label: "Paketlər" },
-  { key: "necehisleyir", label: "Necə işləyir" },
-  { key: "etibar", label: "Etibarlılıq" },
-  { key: "qaydalar", label: "Qaydalar" },
-  { key: "elaqe", label: "Əlaqə" },
+  { key: "home", labelKey: "navHome" },
+  { key: "paketler", labelKey: "navPackages" },
+  { key: "necehisleyir", labelKey: "navHow" },
+  { key: "etibar", labelKey: "navTrust" },
+  { key: "qaydalar", labelKey: "navRules" },
+  { key: "elaqe", labelKey: "navContact" },
 ];
 
 const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin", "hesab", "sebet"];
 
 const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
+
+const I18N = {
+  az: {
+    eyebrow: "5 dəqiqəyə təhvil",
+    heroLine1: "Bir bilet.",
+    heroLine2Pre: "Bütün ",
+    heroLine2Em: "ekranlar",
+    heroSub: "Netflix, Spotify, YouTube Premium və daha çoxu — orijinal qiymətin bir hissəsinə, rəsmi hesablarla, dəqiqələr içində sənin.",
+    seePackages: "Paketlərə bax",
+    writeWhatsapp: "WhatsApp ilə yaz",
+    trustAccounts: "Zəmanətli hesablar",
+    trustSupport: "7/24 dəstək",
+    trustCustomers: "1200+ məmnun müştəri",
+    popularKicker: "POPULYAR",
+    popularTitle: "Ən çox seçilən paketlər",
+    popularSub: "Tam siyahı üçün Paketlər səhifəsinə keç.",
+    seeAllPackages: "Bütün paketlərə bax",
+    ctaTitle: "Paketini seç, bu gün izləməyə başla",
+    ctaSub: "Sifariş üçün WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.",
+
+    packagesKicker: "PAKETLƏR",
+    packagesTitle: "Populyar abunəliklər",
+    packagesSub: "Hər bilet bir hesaba giriş deməkdir — seç, ödə, izləməyə başla.",
+    noProductsInCategory: "Bu kateqoriyada hələ paket yoxdur.",
+    addToCart: "Səbətə əlavə et",
+
+    howKicker: "NECƏ İŞLƏYİR",
+    howTitle: "Üç addımda hesabın hazırdır",
+    howSub: "Sifarişdən təhvilə qədər bütün proses sadə və sürətlidir.",
+    step1Title: "Seç",
+    step1Text: "İstədiyin platforma və paketi seç.",
+    step2Title: "Ödə",
+    step2Text: "Kart və ya Kapital Bank/M10 ilə ödəniş et.",
+    step3Title: "Al",
+    step3Text: "5 dəqiqə ərzində hesab detalların çatır.",
+
+    trustKicker: "ETİBARLILIQ",
+    trustTitleWhy: "Niyə SkyFlix Azerbaycan?",
+    trust1Title: "Zəmanət daxildir",
+    trust1Text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir.",
+    trust2Title: "Sürətli təhvil",
+    trust2Text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır.",
+    trust3Title: "Canlı dəstək",
+    trust3Text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk.",
+
+    contactKicker: "ƏLAQƏ",
+    contactTitle: "Sifariş üçün yaz",
+    contactSub: "WhatsApp üzərindən yaz — cavab adətən bir neçə dəqiqə çəkir.",
+    contactCardText: "Sifariş və dəstək üçün birbaşa yaz.",
+
+    cartKicker: "SƏBƏT",
+    cartEmptyTitle: "Səbətiniz boşdur",
+    cartEmptySub: "Paketlər səhifəsindən məhsul əlavə edin.",
+    cartTitle: "Səbətim",
+    cartSub: "Miqdarı tənzimlə və sifarişi WhatsApp ilə tamamla.",
+    cartTotal: "Cəmi",
+    completeOrder: "Sifarişi WhatsApp ilə tamamla",
+
+    accountKicker: "HESAB",
+    accountKickerMine: "HESABIM",
+    login: "Daxil ol",
+    register: "Qeydiyyat",
+    registerBtn: "Qeydiyyatdan keç",
+    email: "Email",
+    password: "Şifrə",
+    repeatPassword: "Şifrəni təkrarla",
+    fullName: "Ad Soyad",
+    agreeRules: "Xidmət Şərtləri və Qaydaları",
+    agreeSuffix: "qəbul edirəm",
+    loginErrorMsg: "Email və ya şifrə yanlışdır.",
+    agreeError: "Davam etmək üçün Xidmət Şərtləri və Qaydaları qəbul etməlisiniz.",
+    passwordMismatch: "Şifrələr uyğun gəlmir.",
+    passwordShort: "Şifrə ən azı 6 simvol olmalıdır.",
+    registerGenericError: "Qeydiyyat zamanı xəta baş verdi.",
+    registerSuccess: "Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.",
+    loading: "Yüklənir...",
+    hello: "Salam!",
+    ordersNote: "Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.",
+    logout: "Çıxış",
+    cartLoginAlert: "Səbətə əlavə etmək üçün əvvəlcə qeydiyyatdan keçməli və ya daxil olmalısınız.",
+
+    orderNow: "Sifariş et",
+    myAccount: "Hesabım",
+    myCart: "Səbətim",
+    allRightsReserved: "Bütün hüquqlar qorunur.",
+
+    catAll: "Hamısı",
+    catStreaming: "Streaming",
+    catMusic: "Musiqi",
+    catAi: "AI Alətləri",
+
+    navHome: "Ana səhifə",
+    navPackages: "Paketlər",
+    navHow: "Necə işləyir",
+    navTrust: "Etibarlılıq",
+    navRules: "Qaydalar",
+    navContact: "Əlaqə",
+
+    rulesIntro: "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.",
+  },
+  en: {
+    eyebrow: "Delivered in 5 minutes",
+    heroLine1: "One ticket.",
+    heroLine2Pre: "Every ",
+    heroLine2Em: "screen",
+    heroSub: "Netflix, Spotify, YouTube Premium and more — a fraction of the original price, official accounts, delivered in minutes.",
+    seePackages: "View packages",
+    writeWhatsapp: "Message on WhatsApp",
+    trustAccounts: "Guaranteed accounts",
+    trustSupport: "24/7 support",
+    trustCustomers: "1200+ happy customers",
+    popularKicker: "POPULAR",
+    popularTitle: "Most popular packages",
+    popularSub: "See the full list on the Packages page.",
+    seeAllPackages: "View all packages",
+    ctaTitle: "Pick your package, start watching today",
+    ctaSub: "Message us on WhatsApp to order — replies within minutes.",
+
+    packagesKicker: "PACKAGES",
+    packagesTitle: "Popular subscriptions",
+    packagesSub: "Every ticket is access to an account — choose, pay, start watching.",
+    noProductsInCategory: "No packages in this category yet.",
+    addToCart: "Add to cart",
+
+    howKicker: "HOW IT WORKS",
+    howTitle: "Your account, ready in three steps",
+    howSub: "From order to delivery, the whole process is simple and fast.",
+    step1Title: "Choose",
+    step1Text: "Pick the platform and package you want.",
+    step2Title: "Pay",
+    step2Text: "Pay by card or via Kapital Bank/M10.",
+    step3Title: "Get it",
+    step3Text: "Account details arrive within 5 minutes.",
+
+    trustKicker: "TRUST",
+    trustTitleWhy: "Why SkyFlix Azerbaycan?",
+    trust1Title: "Guarantee included",
+    trust1Text: "Every account comes with a replacement guarantee for its active period.",
+    trust2Title: "Fast delivery",
+    trust2Text: "Account details usually arrive within 5 minutes of payment confirmation.",
+    trust3Title: "Live support",
+    trust3Text: "Questions? We reply on WhatsApp, 7 days a week.",
+
+    contactKicker: "CONTACT",
+    contactTitle: "Message us to order",
+    contactSub: "Reach us on WhatsApp — replies usually take a few minutes.",
+    contactCardText: "Message us directly for orders and support.",
+
+    cartKicker: "CART",
+    cartEmptyTitle: "Your cart is empty",
+    cartEmptySub: "Add a package from the Packages page.",
+    cartTitle: "My Cart",
+    cartSub: "Adjust the quantity and complete your order on WhatsApp.",
+    cartTotal: "Total",
+    completeOrder: "Complete order on WhatsApp",
+
+    accountKicker: "ACCOUNT",
+    accountKickerMine: "MY ACCOUNT",
+    login: "Log in",
+    register: "Register",
+    registerBtn: "Create account",
+    email: "Email",
+    password: "Password",
+    repeatPassword: "Repeat password",
+    fullName: "Full name",
+    agreeRules: "Terms of Service and Rules",
+    agreeSuffix: "I accept",
+    loginErrorMsg: "Incorrect email or password.",
+    agreeError: "You must accept the Terms of Service and Rules to continue.",
+    passwordMismatch: "Passwords do not match.",
+    passwordShort: "Password must be at least 6 characters.",
+    registerGenericError: "An error occurred during registration.",
+    registerSuccess: "Registration successful! Please check your email to confirm your account.",
+    loading: "Loading...",
+    hello: "Hello!",
+    ordersNote: "You'll receive updates about your orders on WhatsApp.",
+    logout: "Log out",
+    cartLoginAlert: "Please register or log in before adding items to your cart.",
+
+    orderNow: "Order now",
+    myAccount: "My Account",
+    myCart: "My Cart",
+    allRightsReserved: "All rights reserved.",
+
+    catAll: "All",
+    catStreaming: "Streaming",
+    catMusic: "Music",
+    catAi: "AI Tools",
+
+    navHome: "Home",
+    navPackages: "Packages",
+    navHow: "How it works",
+    navTrust: "Trust",
+    navRules: "Rules",
+    navContact: "Contact",
+
+    rulesIntro: "The rules below apply equally to all SkyFlix Azerbaycan customers. Full details are currently available in Azerbaijani.",
+  },
+};
 
 function useGoogleFonts() {
   useEffect(() => {
@@ -125,7 +318,7 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p, onAdd }) {
+function TicketCard({ p, onAdd, t }) {
   return (
     <div className="ab-ticket">
       {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
@@ -151,7 +344,7 @@ function TicketCard({ p, onAdd }) {
       </div>
       {onAdd && (
         <button className="ab-ticket-addbtn" onClick={() => onAdd(p)}>
-          <ShoppingCart size={15} /> Səbətə əlavə et
+          <ShoppingCart size={15} /> {t("addToCart")}
         </button>
       )}
     </div>
@@ -225,7 +418,7 @@ function HeroSlideshow({ products }) {
   );
 }
 
-function HomePage({ go, products, onAdd }) {
+function HomePage({ go, products, onAdd, lang, t }) {
   return (
     <>
       <div className="ab-screen">
@@ -236,27 +429,24 @@ function HomePage({ go, products, onAdd }) {
         <div className="ab-hero">
           <div>
             <div className="ab-eyebrow">
-              <span className="dot" /> 5 dəqiqəyə təhvil
+              <span className="dot" /> {t("eyebrow")}
             </div>
             <h1 className="ab-h1">
-              Bir bilet.<br />Bütün <em>ekranlar</em>.
+              {t("heroLine1")}<br />{t("heroLine2Pre")}<em>{t("heroLine2Em")}</em>.
             </h1>
-            <p className="ab-sub">
-              Netflix, Spotify, YouTube Premium və daha çoxu — orijinal qiymətin bir hissəsinə,
-              rəsmi hesablarla, dəqiqələr içində sənin.
-            </p>
+            <p className="ab-sub">{t("heroSub")}</p>
             <div className="ab-hero-ctas">
               <button className="ab-btn ab-btn-onscreen" onClick={() => go("paketler")}>
-                Paketlərə bax
+                {t("seePackages")}
               </button>
               <button className="ab-btn ab-btn-onscreen-ghost" onClick={() => go("elaqe")}>
-                <MessageCircle size={16} /> WhatsApp ilə yaz
+                <MessageCircle size={16} /> {t("writeWhatsapp")}
               </button>
             </div>
             <div className="ab-trustrow">
-              <span><Shield size={14} /> Zəmanətli hesablar</span>
-              <span><Clock size={14} /> 7/24 dəstək</span>
-              <span><Star size={14} /> 1200+ məmnun müştəri</span>
+              <span><Shield size={14} /> {t("trustAccounts")}</span>
+              <span><Clock size={14} /> {t("trustSupport")}</span>
+              <span><Star size={14} /> {t("trustCustomers")}</span>
             </div>
           </div>
 
@@ -265,37 +455,33 @@ function HomePage({ go, products, onAdd }) {
       </div>
 
       <section className="ab-section" style={{ paddingTop: 60 }}>
-        <PageHead kicker="POPULYAR" title="Ən çox seçilən paketlər" sub="Tam siyahı üçün Paketlər səhifəsinə keç." />
+        <PageHead kicker={t("popularKicker")} title={t("popularTitle")} sub={t("popularSub")} />
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} onAdd={onAdd} />
+              <TicketCard p={p} onAdd={onAdd} t={t} />
             </Reveal>
           ))}
         </div>
         <Reveal delay={220}>
           <button className="ab-btn ab-btn-ghost" style={{ marginTop: 30 }} onClick={() => go("paketler")}>
-            Bütün paketlərə bax <ChevronRight size={15} />
+            {t("seeAllPackages")} <ChevronRight size={15} />
           </button>
         </Reveal>
       </section>
 
-      <CtaBanner go={go} />
+      <CtaBanner go={go} t={t} />
     </>
   );
 }
 
-function PaketlerPage({ products, onAdd }) {
+function PaketlerPage({ products, onAdd, t }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="PAKETLƏR"
-        title="Populyar abunəliklər"
-        sub="Hər bilet bir hesaba giriş deməkdir — seç, ödə, izləməyə başla."
-      />
+      <PageHead kicker={t("packagesKicker")} title={t("packagesTitle")} sub={t("packagesSub")} />
       <Reveal className="ab-cat-pills">
         {CATEGORIES.map((c) => (
           <button
@@ -303,32 +489,33 @@ function PaketlerPage({ products, onAdd }) {
             className={`ab-pill ${cat === c.id ? "active" : ""}`}
             onClick={() => setCat(c.id)}
           >
-            {c.label}
+            {t(c.labelKey)}
           </button>
         ))}
       </Reveal>
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} onAdd={onAdd} />
+            <TicketCard p={p} onAdd={onAdd} t={t} />
           </Reveal>
         ))}
-        {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>Bu kateqoriyada hələ paket yoxdur.</p>}
+        {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
       </div>
     </section>
   );
 }
 
-function NeceIsleyirPage() {
+function NeceIsleyirPage({ t }) {
+  const steps = [
+    { n: "01", title: t("step1Title"), text: t("step1Text") },
+    { n: "02", title: t("step2Title"), text: t("step2Text") },
+    { n: "03", title: t("step3Title"), text: t("step3Text") },
+  ];
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="NECƏ İŞLƏYİR"
-        title="Üç addımda hesabın hazırdır"
-        sub="Sifarişdən təhvilə qədər bütün proses sadə və sürətlidir."
-      />
+      <PageHead kicker={t("howKicker")} title={t("howTitle")} sub={t("howSub")} />
       <div className="ab-steps">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <Reveal key={s.n} delay={i * 90}>
             <div className="ab-step">
               <span className="ab-step-n">{s.n}</span>
@@ -342,15 +529,15 @@ function NeceIsleyirPage() {
   );
 }
 
-function EtibarPage() {
+function EtibarPage({ t }) {
   const items = [
-    { icon: Shield, title: "Zəmanət daxildir", text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir." },
-    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır." },
-    { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk." },
+    { icon: Shield, title: t("trust1Title"), text: t("trust1Text") },
+    { icon: Clock, title: t("trust2Title"), text: t("trust2Text") },
+    { icon: MessageCircle, title: t("trust3Title"), text: t("trust3Text") },
   ];
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead kicker="ETİBARLILIQ" title="Niyə SkyFlix Azerbaycan?" />
+      <PageHead kicker={t("trustKicker")} title={t("trustTitleWhy")} />
       <div className="ab-trust">
         {items.map((it, i) => (
           <Reveal key={it.title} delay={i * 90}>
@@ -368,25 +555,21 @@ function EtibarPage() {
   );
 }
 
-function ElaqePage({ settings }) {
+function ElaqePage({ settings, t }) {
   const rawNumber = settings.contact_whatsapp || "517873090";
   const digits = rawNumber.replace(/[^0-9]/g, "");
   const waLink = `https://wa.me/${digits}`;
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="ƏLAQƏ"
-        title="Sifariş üçün yaz"
-        sub="WhatsApp üzərindən yaz — cavab adətən bir neçə dəqiqə çəkir."
-      />
+      <PageHead kicker={t("contactKicker")} title={t("contactTitle")} sub={t("contactSub")} />
       <div className="ab-contact-grid">
         <Reveal>
           <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-contact-card">
             <MessageCircle size={22} strokeWidth={1.75} />
             <div>
               <h4>WhatsApp</h4>
-              <p>Sifariş və dəstək üçün birbaşa yaz.</p>
+              <p>{t("contactCardText")}</p>
             </div>
             <ChevronRight size={16} className="ab-contact-arrow" />
           </a>
@@ -396,12 +579,12 @@ function ElaqePage({ settings }) {
   );
 }
 
-function CtaBanner({ go }) {
+function CtaBanner({ go, t }) {
   return (
     <Reveal className="ab-cta">
       <div>
-        <h3>Paketini seç, bu gün izləməyə başla</h3>
-        <p>Sifariş üçün WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.</p>
+        <h3>{t("ctaTitle")}</h3>
+        <p>{t("ctaSub")}</p>
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button className="ab-btn ab-btn-gold" onClick={() => go("elaqe")}>
@@ -412,7 +595,7 @@ function CtaBanner({ go }) {
   );
 }
 
-function SebetPage({ cart, updateQty, removeFromCart, settings }) {
+function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
@@ -432,14 +615,14 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
   if (cart.length === 0) {
     return (
       <section className="ab-section ab-page-pad">
-        <PageHead kicker="SƏBƏT" title="Səbətiniz boşdur" sub="Paketlər səhifəsindən məhsul əlavə edin." />
+        <PageHead kicker={t("cartKicker")} title={t("cartEmptyTitle")} sub={t("cartEmptySub")} />
       </section>
     );
   }
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead kicker="SƏBƏT" title="Səbətim" sub="Miqdarı tənzimlə və sifarişi WhatsApp ilə tamamla." />
+      <PageHead kicker={t("cartKicker")} title={t("cartTitle")} sub={t("cartSub")} />
 
       <div className="ab-cart-list">
         {cart.map((item) => (
@@ -469,11 +652,11 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
 
       <div className="ab-cart-summary">
         <div className="ab-cart-total-row">
-          <span>Cəmi</span>
+          <span>{t("cartTotal")}</span>
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
         <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => { supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {}); }}>
-          <MessageCircle size={16} /> Sifarişi WhatsApp ilə tamamla
+          <MessageCircle size={16} /> {t("completeOrder")}
         </a>
       </div>
     </section>
@@ -535,14 +718,10 @@ const RULE_GROUPS = [
   },
 ];
 
-function QaydalarPage() {
+function QaydalarPage({ t }) {
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="QAYDALAR"
-        title="Xidmət Şərtləri və Qaydalar"
-        sub="SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."
-      />
+      <PageHead kicker="QAYDALAR" title="Xidmət Şərtləri və Qaydalar" sub={t("rulesIntro")} />
       <div className="ab-rules-page">
         {RULE_GROUPS.map((group, gi) => (
           <Reveal key={gi} delay={gi * 60} className="ab-rule-group">
@@ -560,7 +739,7 @@ function QaydalarPage() {
   );
 }
 
-function RulesModal({ onClose }) {
+function RulesModal({ onClose, t }) {
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
       <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
@@ -570,9 +749,7 @@ function RulesModal({ onClose }) {
             <X size={18} />
           </button>
         </div>
-        <p className="ab-modal-intro">
-          SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.
-        </p>
+        <p className="ab-modal-intro">{t ? t("rulesIntro") : "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."}</p>
         <div className="ab-modal-body">
           {RULE_GROUPS.map((group, gi) => (
             <div key={gi} className="ab-rule-group">
@@ -594,7 +771,7 @@ function RulesModal({ onClose }) {
   );
 }
 
-function CustomerAuthPage() {
+function CustomerAuthPage({ t }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
@@ -622,7 +799,7 @@ function CustomerAuthPage() {
     e.preventDefault();
     setError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError("Email və ya şifrə yanlışdır.");
+    if (error) setError(t("loginErrorMsg"));
   }
 
   async function handleRegister(e) {
@@ -630,15 +807,15 @@ function CustomerAuthPage() {
     setError("");
     setNotice("");
     if (!agreed) {
-      setError("Davam etmək üçün Xidmət Şərtləri və Qaydaları qəbul etməlisiniz.");
+      setError(t("agreeError"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Şifrələr uyğun gəlmir.");
+      setError(t("passwordMismatch"));
       return;
     }
     if (password.length < 6) {
-      setError("Şifrə ən azı 6 simvol olmalıdır.");
+      setError(t("passwordShort"));
       return;
     }
     const { data, error } = await supabase.auth.signUp({
@@ -647,11 +824,11 @@ function CustomerAuthPage() {
       options: { data: { full_name: name } },
     });
     if (error) {
-      setError(error.message || "Qeydiyyat zamanı xəta baş verdi.");
+      setError(error.message || t("registerGenericError"));
       return;
     }
     if (!data.session) {
-      setNotice("Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.");
+      setNotice(t("registerSuccess"));
     }
   }
 
@@ -662,7 +839,7 @@ function CustomerAuthPage() {
   if (checking) {
     return (
       <section className="ab-section ab-page-pad">
-        <p>Yüklənir...</p>
+        <p>{t("loading")}</p>
       </section>
     );
   }
@@ -672,24 +849,22 @@ function CustomerAuthPage() {
     return (
       <section className="ab-section ab-page-pad">
         <div className="ad-login-wrap">
-          <PageHead kicker="HESABIM" title="Salam!" sub={u.user_metadata?.full_name || u.email} />
+          <PageHead kicker={t("accountKickerMine")} title={t("hello")} sub={u.user_metadata?.full_name || u.email} />
           <div className="ad-settings">
             <label>
-              Email
+              {t("email")}
               <input value={u.email} disabled />
             </label>
             {u.user_metadata?.full_name && (
               <label>
-                Ad Soyad
+                {t("fullName")}
                 <input value={u.user_metadata.full_name} disabled />
               </label>
             )}
           </div>
-          <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>
-            Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.
-          </p>
+          <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
           <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
-            Çıxış
+            {t("logout")}
           </button>
         </div>
       </section>
@@ -699,7 +874,7 @@ function CustomerAuthPage() {
   return (
     <section className="ab-section ab-page-pad">
       <div className="ad-login-wrap">
-        <PageHead kicker="HESAB" title={mode === "login" ? "Daxil ol" : "Qeydiyyatdan keç"} />
+        <PageHead kicker={t("accountKicker")} title={mode === "login" ? t("login") : t("registerBtn")} />
         <div className="ab-cat-pills" style={{ marginBottom: 22 }}>
           <button
             className={`ab-pill ${mode === "login" ? "active" : ""}`}
@@ -709,7 +884,7 @@ function CustomerAuthPage() {
               setNotice("");
             }}
           >
-            Daxil ol
+            {t("login")}
           </button>
           <button
             className={`ab-pill ${mode === "register" ? "active" : ""}`}
@@ -719,39 +894,39 @@ function CustomerAuthPage() {
               setNotice("");
             }}
           >
-            Qeydiyyat
+            {t("register")}
           </button>
         </div>
 
         {mode === "login" ? (
           <form onSubmit={handleLogin} className="ad-login">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input
               type="password"
-              placeholder="Şifrə"
+              placeholder={t("password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             {error && <p className="ad-error">{error}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
-              Daxil ol
+              {t("login")}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="ad-login">
-            <input type="text" placeholder="Ad Soyad" value={name} onChange={(e) => setName(e.target.value)} required />
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="text" placeholder={t("fullName")} value={name} onChange={(e) => setName(e.target.value)} required />
+            <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input
               type="password"
-              placeholder="Şifrə"
+              placeholder={t("password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             <input
               type="password"
-              placeholder="Şifrəni təkrarla"
+              placeholder={t("repeatPassword")}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -760,20 +935,20 @@ function CustomerAuthPage() {
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
               <span>
                 <button type="button" className="ab-rules-link" onClick={() => setShowRules(true)}>
-                  Xidmət Şərtləri və Qaydaları
+                  {t("agreeRules")}
                 </button>{" "}
-                qəbul edirəm
+                {t("agreeSuffix")}
               </span>
             </label>
             {error && <p className="ad-error">{error}</p>}
             {notice && <p style={{ color: "var(--teal)", fontSize: 13, margin: 0 }}>{notice}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
-              Qeydiyyatdan keç
+              {t("registerBtn")}
             </button>
           </form>
         )}
       </div>
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {showRules && <RulesModal onClose={() => setShowRules(false)} t={t} />}
     </section>
   );
 }
@@ -781,8 +956,7 @@ function CustomerAuthPage() {
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
+  const unmutedRef = useRef(false);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
@@ -805,7 +979,6 @@ function VideoWidget({ videoId }) {
         events: {
           onReady: (e) => {
             e.target.playVideo();
-            setPlaying(true);
           },
         },
       });
@@ -819,7 +992,25 @@ function VideoWidget({ videoId }) {
       window.onYouTubeIframeAPIReady = createPlayer;
     }
 
+    function unmuteOnInteract() {
+      if (unmutedRef.current) return;
+      const p = playerRef.current;
+      if (p && p.unMute) {
+        p.unMute();
+        p.playVideo();
+        unmutedRef.current = true;
+      }
+    }
+    window.addEventListener("click", unmuteOnInteract);
+    window.addEventListener("touchstart", unmuteOnInteract);
+    window.addEventListener("keydown", unmuteOnInteract);
+    window.addEventListener("scroll", unmuteOnInteract, { passive: true });
+
     return () => {
+      window.removeEventListener("click", unmuteOnInteract);
+      window.removeEventListener("touchstart", unmuteOnInteract);
+      window.removeEventListener("keydown", unmuteOnInteract);
+      window.removeEventListener("scroll", unmuteOnInteract);
       if (playerRef.current && playerRef.current.destroy) {
         try {
           playerRef.current.destroy();
@@ -831,33 +1022,7 @@ function VideoWidget({ videoId }) {
     };
   }, [videoId]);
 
-  function handleClick() {
-    const p = playerRef.current;
-    if (!p) return;
-    if (muted) {
-      p.unMute();
-      p.playVideo();
-      setMuted(false);
-      setPlaying(true);
-      return;
-    }
-    if (playing) {
-      p.pauseVideo();
-      setPlaying(false);
-    } else {
-      p.playVideo();
-      setPlaying(true);
-    }
-  }
-
-  return (
-    <div className="ab-video-widget" onClick={handleClick}>
-      <div ref={wrapperRef} className="ab-video-widget-inner" />
-      <div className="ab-video-widget-overlay">
-        {muted ? <VolumeX size={18} /> : playing ? <Pause size={18} /> : <Play size={18} />}
-      </div>
-    </div>
-  );
+  return <div ref={wrapperRef} className="ab-video-widget-hidden" />;
 }
 
 function AdminPage({ onDataChanged }) {
@@ -1226,6 +1391,20 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem("skyflix_lang") || "az";
+    } catch {
+      return "az";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("skyflix_lang", lang);
+    } catch {}
+  }, [lang]);
+  const t = (key) => I18N[lang][key] || I18N.az[key] || key;
+
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem("skyflix_cart");
@@ -1283,7 +1462,7 @@ export default function App() {
 
   return (
     <div className="ab-root">
-      <VideoWidget videoId="xYRb1Cg8teU" />
+      <VideoWidget videoId="jhgJV0Pg54Y" />
       <style>{`
         :root{
           --bg:#FFFFFF;
@@ -1351,6 +1530,13 @@ export default function App() {
         @media(min-width:800px){ .ab-menubtn{ display:none; } }
         .ab-accountbtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
         .ab-accountbtn:hover{ border-color:var(--muted); }
+        .ab-langbtn{
+          display:flex; align-items:center; justify-content:center;
+          background:none; border:1px solid var(--line); border-radius:8px;
+          padding:8px 10px; color:var(--text); cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700;
+        }
+        .ab-langbtn:hover{ border-color:var(--gold); color:var(--gold); }
         .ab-cartbtn{ position:relative; }
         .ab-cart-badge{
           position:absolute; top:-6px; right:-6px;
@@ -1543,18 +1729,7 @@ export default function App() {
 
         .ab-ticket-img{ width:100%; height:130px; background-size:cover; background-position:center; }
 
-        .ab-video-widget{
-          position:fixed; bottom:22px; right:22px; z-index:60;
-          width:84px; height:84px; border-radius:50%; overflow:hidden;
-          border:3px solid var(--gold); box-shadow:0 10px 24px -8px rgba(225,18,42,0.5);
-          cursor:pointer; background:#000;
-        }
-        .ab-video-widget-inner{ width:100%; height:100%; }
-        .ab-video-widget-inner iframe{ width:100%; height:100%; pointer-events:none; }
-        .ab-video-widget-overlay{
-          position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-          background:rgba(0,0,0,0.28); color:#FFFFFF;
-        }
+        .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
 
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
@@ -1751,20 +1926,23 @@ export default function App() {
               className={`ab-navlink ${page === item.key ? "active" : ""}`}
               onClick={() => navigate(item.key)}
             >
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
         </div>
         <div className="ab-navright">
-          <button className="ab-accountbtn ab-cartbtn" onClick={() => navigate("sebet")} aria-label="Səbət" title="Səbət">
+          <button className="ab-langbtn" onClick={() => setLang(lang === "az" ? "en" : "az")} title="Dil / Language">
+            {lang === "az" ? "EN" : "AZ"}
+          </button>
+          <button className="ab-accountbtn ab-cartbtn" onClick={() => navigate("sebet")} aria-label={t("myCart")} title={t("myCart")}>
             <ShoppingCart size={18} />
             {cartCount > 0 && <span className="ab-cart-badge">{cartCount}</span>}
           </button>
-          <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label="Hesabım" title="Hesabım">
+          <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label={t("myAccount")} title={t("myAccount")}>
             <User size={18} />
           </button>
           <button className="ab-btn ab-btn-gold" onClick={() => navigate("elaqe")}>
-            Sifariş et <ChevronRight size={15} />
+            {t("orderNow")} <ChevronRight size={15} />
           </button>
           <button className="ab-menubtn" onClick={() => setMenuOpen(true)} aria-label="Menyunu aç">
             <Menu size={20} />
@@ -1787,29 +1965,38 @@ export default function App() {
           </div>
           {NAV_ITEMS.map((item) => (
             <button key={item.key} className="ab-navlink" onClick={() => navigate(item.key)}>
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
           <button className="ab-navlink" onClick={() => navigate("hesab")}>
-            Hesabım
+            {t("myAccount")}
           </button>
           <button className="ab-navlink" onClick={() => navigate("sebet")}>
-            Səbətim {cartCount > 0 ? `(${cartCount})` : ""}
+            {t("myCart")} {cartCount > 0 ? `(${cartCount})` : ""}
+          </button>
+          <button
+            className="ab-navlink"
+            onClick={() => {
+              setLang(lang === "az" ? "en" : "az");
+              setMenuOpen(false);
+            }}
+          >
+            {lang === "az" ? "English" : "Azərbaycanca"}
           </button>
         </div>
       )}
 
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} />}
-        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} />}
-        {page === "necehisleyir" && <NeceIsleyirPage />}
-        {page === "etibar" && <EtibarPage />}
-        {page === "qaydalar" && <QaydalarPage />}
-        {page === "elaqe" && <ElaqePage settings={settings} />}
+        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} />}
+        {page === "necehisleyir" && <NeceIsleyirPage t={t} />}
+        {page === "etibar" && <EtibarPage t={t} />}
+        {page === "qaydalar" && <QaydalarPage t={t} />}
+        {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
-        {page === "hesab" && <CustomerAuthPage />}
+        {page === "hesab" && <CustomerAuthPage t={t} />}
         {page === "sebet" && (
-          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} />
+          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} />
         )}
       </main>
 
@@ -1823,11 +2010,11 @@ export default function App() {
         <div style={{ display: "flex", gap: 20 }}>
           {NAV_ITEMS.slice(1).map((item) => (
             <button key={item.key} onClick={() => navigate(item.key)}>
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
         </div>
-        <div>© 2026 SkyFlix Azerbaycan. Bütün hüquqlar qorunur.</div>
+        <div>© 2026 SkyFlix Azerbaycan. {t("allRightsReserved")}</div>
       </footer>
     </div>
   );
