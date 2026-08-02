@@ -97,8 +97,8 @@ const I18N = {
     registerGenericError: "Qeydiyyat zamanı xəta baş verdi.",
     registerSuccess: "Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.",
     otpTitle: "Emailinizi təsdiqləyin",
-    otpSub: "Gmailinizə göndərdiyimiz 6 rəqəmli kodu daxil edin.",
-    otpPlaceholder: "6 rəqəmli kod",
+    otpSub: "Gmailinizə göndərdiyimiz təsdiq kodunu daxil edin.",
+    otpPlaceholder: "Təsdiq kodu",
     otpButton: "Təsdiqlə",
     otpError: "Kod yanlışdır və ya vaxtı keçib. Yenidən cəhd edin.",
     otpResend: "Kodu yenidən göndər",
@@ -201,8 +201,8 @@ const I18N = {
     registerGenericError: "An error occurred during registration.",
     registerSuccess: "Registration successful! Please check your email to confirm your account.",
     otpTitle: "Confirm your email",
-    otpSub: "Enter the 6-digit code we sent to your Gmail.",
-    otpPlaceholder: "6-digit code",
+    otpSub: "Enter the verification code we sent to your Gmail.",
+    otpPlaceholder: "Verification code",
     otpButton: "Confirm",
     otpError: "The code is incorrect or has expired. Please try again.",
     otpResend: "Resend code",
@@ -305,8 +305,8 @@ const I18N = {
     registerGenericError: "რეგისტრაციისას დაფიქსირდა შეცდომა.",
     registerSuccess: "რეგისტრაცია წარმატებულია! გთხოვთ, შეამოწმოთ ელფოსტა ანგარიშის დასადასტურებლად.",
     otpTitle: "დაადასტურეთ თქვენი ელფოსტა",
-    otpSub: "შეიყვანეთ 6-ნიშნა კოდი, რომელიც გამოგზავნეთ თქვენს Gmail-ზე.",
-    otpPlaceholder: "6-ნიშნა კოდი",
+    otpSub: "შეიყვანეთ დადასტურების კოდი, რომელიც გამოგზავნეთ თქვენს Gmail-ზე.",
+    otpPlaceholder: "დადასტურების კოდი",
     otpButton: "დადასტურება",
     otpError: "კოდი არასწორია ან ვადა გაუვიდა. ცადეთ ხელახლა.",
     otpResend: "კოდის ხელახლა გაგზავნა",
@@ -409,8 +409,8 @@ const I18N = {
     registerGenericError: "При регистрации произошла ошибка.",
     registerSuccess: "Регистрация успешна! Пожалуйста, проверьте почту для подтверждения аккаунта.",
     otpTitle: "Подтвердите ваш email",
-    otpSub: "Введите 6-значный код, отправленный на ваш Gmail.",
-    otpPlaceholder: "6-значный код",
+    otpSub: "Введите код подтверждения, отправленный на ваш Gmail.",
+    otpPlaceholder: "Код подтверждения",
     otpButton: "Подтвердить",
     otpError: "Код неверен или срок его действия истёк. Попробуйте снова.",
     otpResend: "Отправить код повторно",
@@ -1305,12 +1305,12 @@ function CustomerAuthPage({ t, lang }) {
             <input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={12}
               placeholder={t("otpPlaceholder")}
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
               required
-              style={{ textAlign: "center", fontSize: 22, letterSpacing: 6, fontFamily: "'JetBrains Mono',monospace" }}
+              style={{ textAlign: "center", fontSize: 22, letterSpacing: 4, fontFamily: "'JetBrains Mono',monospace" }}
             />
             {otpError && <p className="ad-error">{otpError}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
