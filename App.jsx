@@ -12,7 +12,7 @@ const CATEGORIES = [
 const STEPS = [
   { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
   { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "5 dəqiqə ərzində hesab detalların çatır." },
+  { n: "03", title: "Al", text: "Ən qısa müddət ərzində hesab detalların çatır." },
 ];
 
 const NAV_ITEMS = [
