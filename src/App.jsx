@@ -24,7 +24,7 @@ const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
 
 const I18N = {
   az: {
-    eyebrow: "5 dəqiqəyə təhvil",
+    eyebrow: "Ən qısa müddətdə təhvil",
     heroLine1: "Bir bilet.",
     heroLine2Pre: "Bütün ",
     heroLine2Em: "ekranlar",
@@ -55,14 +55,14 @@ const I18N = {
     step2Title: "Ödə",
     step2Text: "Kart və ya Kapital Bank/M10 ilə ödəniş et.",
     step3Title: "Al",
-    step3Text: "5 dəqiqə ərzində hesab detalların çatır.",
+    step3Text: "Hesab detalların ən qısa müddət ərzində çatır.",
 
     trustKicker: "ETİBARLILIQ",
     trustTitleWhy: "Niyə SkyFlix Azerbaycan?",
     trust1Title: "Zəmanət daxildir",
     trust1Text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir.",
     trust2Title: "Sürətli təhvil",
-    trust2Text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır.",
+    trust2Text: "Ödəniş təsdiqindən sonra hesab məlumatları ən qısa müddət ərzində çatdırılır.",
     trust3Title: "Canlı dəstək",
     trust3Text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk.",
 
@@ -122,7 +122,7 @@ const I18N = {
     rulesIntro: "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.",
   },
   en: {
-    eyebrow: "Delivered in 5 minutes",
+    eyebrow: "Delivered in the shortest time",
     heroLine1: "One ticket.",
     heroLine2Pre: "Every ",
     heroLine2Em: "screen",
@@ -153,14 +153,14 @@ const I18N = {
     step2Title: "Pay",
     step2Text: "Pay by card or via Kapital Bank/M10.",
     step3Title: "Get it",
-    step3Text: "Account details arrive within 5 minutes.",
+    step3Text: "Account details arrive in the shortest possible time.",
 
     trustKicker: "TRUST",
     trustTitleWhy: "Why SkyFlix Azerbaycan?",
     trust1Title: "Guarantee included",
     trust1Text: "Every account comes with a replacement guarantee for its active period.",
     trust2Title: "Fast delivery",
-    trust2Text: "Account details usually arrive within 5 minutes of payment confirmation.",
+    trust2Text: "Account details are delivered in the shortest possible time after payment confirmation.",
     trust3Title: "Live support",
     trust3Text: "Questions? We reply on WhatsApp, 7 days a week.",
 
@@ -220,7 +220,7 @@ const I18N = {
     rulesIntro: "The rules below apply equally to all SkyFlix Azerbaycan customers. Full details are currently available in Azerbaijani.",
   },
   ka: {
-    eyebrow: "მიწოდება 5 წუთში",
+    eyebrow: "მიწოდება უმოკლეს დროში",
     heroLine1: "ერთი ბილეთი.",
     heroLine2Pre: "ყველა ",
     heroLine2Em: "ეკრანი",
@@ -251,14 +251,14 @@ const I18N = {
     step2Title: "გადაიხადე",
     step2Text: "გადაიხადე ბარათით ან Kapital Bank/M10-ის საშუალებით.",
     step3Title: "მიიღე",
-    step3Text: "ანგარიშის დეტალები ჩამოვა 5 წუთში.",
+    step3Text: "ანგარიშის დეტალები ჩამოვა უმოკლეს შესაძლო დროში.",
 
     trustKicker: "სანდოობა",
     trustTitleWhy: "რატომ SkyFlix Azerbaycan?",
     trust1Title: "გარანტია შედის",
     trust1Text: "ყველა ანგარიშს ახლავს ჩანაცვლების გარანტია აქტიური პერიოდის განმავლობაში.",
     trust2Title: "სწრაფი მიწოდება",
-    trust2Text: "ანგარიშის მონაცემები, გადახდის დადასტურების შემდეგ, ჩვეულებრივ ჩამოდის 5 წუთში.",
+    trust2Text: "ანგარიშის მონაცემები, გადახდის დადასტურების შემდეგ, მიეწოდება უმოკლეს შესაძლო დროში.",
     trust3Title: "ცოცხალი მხარდაჭერა",
     trust3Text: "კითხვები გაქვს? ვპასუხობთ WhatsApp-ზე, კვირაში 7 დღე.",
 
@@ -316,6 +316,104 @@ const I18N = {
     navContact: "კონტაქტი",
 
     rulesIntro: "ქვემოთ მოცემული წესები თანაბრად ვრცელდება SkyFlix Azerbaycan-ის ყველა მომხმარებელზე.",
+  },
+  ru: {
+    eyebrow: "Доставка в кратчайшие сроки",
+    heroLine1: "Один билет.",
+    heroLine2Pre: "Все ",
+    heroLine2Em: "экраны",
+    heroSub: "Netflix, Spotify, YouTube Premium и многое другое — по цене в разы ниже оригинальной, с официальными аккаунтами, за считанные минуты.",
+    seePackages: "Смотреть пакеты",
+    writeWhatsapp: "Написать в WhatsApp",
+    trustAccounts: "Гарантированные аккаунты",
+    trustSupport: "Поддержка 24/7",
+    trustCustomers: "1200+ довольных клиентов",
+    popularKicker: "ПОПУЛЯРНОЕ",
+    popularTitle: "Самые популярные пакеты",
+    popularSub: "Полный список смотрите на странице «Пакеты».",
+    seeAllPackages: "Смотреть все пакеты",
+    ctaTitle: "Выбери пакет, начни смотреть уже сегодня",
+    ctaSub: "Напишите нам в WhatsApp, чтобы оформить заказ — ответим в течение нескольких минут.",
+
+    packagesKicker: "ПАКЕТЫ",
+    packagesTitle: "Популярные подписки",
+    packagesSub: "Каждый билет — это доступ к аккаунту: выбери, оплати, начни смотреть.",
+    noProductsInCategory: "В этой категории пока нет пакетов.",
+    addToCart: "Добавить в корзину",
+
+    howKicker: "КАК ЭТО РАБОТАЕТ",
+    howTitle: "Ваш аккаунт готов за три шага",
+    howSub: "От заказа до получения — весь процесс прост и быстр.",
+    step1Title: "Выберите",
+    step1Text: "Выберите нужную платформу и пакет.",
+    step2Title: "Оплатите",
+    step2Text: "Оплатите картой или через Kapital Bank/M10.",
+    step3Title: "Получите",
+    step3Text: "Данные аккаунта приходят в кратчайшие сроки.",
+
+    trustKicker: "НАДЁЖНОСТЬ",
+    trustTitleWhy: "Почему SkyFlix Azerbaycan?",
+    trust1Title: "Гарантия включена",
+    trust1Text: "Каждый аккаунт сопровождается гарантией замены на весь срок действия подписки.",
+    trust2Title: "Быстрая доставка",
+    trust2Text: "После подтверждения оплаты данные аккаунта доставляются в кратчайшие сроки.",
+    trust3Title: "Онлайн-поддержка",
+    trust3Text: "Есть вопросы? Отвечаем в WhatsApp 7 дней в неделю.",
+
+    contactKicker: "КОНТАКТЫ",
+    contactTitle: "Напишите, чтобы оформить заказ",
+    contactSub: "Свяжитесь с нами в WhatsApp — ответ обычно занимает несколько минут.",
+    contactCardText: "Пишите напрямую по вопросам заказа и поддержки.",
+
+    cartKicker: "КОРЗИНА",
+    cartEmptyTitle: "Ваша корзина пуста",
+    cartEmptySub: "Добавьте товар со страницы «Пакеты».",
+    cartTitle: "Моя корзина",
+    cartSub: "Настройте количество и завершите заказ в WhatsApp.",
+    cartTotal: "Итого",
+    completeOrder: "Завершить заказ в WhatsApp",
+
+    accountKicker: "АККАУНТ",
+    accountKickerMine: "МОЙ АККАУНТ",
+    login: "Войти",
+    register: "Регистрация",
+    registerBtn: "Создать аккаунт",
+    email: "Email",
+    password: "Пароль",
+    repeatPassword: "Повторите пароль",
+    fullName: "Имя и фамилия",
+    agreeRules: "Условия обслуживания и правила",
+    agreeSuffix: "принимаю",
+    loginErrorMsg: "Неверный email или пароль.",
+    agreeError: "Для продолжения необходимо принять Условия обслуживания и правила.",
+    passwordMismatch: "Пароли не совпадают.",
+    passwordShort: "Пароль должен содержать не менее 6 символов.",
+    registerGenericError: "При регистрации произошла ошибка.",
+    registerSuccess: "Регистрация успешна! Пожалуйста, проверьте почту для подтверждения аккаунта.",
+    loading: "Загрузка...",
+    hello: "Привет!",
+    ordersNote: "Информацию о ваших заказах вы будете получать через WhatsApp.",
+    logout: "Выйти",
+    cartLoginAlert: "Чтобы добавить товар в корзину, сначала зарегистрируйтесь или войдите в аккаунт.",
+
+    orderNow: "Заказать",
+    myAccount: "Мой аккаунт",
+    myCart: "Моя корзина",
+    allRightsReserved: "Все права защищены.",
+
+    catAll: "Все",
+    catStreaming: "Стриминг",
+    catMusic: "Музыка",
+    catAi: "AI-инструменты",
+
+    navHome: "Главная",
+    navPackages: "Пакеты",
+    navHow: "Как это работает",
+    navTrust: "Надёжность",
+    navRules: "Правила",
+    navContact: "Контакты",
+
+    rulesIntro: "Правила ниже одинаково применяются ко всем клиентам SkyFlix Azerbaycan.",
   },
 };
 
@@ -526,6 +624,33 @@ function HomePage({ go, products, onAdd, lang, t }) {
         <div className="ab-screen-grain" />
         <div className="ab-hero">
           <div>
+            {lang === "ka" && (
+              <div className="ab-ge-strip">
+                <svg className="ab-ge-flag" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="60" height="40" fill="#FFFFFF" />
+                  <rect x="24" y="0" width="12" height="40" fill="#FF0000" />
+                  <rect x="0" y="14" width="60" height="12" fill="#FF0000" />
+                  {[
+                    [12, 7],
+                    [48, 7],
+                    [12, 33],
+                    [48, 33],
+                  ].map(([cx, cy], i) => (
+                    <g key={i}>
+                      <rect x={cx - 4} y={cy - 1.3} width="8" height="2.6" fill="#FF0000" />
+                      <rect x={cx - 1.3} y={cy - 4} width="2.6" height="8" fill="#FF0000" />
+                    </g>
+                  ))}
+                </svg>
+                <div className="ab-ge-avatars">
+                  {["#E1122A", "#8C1620", "#E1122A", "#8C1620", "#E1122A"].map((c, i) => (
+                    <span key={i} className="ab-ge-avatar" style={{ background: c, zIndex: 5 - i, marginLeft: i === 0 ? 0 : -10 }}>
+                      <User size={13} color="#FFFFFF" strokeWidth={2.2} />
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="ab-eyebrow">
               <span className="dot" /> {t("eyebrow")}
             </div>
@@ -926,9 +1051,65 @@ const RULE_GROUPS_KA = [
   },
 ];
 
+const RULE_GROUPS_RU = [
+  {
+    heading: "Правила заказа, товара и возврата средств",
+    items: [
+      { n: "1.0", text: "Заказ доставляется покупателю в течение 24 часов после подтверждения оплаты продавцом." },
+      { n: "1.1", text: "В периоды высокой загруженности доставка может задерживаться. Задержка может составлять максимум 3 рабочих дня. Только по истечении этого срока покупатель может потребовать возврат средств." },
+      { n: "1.2", text: "Заказы выполняются по очереди. Покупатель не может, сразу после оформления заказа, выразить недовольство задержкой доставки аккаунта и потребовать возврат средств. Возврат средств возможен только после истечения срока, указанного в пунктах 1.0 и 1.1." },
+      { n: "1.3", text: "Покупки лицами младше 18 лет запрещены. Мы не несём ответственности, если член семьи без разрешения использует данные карты для оплаты на наши счета." },
+      { n: "1.4", text: "Поскольку продаваемые товары являются цифровыми, возврат средств не производится, за исключением прямо указанных случаев. Если подписка активна, но покупатель не может пользоваться аккаунтом по причине собственного устройства или иных внешних причин, оплата не возвращается. В таких случаях покупателю направляется подтверждение, связанное с аккаунтом. В исключительных случаях, если указанный срок подписки не может быть обеспечен, оставшаяся сумма возвращается за вычетом использованной части." },
+      { n: "1.5", text: "Поскольку некоторые товары представляют собой общие аккаунты, возврат средств по ним не производится." },
+      { n: "1.6", text: "Наши товары имеют глобальный характер, однако в некоторых странах по разным причинам использование отдельных товаров может быть невозможно. Даже если покупатель не знал об этом, либо приобрёл товар исключительно для проверки, он не может впоследствии требовать возврат средств." },
+      { n: "1.7", text: "Покупатель может, до оформления заказа, произвести дополнительную оплату (2.99 AZN), чтобы перевести свой заказ в VIP-очередь и ускорить его выполнение." },
+      { n: "1.8", text: "Возможность VIP-очереди, указанная в пункте 1.7, распространяется на Netflix, BluTv, Disney+, Amazon Prime Video и Duolingo Plus." },
+      { n: "1.9", text: "Если платёж был ошибочно отправлен на одну из наших банковских карт и запрашивается возврат средств, независимо от суммы, удерживается комиссия в размере 2 AZN, а оставшаяся сумма возвращается." },
+    ],
+  },
+  {
+    heading: "Правила оплаты",
+    items: [
+      { n: "2.0", text: "Если оплата произведена на счёт, отличный от указанного вам, платёж принят не будет. Платежи на старые банковские счета не принимаются. Заказ не будет доставлен до тех пор, пока оплата не поступит на указанный счёт." },
+      { n: "2.1", text: "В течение 24 часов после оплаты необходимо прислать нам фото чека. Если этот срок истечёт, оплата не будет подтверждена, и заказ не будет доставлен." },
+      { n: "2.2", text: "Если при оплате через терминал чек не выдаётся, необходимо связаться с соответствующей компанией-владельцем терминала и в течение 24 часов запросить электронную копию чека, после чего прислать её нам. Если покупатель в такой ситуации не предоставит чек в течение 3 дней, заказ не будет зарегистрирован, а оплата не будет подтверждена." },
+    ],
+  },
+  {
+    heading: "Правила по товарам",
+    items: [
+      { n: "2.3", text: "FaceApp совместим только с устройствами iOS (например, iPhone). Для использования этого товара необходимо выйти из своего аккаунта iCloud, войти в наш аккаунт, а затем вернуться в свой собственный аккаунт. Мы не несём ответственности за фотографии или иные данные, утерянные при смене iCloud. Мы также не несём ответственности за проблемы, возникшие после оплаты, такие как переполнение памяти или отсутствие резервной копии, в связи с чем возврат средств не производится. FaceApp несовместим с устройствами Android; пользователь Android не может требовать возврат средств после оплаты. К другим товарам совместного использования относятся ChatGPT, Prime Video, BluTv, Exxen, Disney+, Netflix, компьютерные игры и MUBI. Поскольку подписка Disney+ официально не активна в Азербайджане, её можно использовать только через VPN." },
+      { n: "2.4", text: "Формат «комнаты», используемый в товарах совместного пользования, не предоставляется индивидуально. Мы не несём ответственности за действия, совершённые в общем аккаунте YouTube Premium, предоставленном в качестве подарка, а также за сброс устройства и иные внешние процессы. Покупатель, ознакомившись с правилами магазина перед оплатой, принимает все правила при входе в аккаунт." },
+      { n: "2.5", text: "Согласно пункту 2.3, запрещено изменять электронную почту, пароль, название комнаты, пароль комнаты и язык комнаты предоставленных аккаунтов." },
+      { n: "2.6", text: "Аккаунты Spotify, Canva и Duolingo Plus предоставляются покупателю индивидуально. Аккаунт YouTube Premium стоимостью 33 AZN предоставляется нами и обновляется ежемесячно либо раз в два месяца." },
+      { n: "2.7", text: "Товары, приобретённые у нас, предназначены для использования одним человеком. Передача второму лицу запрещена. Доступ к Netflix, BluTv, Prime Video, Storytel, YouTube Premium и всем другим стриминговым подпискам может иметь только один человек. Передача другу, знакомому или члену семьи строго запрещена. После принятия заказа и передачи аккаунта сумма, уплаченная согласно этому правилу, не возвращается." },
+    ],
+  },
+  {
+    heading: "Правила магазина",
+    items: [
+      { n: "2.8", text: "Независимо от причины, использование неэтичных выражений при общении с продавцом приводит к приостановке подписки, блокировке уплаченной суммы и постоянному удалению покупателя из магазина. Если с приобретённым товаром возникла проблема и она не была решена в течение 7 рабочих дней (рабочие часы: ежедневно 12:00–00:00), оставшаяся сумма возвращается за вычетом использованного периода." },
+      { n: "2.9", text: "Покупатели, занимающиеся мошенничеством путём предоставления поддельного чека, навсегда удаляются из магазина." },
+      { n: "3.0", text: "Подписки покупателей, не производящих оплату вовремя, приостанавливаются без предварительного предупреждения." },
+      { n: "3.1", text: "Лица, похитившие приобретённые аккаунты, удаляются из магазина, а вся информация о них (имя, фамилия, банковский счёт) передаётся в соответствующие государственные органы для принятия правовых мер." },
+      { n: "3.2", text: "Покупатель, допускающий на общих аккаунтах поведение, беспокоящее других покупателей, навсегда удаляется из магазина, а его оплата блокируется." },
+    ],
+  },
+  {
+    heading: "Правила комнаты Netflix",
+    items: [
+      { n: "N.1", text: "Изменение названия, пароля или изображения комнаты запрещено. Информация ни одной комнаты, включая назначенную вам, не должна изменяться." },
+      { n: "N.2", text: "Приобретённый вами аккаунт предназначен для использования одним человеком. Передача его члену семьи, другу или любому другому лицу запрещена. Это отслеживается системой, и в момент обнаружения вы будете исключены из аккаунта." },
+      { n: "N.3", text: "Вы можете смотреть только со своих собственных устройств, при условии, что не смотрите одновременно более чем на одном устройстве. Если на телевизоре идёт фильм, одновременный вход и просмотр с телефона запрещены — одновременно может быть активно только 1 устройство." },
+      { n: "N.4", text: "Язык меню комнаты должен быть только турецким. Изменение языка меню на русский, английский или любой другой язык запрещено." },
+    ],
+  },
+];
+
 function getRuleGroups(lang) {
   if (lang === "en") return RULE_GROUPS_EN;
   if (lang === "ka") return RULE_GROUPS_KA;
+  if (lang === "ru") return RULE_GROUPS_RU;
   return RULE_GROUPS_AZ;
 }
 
@@ -937,8 +1118,8 @@ function QaydalarPage({ t, lang }) {
   return (
     <section className="ab-section ab-page-pad">
       <PageHead
-        kicker={lang === "en" ? "RULES" : lang === "ka" ? "წესები" : "QAYDALAR"}
-        title={lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : "Xidmət Şərtləri və Qaydalar"}
+        kicker={lang === "en" ? "RULES" : lang === "ka" ? "წესები" : lang === "ru" ? "ПРАВИЛА" : "QAYDALAR"}
+        title={lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : lang === "ru" ? "Условия обслуживания и правила" : "Xidmət Şərtləri və Qaydalar"}
         sub={t("rulesIntro")}
       />
       <div className="ab-rules-page">
@@ -964,7 +1145,7 @@ function RulesModal({ onClose, t, lang }) {
     <div className="ab-modal-overlay" onClick={onClose}>
       <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ab-modal-head">
-          <h3>{lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : "Xidmət Şərtləri və Qaydalar"}</h3>
+          <h3>{lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : lang === "ru" ? "Условия обслуживания и правила" : "Xidmət Şərtləri və Qaydalar"}</h3>
           <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
             <X size={18} />
           </button>
@@ -984,7 +1165,7 @@ function RulesModal({ onClose, t, lang }) {
           ))}
         </div>
         <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 18 }} onClick={onClose}>
-          {lang === "en" ? "Close" : lang === "ka" ? "დახურვა" : "Bağla"}
+          {lang === "en" ? "Close" : lang === "ka" ? "დახურვა" : lang === "ru" ? "Закрыть" : "Bağla"}
         </button>
       </div>
     </div>
@@ -1603,7 +1784,7 @@ export default function App() {
   const [navSolid, setNavSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE" };
+  const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE", ru: "RU" };
   const { products, settings, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
@@ -1773,6 +1954,14 @@ export default function App() {
         .ab-langoption.active{ color:var(--gold); }
         .ab-mobile-langrow{ display:flex; gap:8px; margin-top:20px; }
         .ab-mobile-langrow .ab-pill{ flex:1; text-align:center; }
+
+        .ab-ge-strip{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+        .ab-ge-flag{ width:36px; height:auto; border-radius:4px; box-shadow:0 3px 8px rgba(0,0,0,0.3); flex-shrink:0; }
+        .ab-ge-avatars{ display:flex; align-items:center; }
+        .ab-ge-avatar{
+          width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          border:2px solid #1A0607;
+        }
         .ab-cartbtn{ position:relative; }
         .ab-cart-badge{
           position:absolute; top:-6px; right:-6px;
@@ -2173,7 +2362,7 @@ export default function App() {
             </button>
             {langMenuOpen && (
               <div className="ab-langmenu">
-                {["az", "en", "ka"].map((l) => (
+                {["az", "en", "ka", "ru"].map((l) => (
                   <button
                     key={l}
                     className={`ab-langoption ${lang === l ? "active" : ""}`}
@@ -2229,7 +2418,7 @@ export default function App() {
             {t("myCart")} {cartCount > 0 ? `(${cartCount})` : ""}
           </button>
           <div className="ab-mobile-langrow">
-            {["az", "en", "ka"].map((l) => (
+            {["az", "en", "ka", "ru"].map((l) => (
               <button
                 key={l}
                 className={`ab-pill ${lang === l ? "active" : ""}`}
