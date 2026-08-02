@@ -96,6 +96,12 @@ const I18N = {
     passwordShort: "Şifrə ən azı 6 simvol olmalıdır.",
     registerGenericError: "Qeydiyyat zamanı xəta baş verdi.",
     registerSuccess: "Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.",
+    otpTitle: "Emailinizi təsdiqləyin",
+    otpSub: "Gmailinizə göndərdiyimiz 6 rəqəmli kodu daxil edin.",
+    otpPlaceholder: "6 rəqəmli kod",
+    otpButton: "Təsdiqlə",
+    otpError: "Kod yanlışdır və ya vaxtı keçib. Yenidən cəhd edin.",
+    otpResend: "Kodu yenidən göndər",
     loading: "Yüklənir...",
     hello: "Salam!",
     ordersNote: "Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.",
@@ -194,6 +200,12 @@ const I18N = {
     passwordShort: "Password must be at least 6 characters.",
     registerGenericError: "An error occurred during registration.",
     registerSuccess: "Registration successful! Please check your email to confirm your account.",
+    otpTitle: "Confirm your email",
+    otpSub: "Enter the 6-digit code we sent to your Gmail.",
+    otpPlaceholder: "6-digit code",
+    otpButton: "Confirm",
+    otpError: "The code is incorrect or has expired. Please try again.",
+    otpResend: "Resend code",
     loading: "Loading...",
     hello: "Hello!",
     ordersNote: "You'll receive updates about your orders on WhatsApp.",
@@ -292,6 +304,12 @@ const I18N = {
     passwordShort: "პაროლი უნდა შედგებოდეს მინიმუმ 6 სიმბოლოსგან.",
     registerGenericError: "რეგისტრაციისას დაფიქსირდა შეცდომა.",
     registerSuccess: "რეგისტრაცია წარმატებულია! გთხოვთ, შეამოწმოთ ელფოსტა ანგარიშის დასადასტურებლად.",
+    otpTitle: "დაადასტურეთ თქვენი ელფოსტა",
+    otpSub: "შეიყვანეთ 6-ნიშნა კოდი, რომელიც გამოგზავნეთ თქვენს Gmail-ზე.",
+    otpPlaceholder: "6-ნიშნა კოდი",
+    otpButton: "დადასტურება",
+    otpError: "კოდი არასწორია ან ვადა გაუვიდა. ცადეთ ხელახლა.",
+    otpResend: "კოდის ხელახლა გაგზავნა",
     loading: "იტვირთება...",
     hello: "გამარჯობა!",
     ordersNote: "თქვენი შეკვეთების შესახებ ინფორმაციას მიიღებთ WhatsApp-ის საშუალებით.",
@@ -390,6 +408,12 @@ const I18N = {
     passwordShort: "Пароль должен содержать не менее 6 символов.",
     registerGenericError: "При регистрации произошла ошибка.",
     registerSuccess: "Регистрация успешна! Пожалуйста, проверьте почту для подтверждения аккаунта.",
+    otpTitle: "Подтвердите ваш email",
+    otpSub: "Введите 6-значный код, отправленный на ваш Gmail.",
+    otpPlaceholder: "6-значный код",
+    otpButton: "Подтвердить",
+    otpError: "Код неверен или срок его действия истёк. Попробуйте снова.",
+    otpResend: "Отправить код повторно",
     loading: "Загрузка...",
     hello: "Привет!",
     ordersNote: "Информацию о ваших заказах вы будете получать через WhatsApp.",
@@ -1184,6 +1208,10 @@ function CustomerAuthPage({ t, lang }) {
   const [notice, setNotice] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -1229,8 +1257,31 @@ function CustomerAuthPage({ t, lang }) {
       return;
     }
     if (!data.session) {
-      setNotice(t("registerSuccess"));
+      setAwaitingOtp(true);
+      setNotice("");
     }
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    setOtpError("");
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: otpCode,
+      type: "signup",
+    });
+    if (error) {
+      setOtpError(t("otpError"));
+    } else {
+      setAwaitingOtp(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setOtpSending(true);
+    setOtpError("");
+    await supabase.auth.resend({ type: "signup", email });
+    setOtpSending(false);
   }
 
   async function handleLogout() {
@@ -1241,6 +1292,35 @@ function CustomerAuthPage({ t, lang }) {
     return (
       <section className="ab-section ab-page-pad">
         <p>{t("loading")}</p>
+      </section>
+    );
+  }
+
+  if (awaitingOtp) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <div className="ad-login-wrap">
+          <PageHead kicker={t("accountKicker")} title={t("otpTitle")} sub={t("otpSub")} />
+          <form onSubmit={handleVerifyOtp} className="ad-login">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder={t("otpPlaceholder")}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              required
+              style={{ textAlign: "center", fontSize: 22, letterSpacing: 6, fontFamily: "'JetBrains Mono',monospace" }}
+            />
+            {otpError && <p className="ad-error">{otpError}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
+              {t("otpButton")}
+            </button>
+            <button type="button" className="ab-rules-link" onClick={handleResendOtp} disabled={otpSending} style={{ alignSelf: "center", marginTop: 6 }}>
+              {t("otpResend")}
+            </button>
+          </form>
+        </div>
       </section>
     );
   }
