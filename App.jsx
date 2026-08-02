@@ -3,30 +3,321 @@ import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
-  { id: "all", label: "Hamısı" },
-  { id: "streaming", label: "Streaming" },
-  { id: "music", label: "Musiqi" },
-  { id: "ai", label: "AI Alətləri" },
-];
-
-const STEPS = [
-  { n: "01", title: "Seç", text: "İstədiyin platforma və paketi seç." },
-  { n: "02", title: "Ödə", text: "Kart və ya Kapital Bank/M10 ilə ödəniş et." },
-  { n: "03", title: "Al", text: "Ən qısa müddət ərzində hesab detalların çatır." },
+  { id: "all", labelKey: "catAll" },
+  { id: "streaming", labelKey: "catStreaming" },
+  { id: "music", labelKey: "catMusic" },
+  { id: "ai", labelKey: "catAi" },
 ];
 
 const NAV_ITEMS = [
-  { key: "home", label: "Ana səhifə" },
-  { key: "paketler", label: "Paketlər" },
-  { key: "necehisleyir", label: "Necə işləyir" },
-  { key: "etibar", label: "Etibarlılıq" },
-  { key: "qaydalar", label: "Qaydalar" },
-  { key: "elaqe", label: "Əlaqə" },
+  { key: "home", labelKey: "navHome" },
+  { key: "paketler", labelKey: "navPackages" },
+  { key: "necehisleyir", labelKey: "navHow" },
+  { key: "etibar", labelKey: "navTrust" },
+  { key: "qaydalar", labelKey: "navRules" },
+  { key: "elaqe", labelKey: "navContact" },
 ];
 
 const ALL_PAGES = [...NAV_ITEMS.map((n) => n.key), "admin", "hesab", "sebet"];
 
 const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
+
+const I18N = {
+  az: {
+    eyebrow: "Ən qısa müddətdə təhvil",
+    heroLine1: "Bir bilet.",
+    heroLine2Pre: "Bütün ",
+    heroLine2Em: "ekranlar",
+    heroSub: "Netflix, Spotify, YouTube Premium və daha çoxu — orijinal qiymətin bir hissəsinə, rəsmi hesablarla, dəqiqələr içində sənin.",
+    seePackages: "Paketlərə bax",
+    writeWhatsapp: "WhatsApp ilə yaz",
+    trustAccounts: "Zəmanətli hesablar",
+    trustSupport: "7/24 dəstək",
+    trustCustomers: "1200+ məmnun müştəri",
+    popularKicker: "POPULYAR",
+    popularTitle: "Ən çox seçilən paketlər",
+    popularSub: "Tam siyahı üçün Paketlər səhifəsinə keç.",
+    seeAllPackages: "Bütün paketlərə bax",
+    ctaTitle: "Paketini seç, bu gün izləməyə başla",
+    ctaSub: "Sifariş üçün WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.",
+
+    packagesKicker: "PAKETLƏR",
+    packagesTitle: "Populyar abunəliklər",
+    packagesSub: "Hər bilet bir hesaba giriş deməkdir — seç, ödə, izləməyə başla.",
+    noProductsInCategory: "Bu kateqoriyada hələ paket yoxdur.",
+    addToCart: "Səbətə əlavə et",
+
+    howKicker: "NECƏ İŞLƏYİR",
+    howTitle: "Üç addımda hesabın hazırdır",
+    howSub: "Sifarişdən təhvilə qədər bütün proses sadə və sürətlidir.",
+    step1Title: "Seç",
+    step1Text: "İstədiyin platforma və paketi seç.",
+    step2Title: "Ödə",
+    step2Text: "Kart və ya Kapital Bank/M10 ilə ödəniş et.",
+    step3Title: "Al",
+    step3Text: "Hesab detalların ən qısa müddət ərzində çatır.",
+
+    trustKicker: "ETİBARLILIQ",
+    trustTitleWhy: "Niyə SkyFlix Azerbaycan?",
+    trust1Title: "Zəmanət daxildir",
+    trust1Text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir.",
+    trust2Title: "Sürətli təhvil",
+    trust2Text: "Ödəniş təsdiqindən sonra hesab məlumatları ən qısa müddət ərzində çatdırılır.",
+    trust3Title: "Canlı dəstək",
+    trust3Text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk.",
+
+    contactKicker: "ƏLAQƏ",
+    contactTitle: "Sifariş üçün yaz",
+    contactSub: "WhatsApp üzərindən yaz — cavab adətən bir neçə dəqiqə çəkir.",
+    contactCardText: "Sifariş və dəstək üçün birbaşa yaz.",
+
+    cartKicker: "SƏBƏT",
+    cartEmptyTitle: "Səbətiniz boşdur",
+    cartEmptySub: "Paketlər səhifəsindən məhsul əlavə edin.",
+    cartTitle: "Səbətim",
+    cartSub: "Miqdarı tənzimlə və sifarişi WhatsApp ilə tamamla.",
+    cartTotal: "Cəmi",
+    completeOrder: "Sifarişi WhatsApp ilə tamamla",
+
+    accountKicker: "HESAB",
+    accountKickerMine: "HESABIM",
+    login: "Daxil ol",
+    register: "Qeydiyyat",
+    registerBtn: "Qeydiyyatdan keç",
+    email: "Email",
+    password: "Şifrə",
+    repeatPassword: "Şifrəni təkrarla",
+    fullName: "Ad Soyad",
+    agreeRules: "Xidmət Şərtləri və Qaydaları",
+    agreeSuffix: "qəbul edirəm",
+    loginErrorMsg: "Email və ya şifrə yanlışdır.",
+    agreeError: "Davam etmək üçün Xidmət Şərtləri və Qaydaları qəbul etməlisiniz.",
+    passwordMismatch: "Şifrələr uyğun gəlmir.",
+    passwordShort: "Şifrə ən azı 6 simvol olmalıdır.",
+    registerGenericError: "Qeydiyyat zamanı xəta baş verdi.",
+    registerSuccess: "Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.",
+    loading: "Yüklənir...",
+    hello: "Salam!",
+    ordersNote: "Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.",
+    logout: "Çıxış",
+    cartLoginAlert: "Səbətə əlavə etmək üçün əvvəlcə qeydiyyatdan keçməli və ya daxil olmalısınız.",
+
+    orderNow: "Sifariş et",
+    myAccount: "Hesabım",
+    myCart: "Səbətim",
+    allRightsReserved: "Bütün hüquqlar qorunur.",
+
+    catAll: "Hamısı",
+    catStreaming: "Streaming",
+    catMusic: "Musiqi",
+    catAi: "AI Alətləri",
+
+    navHome: "Ana səhifə",
+    navPackages: "Paketlər",
+    navHow: "Necə işləyir",
+    navTrust: "Etibarlılıq",
+    navRules: "Qaydalar",
+    navContact: "Əlaqə",
+
+    rulesIntro: "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.",
+  },
+  en: {
+    eyebrow: "Delivered in the shortest time",
+    heroLine1: "One ticket.",
+    heroLine2Pre: "Every ",
+    heroLine2Em: "screen",
+    heroSub: "Netflix, Spotify, YouTube Premium and more — a fraction of the original price, official accounts, delivered in minutes.",
+    seePackages: "View packages",
+    writeWhatsapp: "Message on WhatsApp",
+    trustAccounts: "Guaranteed accounts",
+    trustSupport: "24/7 support",
+    trustCustomers: "1200+ happy customers",
+    popularKicker: "POPULAR",
+    popularTitle: "Most popular packages",
+    popularSub: "See the full list on the Packages page.",
+    seeAllPackages: "View all packages",
+    ctaTitle: "Pick your package, start watching today",
+    ctaSub: "Message us on WhatsApp to order — replies within minutes.",
+
+    packagesKicker: "PACKAGES",
+    packagesTitle: "Popular subscriptions",
+    packagesSub: "Every ticket is access to an account — choose, pay, start watching.",
+    noProductsInCategory: "No packages in this category yet.",
+    addToCart: "Add to cart",
+
+    howKicker: "HOW IT WORKS",
+    howTitle: "Your account, ready in three steps",
+    howSub: "From order to delivery, the whole process is simple and fast.",
+    step1Title: "Choose",
+    step1Text: "Pick the platform and package you want.",
+    step2Title: "Pay",
+    step2Text: "Pay by card or via Kapital Bank/M10.",
+    step3Title: "Get it",
+    step3Text: "Account details arrive in the shortest possible time.",
+
+    trustKicker: "TRUST",
+    trustTitleWhy: "Why SkyFlix Azerbaycan?",
+    trust1Title: "Guarantee included",
+    trust1Text: "Every account comes with a replacement guarantee for its active period.",
+    trust2Title: "Fast delivery",
+    trust2Text: "Account details are delivered in the shortest possible time after payment confirmation.",
+    trust3Title: "Live support",
+    trust3Text: "Questions? We reply on WhatsApp, 7 days a week.",
+
+    contactKicker: "CONTACT",
+    contactTitle: "Message us to order",
+    contactSub: "Reach us on WhatsApp — replies usually take a few minutes.",
+    contactCardText: "Message us directly for orders and support.",
+
+    cartKicker: "CART",
+    cartEmptyTitle: "Your cart is empty",
+    cartEmptySub: "Add a package from the Packages page.",
+    cartTitle: "My Cart",
+    cartSub: "Adjust the quantity and complete your order on WhatsApp.",
+    cartTotal: "Total",
+    completeOrder: "Complete order on WhatsApp",
+
+    accountKicker: "ACCOUNT",
+    accountKickerMine: "MY ACCOUNT",
+    login: "Log in",
+    register: "Register",
+    registerBtn: "Create account",
+    email: "Email",
+    password: "Password",
+    repeatPassword: "Repeat password",
+    fullName: "Full name",
+    agreeRules: "Terms of Service and Rules",
+    agreeSuffix: "I accept",
+    loginErrorMsg: "Incorrect email or password.",
+    agreeError: "You must accept the Terms of Service and Rules to continue.",
+    passwordMismatch: "Passwords do not match.",
+    passwordShort: "Password must be at least 6 characters.",
+    registerGenericError: "An error occurred during registration.",
+    registerSuccess: "Registration successful! Please check your email to confirm your account.",
+    loading: "Loading...",
+    hello: "Hello!",
+    ordersNote: "You'll receive updates about your orders on WhatsApp.",
+    logout: "Log out",
+    cartLoginAlert: "Please register or log in before adding items to your cart.",
+
+    orderNow: "Order now",
+    myAccount: "My Account",
+    myCart: "My Cart",
+    allRightsReserved: "All rights reserved.",
+
+    catAll: "All",
+    catStreaming: "Streaming",
+    catMusic: "Music",
+    catAi: "AI Tools",
+
+    navHome: "Home",
+    navPackages: "Packages",
+    navHow: "How it works",
+    navTrust: "Trust",
+    navRules: "Rules",
+    navContact: "Contact",
+
+    rulesIntro: "The rules below apply equally to all SkyFlix Azerbaycan customers. Full details are currently available in Azerbaijani.",
+  },
+  ka: {
+    eyebrow: "მიწოდება უმოკლეს დროში",
+    heroLine1: "ერთი ბილეთი.",
+    heroLine2Pre: "ყველა ",
+    heroLine2Em: "ეკრანი",
+    heroSub: "Netflix, Spotify, YouTube Premium და კიდევ მეტი — ორიგინალური ფასის მცირე ნაწილად, ოფიციალური ანგარიშებით, რამდენიმე წუთში შენია.",
+    seePackages: "პაკეტების ნახვა",
+    writeWhatsapp: "მოგვწერე WhatsApp-ზე",
+    trustAccounts: "გარანტირებული ანგარიშები",
+    trustSupport: "24/7 მხარდაჭერა",
+    trustCustomers: "1200+ კმაყოფილი მომხმარებელი",
+    popularKicker: "პოპულარული",
+    popularTitle: "ყველაზე პოპულარული პაკეტები",
+    popularSub: "სრული ჩამონათვალისთვის იხილეთ პაკეტების გვერდი.",
+    seeAllPackages: "ყველა პაკეტის ნახვა",
+    ctaTitle: "აირჩიე პაკეტი, დაიწყე ყურება დღესვე",
+    ctaSub: "შეკვეთისთვის მოგვწერე WhatsApp-ზე — პასუხი რამდენიმე წუთშია.",
+
+    packagesKicker: "პაკეტები",
+    packagesTitle: "პოპულარული გამოწერები",
+    packagesSub: "თითოეული ბილეთი წვდომაა ერთ ანგარიშზე — აირჩიე, გადაიხადე, დაიწყე ყურება.",
+    noProductsInCategory: "ამ კატეგორიაში ჯერ არ არის პაკეტები.",
+    addToCart: "კალათაში დამატება",
+
+    howKicker: "როგორ მუშაობს",
+    howTitle: "შენი ანგარიში მზადაა სამ ნაბიჯში",
+    howSub: "შეკვეთიდან მიწოდებამდე მთელი პროცესი მარტივი და სწრაფია.",
+    step1Title: "აირჩიე",
+    step1Text: "აირჩიე სასურველი პლატფორმა და პაკეტი.",
+    step2Title: "გადაიხადე",
+    step2Text: "გადაიხადე ბარათით ან Kapital Bank/M10-ის საშუალებით.",
+    step3Title: "მიიღე",
+    step3Text: "ანგარიშის დეტალები ჩამოვა უმოკლეს შესაძლო დროში.",
+
+    trustKicker: "სანდოობა",
+    trustTitleWhy: "რატომ SkyFlix Azerbaycan?",
+    trust1Title: "გარანტია შედის",
+    trust1Text: "ყველა ანგარიშს ახლავს ჩანაცვლების გარანტია აქტიური პერიოდის განმავლობაში.",
+    trust2Title: "სწრაფი მიწოდება",
+    trust2Text: "ანგარიშის მონაცემები, გადახდის დადასტურების შემდეგ, მიეწოდება უმოკლეს შესაძლო დროში.",
+    trust3Title: "ცოცხალი მხარდაჭერა",
+    trust3Text: "კითხვები გაქვს? ვპასუხობთ WhatsApp-ზე, კვირაში 7 დღე.",
+
+    contactKicker: "კონტაქტი",
+    contactTitle: "მოგვწერე შეკვეთისთვის",
+    contactSub: "დაგვიკავშირდი WhatsApp-ზე — პასუხი ჩვეულებრივ რამდენიმე წუთს იღებს.",
+    contactCardText: "მოგვწერე პირდაპირ შეკვეთისა და მხარდაჭერისთვის.",
+
+    cartKicker: "კალათა",
+    cartEmptyTitle: "თქვენი კალათა ცარიელია",
+    cartEmptySub: "დაამატე პროდუქტი პაკეტების გვერდიდან.",
+    cartTitle: "ჩემი კალათა",
+    cartSub: "დაარეგულირე რაოდენობა და დაასრულე შეკვეთა WhatsApp-ზე.",
+    cartTotal: "სულ",
+    completeOrder: "შეკვეთის დასრულება WhatsApp-ზე",
+
+    accountKicker: "ანგარიში",
+    accountKickerMine: "ჩემი ანგარიში",
+    login: "შესვლა",
+    register: "რეგისტრაცია",
+    registerBtn: "ანგარიშის შექმნა",
+    email: "ელფოსტა",
+    password: "პაროლი",
+    repeatPassword: "გაიმეორე პაროლი",
+    fullName: "სახელი და გვარი",
+    agreeRules: "მომსახურების პირობები და წესები",
+    agreeSuffix: "ვეთანხმები",
+    loginErrorMsg: "არასწორი ელფოსტა ან პაროლი.",
+    agreeError: "გასაგრძელებლად უნდა დაეთანხმოთ მომსახურების პირობებსა და წესებს.",
+    passwordMismatch: "პაროლები არ ემთხვევა.",
+    passwordShort: "პაროლი უნდა შედგებოდეს მინიმუმ 6 სიმბოლოსგან.",
+    registerGenericError: "რეგისტრაციისას დაფიქსირდა შეცდომა.",
+    registerSuccess: "რეგისტრაცია წარმატებულია! გთხოვთ, შეამოწმოთ ელფოსტა ანგარიშის დასადასტურებლად.",
+    loading: "იტვირთება...",
+    hello: "გამარჯობა!",
+    ordersNote: "თქვენი შეკვეთების შესახებ ინფორმაციას მიიღებთ WhatsApp-ის საშუალებით.",
+    logout: "გასვლა",
+    cartLoginAlert: "კალათაში დასამატებლად ჯერ უნდა დარეგისტრირდეთ ან შეხვიდეთ სისტემაში.",
+
+    orderNow: "შეკვეთა",
+    myAccount: "ჩემი ანგარიში",
+    myCart: "ჩემი კალათა",
+    allRightsReserved: "ყველა უფლება დაცულია.",
+
+    catAll: "ყველა",
+    catStreaming: "სტრიმინგი",
+    catMusic: "მუსიკა",
+    catAi: "AI ხელსაწყოები",
+
+    navHome: "მთავარი",
+    navPackages: "პაკეტები",
+    navHow: "როგორ მუშაობს",
+    navTrust: "სანდოობა",
+    navRules: "წესები",
+    navContact: "კონტაქტი",
+
+    rulesIntro: "ქვემოთ მოცემული წესები თანაბრად ვრცელდება SkyFlix Azerbaycan-ის ყველა მომხმარებელზე.",
+  },
+};
 
 function useGoogleFonts() {
   useEffect(() => {
@@ -125,7 +416,7 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p, onAdd }) {
+function TicketCard({ p, onAdd, t }) {
   return (
     <div className="ab-ticket">
       {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
@@ -151,7 +442,7 @@ function TicketCard({ p, onAdd }) {
       </div>
       {onAdd && (
         <button className="ab-ticket-addbtn" onClick={() => onAdd(p)}>
-          <ShoppingCart size={15} /> Səbətə əlavə et
+          <ShoppingCart size={15} /> {t("addToCart")}
         </button>
       )}
     </div>
@@ -225,7 +516,7 @@ function HeroSlideshow({ products }) {
   );
 }
 
-function HomePage({ go, products, onAdd }) {
+function HomePage({ go, products, onAdd, lang, t }) {
   return (
     <>
       <div className="ab-screen">
@@ -235,28 +526,52 @@ function HomePage({ go, products, onAdd }) {
         <div className="ab-screen-grain" />
         <div className="ab-hero">
           <div>
+            {lang === "ka" && (
+              <div className="ab-ge-strip">
+                <svg className="ab-ge-flag" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="60" height="40" fill="#FFFFFF" />
+                  <rect x="24" y="0" width="12" height="40" fill="#FF0000" />
+                  <rect x="0" y="14" width="60" height="12" fill="#FF0000" />
+                  {[
+                    [12, 7],
+                    [48, 7],
+                    [12, 33],
+                    [48, 33],
+                  ].map(([cx, cy], i) => (
+                    <g key={i}>
+                      <rect x={cx - 4} y={cy - 1.3} width="8" height="2.6" fill="#FF0000" />
+                      <rect x={cx - 1.3} y={cy - 4} width="2.6" height="8" fill="#FF0000" />
+                    </g>
+                  ))}
+                </svg>
+                <div className="ab-ge-avatars">
+                  {["#E1122A", "#8C1620", "#E1122A", "#8C1620", "#E1122A"].map((c, i) => (
+                    <span key={i} className="ab-ge-avatar" style={{ background: c, zIndex: 5 - i, marginLeft: i === 0 ? 0 : -10 }}>
+                      <User size={13} color="#FFFFFF" strokeWidth={2.2} />
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="ab-eyebrow">
-              <span className="dot" /> Ən sürətli təhvil
+              <span className="dot" /> {t("eyebrow")}
             </div>
             <h1 className="ab-h1">
-              Bir toxunuş.<br />Bütün <em>abunəliklər</em>.
+              {t("heroLine1")}<br />{t("heroLine2Pre")}<em>{t("heroLine2Em")}</em>.
             </h1>
-            <p className="ab-sub">
-              Netflix, Spotify, YouTube Premium və daha çoxu — orijinal qiymətin bir hissəsinə,
-              rəsmi hesablarla, dəqiqələr içində sənin.
-            </p>
+            <p className="ab-sub">{t("heroSub")}</p>
             <div className="ab-hero-ctas">
               <button className="ab-btn ab-btn-onscreen" onClick={() => go("paketler")}>
-                Paketlərə bax
+                {t("seePackages")}
               </button>
               <button className="ab-btn ab-btn-onscreen-ghost" onClick={() => go("elaqe")}>
-                <MessageCircle size={16} /> WhatsApp ilə yaz
+                <MessageCircle size={16} /> {t("writeWhatsapp")}
               </button>
             </div>
             <div className="ab-trustrow">
-              <span><Shield size={14} /> Zəmanətli hesablar</span>
-              <span><Clock size={14} /> 7/24 dəstək</span>
-              <span><Star size={14} /> 1200+ məmnun müştəri</span>
+              <span><Shield size={14} /> {t("trustAccounts")}</span>
+              <span><Clock size={14} /> {t("trustSupport")}</span>
+              <span><Star size={14} /> {t("trustCustomers")}</span>
             </div>
           </div>
 
@@ -265,37 +580,33 @@ function HomePage({ go, products, onAdd }) {
       </div>
 
       <section className="ab-section" style={{ paddingTop: 60 }}>
-        <PageHead kicker="POPULYAR" title="Ən çox seçilən paketlər" sub="Tam siyahı üçün Paketlər səhifəsinə keç." />
+        <PageHead kicker={t("popularKicker")} title={t("popularTitle")} sub={t("popularSub")} />
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} onAdd={onAdd} />
+              <TicketCard p={p} onAdd={onAdd} t={t} />
             </Reveal>
           ))}
         </div>
         <Reveal delay={220}>
           <button className="ab-btn ab-btn-ghost" style={{ marginTop: 30 }} onClick={() => go("paketler")}>
-            Bütün paketlərə bax <ChevronRight size={15} />
+            {t("seeAllPackages")} <ChevronRight size={15} />
           </button>
         </Reveal>
       </section>
 
-      <CtaBanner go={go} />
+      <CtaBanner go={go} t={t} />
     </>
   );
 }
 
-function PaketlerPage({ products, onAdd }) {
+function PaketlerPage({ products, onAdd, t }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="PAKETLƏR"
-        title="Populyar abunəliklər"
-        sub="Hər bilet bir hesaba giriş deməkdir — seç, ödə, izləməyə başla."
-      />
+      <PageHead kicker={t("packagesKicker")} title={t("packagesTitle")} sub={t("packagesSub")} />
       <Reveal className="ab-cat-pills">
         {CATEGORIES.map((c) => (
           <button
@@ -303,32 +614,33 @@ function PaketlerPage({ products, onAdd }) {
             className={`ab-pill ${cat === c.id ? "active" : ""}`}
             onClick={() => setCat(c.id)}
           >
-            {c.label}
+            {t(c.labelKey)}
           </button>
         ))}
       </Reveal>
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} onAdd={onAdd} />
+            <TicketCard p={p} onAdd={onAdd} t={t} />
           </Reveal>
         ))}
-        {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>Bu kateqoriyada hələ paket yoxdur.</p>}
+        {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
       </div>
     </section>
   );
 }
 
-function NeceIsleyirPage() {
+function NeceIsleyirPage({ t }) {
+  const steps = [
+    { n: "01", title: t("step1Title"), text: t("step1Text") },
+    { n: "02", title: t("step2Title"), text: t("step2Text") },
+    { n: "03", title: t("step3Title"), text: t("step3Text") },
+  ];
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="NECƏ İŞLƏYİR"
-        title="Üç addımda hesabın hazırdır"
-        sub="Sifarişdən təhvilə qədər bütün proses sadə və sürətlidir."
-      />
+      <PageHead kicker={t("howKicker")} title={t("howTitle")} sub={t("howSub")} />
       <div className="ab-steps">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <Reveal key={s.n} delay={i * 90}>
             <div className="ab-step">
               <span className="ab-step-n">{s.n}</span>
@@ -342,15 +654,15 @@ function NeceIsleyirPage() {
   );
 }
 
-function EtibarPage() {
+function EtibarPage({ t }) {
   const items = [
-    { icon: Shield, title: "Zəmanət daxildir", text: "Hər hesaba fəaliyyət müddəti ərzində əvəzetmə zəmanəti verilir." },
-    { icon: Clock, title: "Sürətli təhvil", text: "Ödəniş təsdiqindən sonra hesab məlumatları adətən 5 dəqiqəyə çatır." },
-    { icon: MessageCircle, title: "Canlı dəstək", text: "Sualların olarsa WhatsApp üzərindən həftənin 7 günü cavab veririk." },
+    { icon: Shield, title: t("trust1Title"), text: t("trust1Text") },
+    { icon: Clock, title: t("trust2Title"), text: t("trust2Text") },
+    { icon: MessageCircle, title: t("trust3Title"), text: t("trust3Text") },
   ];
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead kicker="ETİBARLILIQ" title="Niyə SkyFlix Azerbaycan?" />
+      <PageHead kicker={t("trustKicker")} title={t("trustTitleWhy")} />
       <div className="ab-trust">
         {items.map((it, i) => (
           <Reveal key={it.title} delay={i * 90}>
@@ -368,25 +680,21 @@ function EtibarPage() {
   );
 }
 
-function ElaqePage({ settings }) {
+function ElaqePage({ settings, t }) {
   const rawNumber = settings.contact_whatsapp || "517873090";
   const digits = rawNumber.replace(/[^0-9]/g, "");
   const waLink = `https://wa.me/${digits}`;
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead
-        kicker="ƏLAQƏ"
-        title="Sifariş üçün yaz"
-        sub="WhatsApp üzərindən yaz — cavab adətən bir neçə dəqiqə çəkir."
-      />
+      <PageHead kicker={t("contactKicker")} title={t("contactTitle")} sub={t("contactSub")} />
       <div className="ab-contact-grid">
         <Reveal>
           <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-contact-card">
             <MessageCircle size={22} strokeWidth={1.75} />
             <div>
               <h4>WhatsApp</h4>
-              <p>Sifariş və dəstək üçün birbaşa yaz.</p>
+              <p>{t("contactCardText")}</p>
             </div>
             <ChevronRight size={16} className="ab-contact-arrow" />
           </a>
@@ -396,12 +704,12 @@ function ElaqePage({ settings }) {
   );
 }
 
-function CtaBanner({ go }) {
+function CtaBanner({ go, t }) {
   return (
     <Reveal className="ab-cta">
       <div>
-        <h3>Paketini seç, bu gün izləməyə başla</h3>
-        <p>Sifariş üçün WhatsApp vasitəsilə yaz — cavab dəqiqələr içindədir.</p>
+        <h3>{t("ctaTitle")}</h3>
+        <p>{t("ctaSub")}</p>
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <button className="ab-btn ab-btn-gold" onClick={() => go("elaqe")}>
@@ -412,7 +720,7 @@ function CtaBanner({ go }) {
   );
 }
 
-function SebetPage({ cart, updateQty, removeFromCart, settings }) {
+function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
@@ -432,14 +740,14 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
   if (cart.length === 0) {
     return (
       <section className="ab-section ab-page-pad">
-        <PageHead kicker="SƏBƏT" title="Səbətiniz boşdur" sub="Paketlər səhifəsindən məhsul əlavə edin." />
+        <PageHead kicker={t("cartKicker")} title={t("cartEmptyTitle")} sub={t("cartEmptySub")} />
       </section>
     );
   }
 
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead kicker="SƏBƏT" title="Səbətim" sub="Miqdarı tənzimlə və sifarişi WhatsApp ilə tamamla." />
+      <PageHead kicker={t("cartKicker")} title={t("cartTitle")} sub={t("cartSub")} />
 
       <div className="ab-cart-list">
         {cart.map((item) => (
@@ -469,18 +777,18 @@ function SebetPage({ cart, updateQty, removeFromCart, settings }) {
 
       <div className="ab-cart-summary">
         <div className="ab-cart-total-row">
-          <span>Cəmi</span>
+          <span>{t("cartTotal")}</span>
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
         <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => { supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {}); }}>
-          <MessageCircle size={16} /> Sifarişi WhatsApp ilə tamamla
+          <MessageCircle size={16} /> {t("completeOrder")}
         </a>
       </div>
     </section>
   );
 }
 
-const RULE_GROUPS = [
+const RULE_GROUPS_AZ = [
   {
     heading: "Sifariş, Məhsul və Geri Ödəniş Qaydaları",
     items: [
@@ -535,16 +843,133 @@ const RULE_GROUPS = [
   },
 ];
 
-function QaydalarPage() {
+const RULE_GROUPS_EN = [
+  {
+    heading: "Order, Product and Refund Rules",
+    items: [
+      { n: "1.0", text: "Orders are delivered to the customer within 24 hours after the seller confirms payment." },
+      { n: "1.1", text: "During high-demand periods, delivery may be delayed. The delay may reach a maximum of 3 business days. Only after this period has passed may the customer request a refund." },
+      { n: "1.2", text: "Orders are delivered in sequence. A customer may not complain about delivery being slow and demand a refund immediately after placing an order. A refund may only be requested once the periods stated in items 1.0 and 1.1 have passed." },
+      { n: "1.3", text: "Purchases by individuals under 18 years of age are prohibited. We are not responsible if a family member uses card details without authorization to make payments to our accounts." },
+      { n: "1.4", text: "As the products sold are digital, refunds are not issued except in explicitly stated cases. If a subscription is active and the customer is unable to use the account due to their own device or other external causes, the payment is not refunded. In such cases, proof related to the account is sent to the customer. In exceptional cases where the stated subscription period cannot be honored, the remaining amount is refunded after deducting the portion already used." },
+      { n: "1.5", text: "Because some products are shared-account products, refunds are not issued for them." },
+      { n: "1.6", text: "Our products are global in nature, but in some countries certain products may be unavailable for various reasons. Even if the customer was unaware of this, or purchased solely to test it, they may not subsequently demand a refund." },
+      { n: "1.7", text: "Before placing an order, a customer may pay an additional fee (2.99 AZN) to move their order into the VIP queue and have it expedited." },
+      { n: "1.8", text: "The VIP queue option referred to in item 1.7 applies to Netflix, BluTv, Disney+, Amazon Prime Video and Duolingo Plus." },
+      { n: "1.9", text: "If a payment is mistakenly sent to one of our bank cards, and a refund is requested regardless of the amount, a 2 AZN commission is deducted and the remaining amount is returned." },
+    ],
+  },
+  {
+    heading: "Payment Rules",
+    items: [
+      { n: "2.0", text: "Payments made to an account other than the one shown to you will not be accepted. Payments to old bank accounts are not accepted. The order will not be delivered until payment is made to the account shown." },
+      { n: "2.1", text: "A photo of the receipt must be sent to us within 24 hours of payment. If this period passes, the payment will not be confirmed and the order will not be delivered." },
+      { n: "2.2", text: "If a terminal does not issue a receipt at the time of payment, you must contact the relevant terminal company and request an electronic copy of the receipt, then send it to us within 24 hours. If a customer in this situation does not provide a receipt within 3 days, the order will not be registered and the payment will not be confirmed." },
+    ],
+  },
+  {
+    heading: "Product Rules",
+    items: [
+      { n: "2.3", text: "FaceApp is only compatible with iOS devices (e.g., iPhone). For this product you must sign out of your own iCloud account, sign in to ours, and afterward sign back in to your own account. We are not responsible for photos or other data lost during the iCloud switch. We are also not responsible for issues arising after payment such as storage becoming full or a backup not being taken, and no refund is issued for such issues. FaceApp is not compatible with Android devices; an Android user may not request a refund after payment. Our other shared-use products include ChatGPT, Prime Video, BluTv, Exxen, Disney+, Netflix, PC games, and MUBI. Because Disney+ is not officially active in Azerbaijan, it can only be used via VPN." },
+      { n: "2.4", text: "The \"room\" format found in our shared-use products is not provided individually. We bear no responsibility for actions taken within a shared YouTube Premium account provided as a gift, nor for device resets or other external processes. By agreeing to the store rules provided before payment, the customer accepts all rules upon logging into the account." },
+      { n: "2.5", text: "Per item 2.3, changing the email, password, room name, room password, or room language of the accounts provided is prohibited." },
+      { n: "2.6", text: "Spotify, Canva, and Duolingo Plus accounts are provided to the customer individually. The YouTube Premium account, valued at 33 AZN, is provided by us and is renewed either monthly or every two months." },
+      { n: "2.7", text: "Products purchased from us are intended for use by one person. Passing them on to a second person is prohibited. Only one person may access Netflix, BluTv, Prime Video, Storytel, YouTube Premium, and all other streaming subscriptions. Giving access to a friend, acquaintance, or family member is strictly prohibited. Once an order has been accepted and the account handed over, amounts paid under this rule are not refunded." },
+    ],
+  },
+  {
+    heading: "Store Rules",
+    items: [
+      { n: "2.8", text: "Regardless of the reason, using unethical language when communicating with the seller results in the subscription being suspended, the amount paid being blocked, and the customer being permanently removed from the store. If a purchased product has an issue, and it is not resolved within 7 business days (business hours: daily 12:00–00:00), the remaining amount is refunded after deducting the portion of the period already used." },
+      { n: "2.9", text: "Customers who engage in fraudulent activity by submitting a fake receipt are permanently removed from the store." },
+      { n: "3.0", text: "The subscriptions of customers who do not make their payments on time are suspended without prior warning." },
+      { n: "3.1", text: "Individuals who steal purchased accounts are removed from the store, and all information related to them (name, surname, bank account) is submitted to the relevant government authorities and legal action is pursued." },
+      { n: "3.2", text: "A customer who engages in behavior on shared accounts that disturbs other customers is permanently removed from the store and their payment is blocked." },
+    ],
+  },
+  {
+    heading: "Netflix Room Rules",
+    items: [
+      { n: "N.1", text: "Changing the room's name, password, or picture is prohibited. No information for any room, including the one assigned to you, should be changed." },
+      { n: "N.2", text: "The account you purchase is for use by one person. Giving it to a family member, friend, or any other person is prohibited. This is monitored by the system, and you will be removed from the account the moment it is detected." },
+      { n: "N.3", text: "You may watch only from devices belonging to you, provided you do not watch on more than one device at the same time. If a film is playing on the TV, logging in and watching from a phone at the same time is prohibited — only 1 device may be active at a time." },
+      { n: "N.4", text: "The room's menu language must be Turkish only. Changing the menu language to Russian, English, or any other language is prohibited." },
+    ],
+  },
+];
+
+const RULE_GROUPS_KA = [
+  {
+    heading: "შეკვეთის, პროდუქტისა და თანხის დაბრუნების წესები",
+    items: [
+      { n: "1.0", text: "შეკვეთა მომხმარებელს ბარდება გამყიდველის მიერ გადახდის დადასტურებიდან 24 საათის განმავლობაში." },
+      { n: "1.1", text: "დატვირთვის პერიოდში მიწოდება შეიძლება დაგვიანდეს. დაგვიანება შეიძლება იყოს მაქსიმუმ 3 სამუშაო დღე. მხოლოდ ამ ვადის გასვლის შემდეგ შეუძლია მომხმარებელს მოითხოვოს თანხის დაბრუნება." },
+      { n: "1.2", text: "შეკვეთები სრულდება რიგითობის მიხედვით. მომხმარებელს არ შეუძლია, შეკვეთის განთავსებისთანავე, გამოთქვას უკმაყოფილება ანგარიშის დაგვიანებით მიწოდებაზე და მოითხოვოს თანხის დაბრუნება. თანხის დაბრუნება შესაძლებელია მხოლოდ 1.0 და 1.1 პუნქტებში მითითებული ვადის გასვლის შემდეგ." },
+      { n: "1.3", text: "18 წლამდე პირების მიერ ჩვენგან შეძენა აკრძალულია. პასუხისმგებლობას არ ვიღებთ, თუ ოჯახის წევრი ბარათის მონაცემებით ნებართვის გარეშე განახორციელებს გადახდას ჩვენს ანგარიშებზე." },
+      { n: "1.4", text: "ვინაიდან გაყიდული პროდუქტები ციფრულია, თანხის დაბრუნება არ ხდება, გარდა პირდაპირ მითითებული გამონაკლისი შემთხვევებისა. თუ გამოწერა აქტიურია, მაგრამ მომხმარებელს არ შეუძლია ანგარიშის გამოყენება საკუთარი მოწყობილობის ან სხვა გარეშე მიზეზის გამო, თანხა არ ბრუნდება. ასეთ შემთხვევებში მომხმარებელს ეგზავნება ანგარიშთან დაკავშირებული მტკიცებულება. გამონაკლის შემთხვევებში, თუ მითითებული გამოწერის ვადის უზრუნველყოფა შეუძლებელია, გამოყენებული ნაწილის გამოკლებით დარჩენილი თანხა ბრუნდება." },
+      { n: "1.5", text: "ვინაიდან ზოგიერთი პროდუქტი საერთო ანგარიშის ფორმატშია, მათზე თანხის დაბრუნება არ ხორციელდება." },
+      { n: "1.6", text: "ჩვენი პროდუქტები გლობალური ხასიათისაა, თუმცა ზოგიერთ ქვეყანაში სხვადასხვა მიზეზით ზოგიერთი პროდუქტის გამოყენება შეუძლებელია. მომხმარებელს, მიუხედავად ამის უცოდინრობისა ან მხოლოდ შემოწმების მიზნით შეძენისა, არ შეუძლია შემდგომში მოითხოვოს თანხის დაბრუნება." },
+      { n: "1.7", text: "მომხმარებელს შეუძლია, შეკვეთამდე დამატებითი გადახდით (2.99 AZN), თავისი შეკვეთა გადაიტანოს VIP რიგში და დააჩქაროს." },
+      { n: "1.8", text: "1.7 პუნქტში მითითებული VIP რიგის შესაძლებლობა ვრცელდება Netflix, BluTv, Disney+, Amazon Prime Video და Duolingo Plus პროდუქტებზე." },
+      { n: "1.9", text: "თუ ჩვენს საბანკო ბარათებზე შეცდომით მოხდა გადარიცხვა და მოთხოვნილია თანხის დაბრუნება, თანხის ოდენობის მიუხედავად, გამოიქვითება 2 AZN საკომისიო და დარჩენილი თანხა ბრუნდება." },
+    ],
+  },
+  {
+    heading: "გადახდის წესები",
+    items: [
+      { n: "2.0", text: "თუ გადახდა მოხდება თქვენთვის მითითებულისგან განსხვავებულ ანგარიშზე, გადახდა არ იქნება მიღებული. ძველ საბანკო ანგარიშებზე გადახდები არ მიიღება. შეკვეთა არ ჩაბარდება, სანამ გადახდა არ განხორციელდება მითითებულ ანგარიშზე." },
+      { n: "2.1", text: "გადახდიდან 24 საათის განმავლობაში უნდა გამოგვიგზავნოთ ქვითრის ფოტო. ამ ვადის გასვლის შემდეგ გადახდა არ დადასტურდება და შეკვეთა არ ჩაბარდება." },
+      { n: "2.2", text: "თუ ტერმინალით გადახდისას ქვითარი არ გაიცემა, უნდა დაუკავშირდეთ შესაბამის ტერმინალის კომპანიას და 24 საათის განმავლობაში მოითხოვოთ ქვითრის ელექტრონული ასლი, შემდეგ გამოგვიგზავნოთ. თუ მომხმარებელი ასეთ სიტუაციაში 3 დღის განმავლობაში არ წარმოადგენს ქვითარს, შეკვეთა არ დარეგისტრირდება და გადახდა არ დადასტურდება." },
+    ],
+  },
+  {
+    heading: "პროდუქტის წესები",
+    items: [
+      { n: "2.3", text: "FaceApp თავსებადია მხოლოდ iOS მოწყობილობებთან (მაგალითად, iPhone). ამ პროდუქტისთვის საჭიროა გამოხვიდეთ საკუთარი iCloud ანგარიშიდან, შეხვიდეთ ჩვენს ანგარიშზე, შემდეგ კი დაუბრუნდეთ საკუთარ ანგარიშს. პასუხისმგებლობას არ ვიღებთ iCloud-ის შეცვლისას დაკარგულ ფოტოებზე ან სხვა მონაცემებზე. ასევე პასუხისმგებლობას არ ვიღებთ გადახდის შემდეგ წარმოქმნილ პრობლემებზე, როგორიცაა მეხსიერების გავსება ან სარეზერვო ასლის არარსებობა, რის გამოც თანხა არ ბრუნდება. FaceApp არ არის თავსებადი Android მოწყობილობებთან; Android-ის მომხმარებელს გადახდის შემდეგ არ შეუძლია მოითხოვოს თანხის დაბრუნება. ჩვენს სხვა საერთო გამოყენების პროდუქტებში შედის ChatGPT, Prime Video, BluTv, Exxen, Disney+, Netflix, კომპიუტერული თამაშები და MUBI. ვინაიდან Disney+ ოფიციალურად აქტიური არ არის აზერბაიჯანში, მისი გამოყენება შესაძლებელია მხოლოდ VPN-ის საშუალებით." },
+      { n: "2.4", text: "საერთო გამოყენების პროდუქტებში არსებული ოთახის ფორმატი ინდივიდუალურად არ გაიცემა. პასუხისმგებლობას არ ვიღებთ საჩუქრად მიღებულ საერთო YouTube Premium ანგარიშში მომხდარ ქმედებებზე, ასევე მოწყობილობის გადატვირთვაზე ან სხვა გარეშე პროცესებზე. მომხმარებელი, გადახდამდე მაღაზიის წესების გაცნობის საფუძველზე, ეთანხმება ყველა წესს ანგარიშზე შესვლისას." },
+      { n: "2.5", text: "2.3 პუნქტის შესაბამისად, აკრძალულია მოწოდებული ანგარიშების ელფოსტის, პაროლის, ოთახის სახელის, ოთახის პაროლისა და ოთახის ენის შეცვლა." },
+      { n: "2.6", text: "Spotify, Canva და Duolingo Plus ანგარიშები მომხმარებელს ეძლევა ინდივიდუალურად. 33 AZN ღირებულების YouTube Premium ანგარიშს ვაწვდით ჩვენ და განახლდება ყოველთვიურად ან ორ თვეში ერთხელ." },
+      { n: "2.7", text: "ჩვენგან შეძენილი პროდუქტები განკუთვნილია ერთი ადამიანის გამოსაყენებლად. მეორე პირზე გადაცემა აკრძალულია. Netflix, BluTv, Prime Video, Storytel, YouTube Premium და ყველა სხვა სტრიმინგ გამოწერაზე წვდომა შეუძლია მხოლოდ ერთ ადამიანს. მეგობრისთვის, ნაცნობისთვის ან ოჯახის წევრისთვის გადაცემა მკაცრად აკრძალულია. შეკვეთის მიღებისა და ანგარიშის გადაცემის შემდეგ, ამ წესის საფუძველზე გადახდილი თანხა არ ბრუნდება." },
+    ],
+  },
+  {
+    heading: "მაღაზიის წესები",
+    items: [
+      { n: "2.8", text: "მიზეზის მიუხედავად, გამყიდველთან კომუნიკაციისას არაეთიკური გამონათქვამების გამოყენების შემთხვევაში გამოწერა შეჩერდება, გადახდილი თანხა დაიბლოკება და მომხმარებელი სამუდამოდ მოიხსნება მაღაზიიდან. თუ შეძენილ პროდუქტს პრობლემა ექმნება და არ მოგვარდება სამუშაო საათებში (ყოველდღე 12:00–00:00) 7 სამუშაო დღის განმავლობაში, გამოყენებული პერიოდის გამოკლებით დარჩენილი თანხა ბრუნდება." },
+      { n: "2.9", text: "მომხმარებლები, რომლებიც ყალბი ქვითრის წარდგენით თაღლითურ საქმიანობას ეწევიან, სამუდამოდ მოიხსნებიან მაღაზიიდან." },
+      { n: "3.0", text: "მომხმარებელთა გამოწერები, რომლებიც დროულად არ ახორციელებენ გადახდას, წყდება წინასწარი გაფრთხილების გარეშე." },
+      { n: "3.1", text: "შეძენილი ანგარიშების მომპარავი პირები მოიხსნებიან მაღაზიიდან და მათთან დაკავშირებული ყველა ინფორმაცია (სახელი, გვარი, საბანკო ანგარიში) გადაეცემა შესაბამის სახელმწიფო ორგანოებს სამართლებრივი ზომების მისაღებად." },
+      { n: "3.2", text: "მომხმარებელი, რომელიც საერთო ანგარიშებზე სხვა მომხმარებლების შემაწუხებელ ქცევას გამოავლენს, სამუდამოდ მოიხსნება მაღაზიიდან და მისი გადახდა დაიბლოკება." },
+    ],
+  },
+  {
+    heading: "Netflix ოთახის წესები",
+    items: [
+      { n: "N.1", text: "აკრძალულია ოთახის სახელის, პაროლის ან სურათის შეცვლა. თქვენთვის მინიჭებული ოთახის ჩათვლით, არცერთი ოთახის ინფორმაცია არ უნდა შეიცვალოს." },
+      { n: "N.2", text: "თქვენ მიერ შეძენილი ანგარიში განკუთვნილია ერთი ადამიანისთვის. მისი გადაცემა ოჯახის წევრზე, მეგობარზე ან ნებისმიერ სხვა პირზე აკრძალულია. ეს კონტროლდება სისტემის მიერ და გამოვლენის მომენტში ანგარიშიდან ამოგირიცხავენ." },
+      { n: "N.3", text: "ყურება შეგიძლიათ მხოლოდ თქვენი საკუთარი მოწყობილობებიდან, იმ პირობით, რომ ერთდროულად ერთზე მეტ მოწყობილობაზე არ უყურებთ. თუ ტელევიზორზე ფილმი მიმდინარეობს, ერთდროულად ტელეფონიდან შესვლა და ყურება აკრძალულია — ერთდროულად აქტიური შეიძლება იყოს მხოლოდ 1 მოწყობილობა." },
+      { n: "N.4", text: "ოთახის მენიუს ენა უნდა იყოს მხოლოდ თურქული. მენიუს ენის რუსულზე, ინგლისურზე ან სხვა ენაზე შეცვლა აკრძალულია." },
+    ],
+  },
+];
+
+function getRuleGroups(lang) {
+  if (lang === "en") return RULE_GROUPS_EN;
+  if (lang === "ka") return RULE_GROUPS_KA;
+  return RULE_GROUPS_AZ;
+}
+
+function QaydalarPage({ t, lang }) {
+  const groups = getRuleGroups(lang);
   return (
     <section className="ab-section ab-page-pad">
       <PageHead
-        kicker="QAYDALAR"
-        title="Xidmət Şərtləri və Qaydalar"
-        sub="SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."
+        kicker={lang === "en" ? "RULES" : lang === "ka" ? "წესები" : "QAYDALAR"}
+        title={lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : "Xidmət Şərtləri və Qaydalar"}
+        sub={t("rulesIntro")}
       />
       <div className="ab-rules-page">
-        {RULE_GROUPS.map((group, gi) => (
+        {groups.map((group, gi) => (
           <Reveal key={gi} delay={gi * 60} className="ab-rule-group">
             <h4 className="ab-rule-group-title">{group.heading}</h4>
             {group.items.map((r, i) => (
@@ -560,21 +985,20 @@ function QaydalarPage() {
   );
 }
 
-function RulesModal({ onClose }) {
+function RulesModal({ onClose, t, lang }) {
+  const groups = getRuleGroups(lang);
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
       <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ab-modal-head">
-          <h3>Xidmət Şərtləri və Qaydalar</h3>
+          <h3>{lang === "en" ? "Terms of Service and Rules" : lang === "ka" ? "მომსახურების პირობები და წესები" : "Xidmət Şərtləri və Qaydalar"}</h3>
           <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
             <X size={18} />
           </button>
         </div>
-        <p className="ab-modal-intro">
-          SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.
-        </p>
+        <p className="ab-modal-intro">{t ? t("rulesIntro") : "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."}</p>
         <div className="ab-modal-body">
-          {RULE_GROUPS.map((group, gi) => (
+          {groups.map((group, gi) => (
             <div key={gi} className="ab-rule-group">
               <h4 className="ab-rule-group-title">{group.heading}</h4>
               {group.items.map((r, i) => (
@@ -587,14 +1011,14 @@ function RulesModal({ onClose }) {
           ))}
         </div>
         <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 18 }} onClick={onClose}>
-          Bağla
+          {lang === "en" ? "Close" : lang === "ka" ? "დახურვა" : "Bağla"}
         </button>
       </div>
     </div>
   );
 }
 
-function CustomerAuthPage() {
+function CustomerAuthPage({ t, lang }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
@@ -622,7 +1046,7 @@ function CustomerAuthPage() {
     e.preventDefault();
     setError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError("Email və ya şifrə yanlışdır.");
+    if (error) setError(t("loginErrorMsg"));
   }
 
   async function handleRegister(e) {
@@ -630,15 +1054,15 @@ function CustomerAuthPage() {
     setError("");
     setNotice("");
     if (!agreed) {
-      setError("Davam etmək üçün Xidmət Şərtləri və Qaydaları qəbul etməlisiniz.");
+      setError(t("agreeError"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Şifrələr uyğun gəlmir.");
+      setError(t("passwordMismatch"));
       return;
     }
     if (password.length < 6) {
-      setError("Şifrə ən azı 6 simvol olmalıdır.");
+      setError(t("passwordShort"));
       return;
     }
     const { data, error } = await supabase.auth.signUp({
@@ -647,11 +1071,11 @@ function CustomerAuthPage() {
       options: { data: { full_name: name } },
     });
     if (error) {
-      setError(error.message || "Qeydiyyat zamanı xəta baş verdi.");
+      setError(error.message || t("registerGenericError"));
       return;
     }
     if (!data.session) {
-      setNotice("Qeydiyyat uğurludur! Zəhmət olmasa emailinizi yoxlayıb hesabı təsdiqləyin.");
+      setNotice(t("registerSuccess"));
     }
   }
 
@@ -662,7 +1086,7 @@ function CustomerAuthPage() {
   if (checking) {
     return (
       <section className="ab-section ab-page-pad">
-        <p>Yüklənir...</p>
+        <p>{t("loading")}</p>
       </section>
     );
   }
@@ -672,24 +1096,22 @@ function CustomerAuthPage() {
     return (
       <section className="ab-section ab-page-pad">
         <div className="ad-login-wrap">
-          <PageHead kicker="HESABIM" title="Salam!" sub={u.user_metadata?.full_name || u.email} />
+          <PageHead kicker={t("accountKickerMine")} title={t("hello")} sub={u.user_metadata?.full_name || u.email} />
           <div className="ad-settings">
             <label>
-              Email
+              {t("email")}
               <input value={u.email} disabled />
             </label>
             {u.user_metadata?.full_name && (
               <label>
-                Ad Soyad
+                {t("fullName")}
                 <input value={u.user_metadata.full_name} disabled />
               </label>
             )}
           </div>
-          <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>
-            Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.
-          </p>
+          <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
           <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
-            Çıxış
+            {t("logout")}
           </button>
         </div>
       </section>
@@ -699,7 +1121,7 @@ function CustomerAuthPage() {
   return (
     <section className="ab-section ab-page-pad">
       <div className="ad-login-wrap">
-        <PageHead kicker="HESAB" title={mode === "login" ? "Daxil ol" : "Qeydiyyatdan keç"} />
+        <PageHead kicker={t("accountKicker")} title={mode === "login" ? t("login") : t("registerBtn")} />
         <div className="ab-cat-pills" style={{ marginBottom: 22 }}>
           <button
             className={`ab-pill ${mode === "login" ? "active" : ""}`}
@@ -709,7 +1131,7 @@ function CustomerAuthPage() {
               setNotice("");
             }}
           >
-            Daxil ol
+            {t("login")}
           </button>
           <button
             className={`ab-pill ${mode === "register" ? "active" : ""}`}
@@ -719,39 +1141,39 @@ function CustomerAuthPage() {
               setNotice("");
             }}
           >
-            Qeydiyyat
+            {t("register")}
           </button>
         </div>
 
         {mode === "login" ? (
           <form onSubmit={handleLogin} className="ad-login">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input
               type="password"
-              placeholder="Şifrə"
+              placeholder={t("password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             {error && <p className="ad-error">{error}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
-              Daxil ol
+              {t("login")}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="ad-login">
-            <input type="text" placeholder="Ad Soyad" value={name} onChange={(e) => setName(e.target.value)} required />
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="text" placeholder={t("fullName")} value={name} onChange={(e) => setName(e.target.value)} required />
+            <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input
               type="password"
-              placeholder="Şifrə"
+              placeholder={t("password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             <input
               type="password"
-              placeholder="Şifrəni təkrarla"
+              placeholder={t("repeatPassword")}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -760,20 +1182,20 @@ function CustomerAuthPage() {
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
               <span>
                 <button type="button" className="ab-rules-link" onClick={() => setShowRules(true)}>
-                  Xidmət Şərtləri və Qaydaları
+                  {t("agreeRules")}
                 </button>{" "}
-                qəbul edirəm
+                {t("agreeSuffix")}
               </span>
             </label>
             {error && <p className="ad-error">{error}</p>}
             {notice && <p style={{ color: "var(--teal)", fontSize: 13, margin: 0 }}>{notice}</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
-              Qeydiyyatdan keç
+              {t("registerBtn")}
             </button>
           </form>
         )}
       </div>
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {showRules && <RulesModal onClose={() => setShowRules(false)} t={t} lang={lang} />}
     </section>
   );
 }
@@ -1207,6 +1629,8 @@ export default function App() {
   const [page, go] = useHashRoute();
   const [navSolid, setNavSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE" };
   const { products, settings, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
@@ -1215,6 +1639,20 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem("skyflix_lang") || "az";
+    } catch {
+      return "az";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("skyflix_lang", lang);
+    } catch {}
+  }, [lang]);
+  const t = (key) => I18N[lang][key] || I18N.az[key] || key;
 
   const [cart, setCart] = useState(() => {
     try {
@@ -1233,7 +1671,7 @@ export default function App() {
 
   function addToCart(product) {
     if (!session) {
-      window.alert("Səbətə əlavə etmək üçün əvvəlcə qeydiyyatdan keçməli və ya daxil olmalısınız.");
+      window.alert(t("cartLoginAlert"));
       go("hesab");
       return;
     }
@@ -1341,6 +1779,35 @@ export default function App() {
         @media(min-width:800px){ .ab-menubtn{ display:none; } }
         .ab-accountbtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
         .ab-accountbtn:hover{ border-color:var(--muted); }
+        .ab-langbtn{
+          display:flex; align-items:center; justify-content:center;
+          background:none; border:1px solid var(--line); border-radius:8px;
+          padding:8px 10px; color:var(--text); cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700;
+        }
+        .ab-langbtn:hover{ border-color:var(--gold); color:var(--gold); }
+        .ab-langwrap{ position:relative; }
+        .ab-langmenu{
+          position:absolute; top:calc(100% + 6px); right:0; z-index:50;
+          background:var(--bg); border:1px solid var(--line); border-radius:10px;
+          box-shadow:0 12px 28px -10px rgba(0,0,0,0.25); overflow:hidden; min-width:64px;
+        }
+        .ab-langoption{
+          display:block; width:100%; padding:9px 14px; background:none; border:none; cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; color:var(--muted); text-align:left;
+        }
+        .ab-langoption:hover{ background:var(--surface2); color:var(--text); }
+        .ab-langoption.active{ color:var(--gold); }
+        .ab-mobile-langrow{ display:flex; gap:8px; margin-top:20px; }
+        .ab-mobile-langrow .ab-pill{ flex:1; text-align:center; }
+
+        .ab-ge-strip{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+        .ab-ge-flag{ width:36px; height:auto; border-radius:4px; box-shadow:0 3px 8px rgba(0,0,0,0.3); flex-shrink:0; }
+        .ab-ge-avatars{ display:flex; align-items:center; }
+        .ab-ge-avatar{
+          width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          border:2px solid #1A0607;
+        }
         .ab-cartbtn{ position:relative; }
         .ab-cart-badge{
           position:absolute; top:-6px; right:-6px;
@@ -1730,20 +2197,41 @@ export default function App() {
               className={`ab-navlink ${page === item.key ? "active" : ""}`}
               onClick={() => navigate(item.key)}
             >
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
         </div>
         <div className="ab-navright">
-          <button className="ab-accountbtn ab-cartbtn" onClick={() => navigate("sebet")} aria-label="Səbət" title="Səbət">
+          <div className="ab-langwrap">
+            <button className="ab-langbtn" onClick={() => setLangMenuOpen((v) => !v)} title="Dil / Language / ენა">
+              {LANG_NAMES[lang]}
+            </button>
+            {langMenuOpen && (
+              <div className="ab-langmenu">
+                {["az", "en", "ka"].map((l) => (
+                  <button
+                    key={l}
+                    className={`ab-langoption ${lang === l ? "active" : ""}`}
+                    onClick={() => {
+                      setLang(l);
+                      setLangMenuOpen(false);
+                    }}
+                  >
+                    {LANG_NAMES[l]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button className="ab-accountbtn ab-cartbtn" onClick={() => navigate("sebet")} aria-label={t("myCart")} title={t("myCart")}>
             <ShoppingCart size={18} />
             {cartCount > 0 && <span className="ab-cart-badge">{cartCount}</span>}
           </button>
-          <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label="Hesabım" title="Hesabım">
+          <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label={t("myAccount")} title={t("myAccount")}>
             <User size={18} />
           </button>
           <button className="ab-btn ab-btn-gold" onClick={() => navigate("elaqe")}>
-            Sifariş et <ChevronRight size={15} />
+            {t("orderNow")} <ChevronRight size={15} />
           </button>
           <button className="ab-menubtn" onClick={() => setMenuOpen(true)} aria-label="Menyunu aç">
             <Menu size={20} />
@@ -1766,29 +2254,43 @@ export default function App() {
           </div>
           {NAV_ITEMS.map((item) => (
             <button key={item.key} className="ab-navlink" onClick={() => navigate(item.key)}>
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
           <button className="ab-navlink" onClick={() => navigate("hesab")}>
-            Hesabım
+            {t("myAccount")}
           </button>
           <button className="ab-navlink" onClick={() => navigate("sebet")}>
-            Səbətim {cartCount > 0 ? `(${cartCount})` : ""}
+            {t("myCart")} {cartCount > 0 ? `(${cartCount})` : ""}
           </button>
+          <div className="ab-mobile-langrow">
+            {["az", "en", "ka"].map((l) => (
+              <button
+                key={l}
+                className={`ab-pill ${lang === l ? "active" : ""}`}
+                onClick={() => {
+                  setLang(l);
+                  setMenuOpen(false);
+                }}
+              >
+                {LANG_NAMES[l]}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} />}
-        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} />}
-        {page === "necehisleyir" && <NeceIsleyirPage />}
-        {page === "etibar" && <EtibarPage />}
-        {page === "qaydalar" && <QaydalarPage />}
-        {page === "elaqe" && <ElaqePage settings={settings} />}
+        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} />}
+        {page === "necehisleyir" && <NeceIsleyirPage t={t} />}
+        {page === "etibar" && <EtibarPage t={t} />}
+        {page === "qaydalar" && <QaydalarPage t={t} lang={lang} />}
+        {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
-        {page === "hesab" && <CustomerAuthPage />}
+        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} />}
         {page === "sebet" && (
-          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} />
+          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} />
         )}
       </main>
 
@@ -1802,11 +2304,11 @@ export default function App() {
         <div style={{ display: "flex", gap: 20 }}>
           {NAV_ITEMS.slice(1).map((item) => (
             <button key={item.key} onClick={() => navigate(item.key)}>
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
         </div>
-        <div>© 2026 SkyFlix Azerbaycan. Bütün hüquqlar qorunur.</div>
+        <div>© 2026 SkyFlix Azerbaycan. {t("allRightsReserved")}</div>
       </footer>
     </div>
   );
