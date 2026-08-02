@@ -663,7 +663,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
   );
 }
 
-const RULE_GROUPS = [
+const RULE_GROUPS_AZ = [
   {
     heading: "Sifariş, Məhsul və Geri Ödəniş Qaydaları",
     items: [
@@ -718,12 +718,76 @@ const RULE_GROUPS = [
   },
 ];
 
-function QaydalarPage({ t }) {
+const RULE_GROUPS_EN = [
+  {
+    heading: "Order, Product and Refund Rules",
+    items: [
+      { n: "1.0", text: "Orders are delivered to the customer within 24 hours after the seller confirms payment." },
+      { n: "1.1", text: "During high-demand periods, delivery may be delayed. The delay may reach a maximum of 3 business days. Only after this period has passed may the customer request a refund." },
+      { n: "1.2", text: "Orders are delivered in sequence. A customer may not complain about delivery being slow and demand a refund immediately after placing an order. A refund may only be requested once the periods stated in items 1.0 and 1.1 have passed." },
+      { n: "1.3", text: "Purchases by individuals under 18 years of age are prohibited. We are not responsible if a family member uses card details without authorization to make payments to our accounts." },
+      { n: "1.4", text: "As the products sold are digital, refunds are not issued except in explicitly stated cases. If a subscription is active and the customer is unable to use the account due to their own device or other external causes, the payment is not refunded. In such cases, proof related to the account is sent to the customer. In exceptional cases where the stated subscription period cannot be honored, the remaining amount is refunded after deducting the portion already used." },
+      { n: "1.5", text: "Because some products are shared-account products, refunds are not issued for them." },
+      { n: "1.6", text: "Our products are global in nature, but in some countries certain products may be unavailable for various reasons. Even if the customer was unaware of this, or purchased solely to test it, they may not subsequently demand a refund." },
+      { n: "1.7", text: "Before placing an order, a customer may pay an additional fee (2.99 AZN) to move their order into the VIP queue and have it expedited." },
+      { n: "1.8", text: "The VIP queue option referred to in item 1.7 applies to Netflix, BluTv, Disney+, Amazon Prime Video and Duolingo Plus." },
+      { n: "1.9", text: "If a payment is mistakenly sent to one of our bank cards, and a refund is requested regardless of the amount, a 2 AZN commission is deducted and the remaining amount is returned." },
+    ],
+  },
+  {
+    heading: "Payment Rules",
+    items: [
+      { n: "2.0", text: "Payments made to an account other than the one shown to you will not be accepted. Payments to old bank accounts are not accepted. The order will not be delivered until payment is made to the account shown." },
+      { n: "2.1", text: "A photo of the receipt must be sent to us within 24 hours of payment. If this period passes, the payment will not be confirmed and the order will not be delivered." },
+      { n: "2.2", text: "If a terminal does not issue a receipt at the time of payment, you must contact the relevant terminal company and request an electronic copy of the receipt, then send it to us within 24 hours. If a customer in this situation does not provide a receipt within 3 days, the order will not be registered and the payment will not be confirmed." },
+    ],
+  },
+  {
+    heading: "Product Rules",
+    items: [
+      { n: "2.3", text: "FaceApp is only compatible with iOS devices (e.g., iPhone). For this product you must sign out of your own iCloud account, sign in to ours, and afterward sign back in to your own account. We are not responsible for photos or other data lost during the iCloud switch. We are also not responsible for issues arising after payment such as storage becoming full or a backup not being taken, and no refund is issued for such issues. FaceApp is not compatible with Android devices; an Android user may not request a refund after payment. Our other shared-use products include ChatGPT, Prime Video, BluTv, Exxen, Disney+, Netflix, PC games, and MUBI. Because Disney+ is not officially active in Azerbaijan, it can only be used via VPN." },
+      { n: "2.4", text: "The \"room\" format found in our shared-use products is not provided individually. We bear no responsibility for actions taken within a shared YouTube Premium account provided as a gift, nor for device resets or other external processes. By agreeing to the store rules provided before payment, the customer accepts all rules upon logging into the account." },
+      { n: "2.5", text: "Per item 2.3, changing the email, password, room name, room password, or room language of the accounts provided is prohibited." },
+      { n: "2.6", text: "Spotify, Canva, and Duolingo Plus accounts are provided to the customer individually. The YouTube Premium account, valued at 33 AZN, is provided by us and is renewed either monthly or every two months." },
+      { n: "2.7", text: "Products purchased from us are intended for use by one person. Passing them on to a second person is prohibited. Only one person may access Netflix, BluTv, Prime Video, Storytel, YouTube Premium, and all other streaming subscriptions. Giving access to a friend, acquaintance, or family member is strictly prohibited. Once an order has been accepted and the account handed over, amounts paid under this rule are not refunded." },
+    ],
+  },
+  {
+    heading: "Store Rules",
+    items: [
+      { n: "2.8", text: "Regardless of the reason, using unethical language when communicating with the seller results in the subscription being suspended, the amount paid being blocked, and the customer being permanently removed from the store. If a purchased product has an issue, and it is not resolved within 7 business days (business hours: daily 12:00–00:00), the remaining amount is refunded after deducting the portion of the period already used." },
+      { n: "2.9", text: "Customers who engage in fraudulent activity by submitting a fake receipt are permanently removed from the store." },
+      { n: "3.0", text: "The subscriptions of customers who do not make their payments on time are suspended without prior warning." },
+      { n: "3.1", text: "Individuals who steal purchased accounts are removed from the store, and all information related to them (name, surname, bank account) is submitted to the relevant government authorities and legal action is pursued." },
+      { n: "3.2", text: "A customer who engages in behavior on shared accounts that disturbs other customers is permanently removed from the store and their payment is blocked." },
+    ],
+  },
+  {
+    heading: "Netflix Room Rules",
+    items: [
+      { n: "N.1", text: "Changing the room's name, password, or picture is prohibited. No information for any room, including the one assigned to you, should be changed." },
+      { n: "N.2", text: "The account you purchase is for use by one person. Giving it to a family member, friend, or any other person is prohibited. This is monitored by the system, and you will be removed from the account the moment it is detected." },
+      { n: "N.3", text: "You may watch only from devices belonging to you, provided you do not watch on more than one device at the same time. If a film is playing on the TV, logging in and watching from a phone at the same time is prohibited — only 1 device may be active at a time." },
+      { n: "N.4", text: "The room's menu language must be Turkish only. Changing the menu language to Russian, English, or any other language is prohibited." },
+    ],
+  },
+];
+
+function getRuleGroups(lang) {
+  return lang === "en" ? RULE_GROUPS_EN : RULE_GROUPS_AZ;
+}
+
+function QaydalarPage({ t, lang }) {
+  const groups = getRuleGroups(lang);
   return (
     <section className="ab-section ab-page-pad">
-      <PageHead kicker="QAYDALAR" title="Xidmət Şərtləri və Qaydalar" sub={t("rulesIntro")} />
+      <PageHead
+        kicker={lang === "en" ? "RULES" : "QAYDALAR"}
+        title={lang === "en" ? "Terms of Service and Rules" : "Xidmət Şərtləri və Qaydalar"}
+        sub={t("rulesIntro")}
+      />
       <div className="ab-rules-page">
-        {RULE_GROUPS.map((group, gi) => (
+        {groups.map((group, gi) => (
           <Reveal key={gi} delay={gi * 60} className="ab-rule-group">
             <h4 className="ab-rule-group-title">{group.heading}</h4>
             {group.items.map((r, i) => (
@@ -739,19 +803,20 @@ function QaydalarPage({ t }) {
   );
 }
 
-function RulesModal({ onClose, t }) {
+function RulesModal({ onClose, t, lang }) {
+  const groups = getRuleGroups(lang);
   return (
     <div className="ab-modal-overlay" onClick={onClose}>
       <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ab-modal-head">
-          <h3>Xidmət Şərtləri və Qaydalar</h3>
+          <h3>{lang === "en" ? "Terms of Service and Rules" : "Xidmət Şərtləri və Qaydalar"}</h3>
           <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
             <X size={18} />
           </button>
         </div>
         <p className="ab-modal-intro">{t ? t("rulesIntro") : "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib."}</p>
         <div className="ab-modal-body">
-          {RULE_GROUPS.map((group, gi) => (
+          {groups.map((group, gi) => (
             <div key={gi} className="ab-rule-group">
               <h4 className="ab-rule-group-title">{group.heading}</h4>
               {group.items.map((r, i) => (
@@ -764,14 +829,14 @@ function RulesModal({ onClose, t }) {
           ))}
         </div>
         <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 18 }} onClick={onClose}>
-          Bağla
+          {lang === "en" ? "Close" : "Bağla"}
         </button>
       </div>
     </div>
   );
 }
 
-function CustomerAuthPage({ t }) {
+function CustomerAuthPage({ t, lang }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
@@ -948,7 +1013,7 @@ function CustomerAuthPage({ t }) {
           </form>
         )}
       </div>
-      {showRules && <RulesModal onClose={() => setShowRules(false)} t={t} />}
+      {showRules && <RulesModal onClose={() => setShowRules(false)} t={t} lang={lang} />}
     </section>
   );
 }
@@ -1991,10 +2056,10 @@ export default function App() {
         {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} />}
         {page === "necehisleyir" && <NeceIsleyirPage t={t} />}
         {page === "etibar" && <EtibarPage t={t} />}
-        {page === "qaydalar" && <QaydalarPage t={t} />}
+        {page === "qaydalar" && <QaydalarPage t={t} lang={lang} />}
         {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
-        {page === "hesab" && <CustomerAuthPage t={t} />}
+        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} />}
         {page === "sebet" && (
           <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} />
         )}
