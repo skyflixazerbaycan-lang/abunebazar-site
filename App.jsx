@@ -236,10 +236,10 @@ function HomePage({ go, products, onAdd }) {
         <div className="ab-hero">
           <div>
             <div className="ab-eyebrow">
-              <span className="dot" /> 5 dəqiqəyə təhvil
+              <span className="dot" /> Ən sürətli təhvil
             </div>
             <h1 className="ab-h1">
-              Bir bilet.<br />Bütün <em>ekranlar</em>.
+              Bir toxunuş.<br />Bütün <em>abunəliklər</em>.
             </h1>
             <p className="ab-sub">
               Netflix, Spotify, YouTube Premium və daha çoxu — orijinal qiymətin bir hissəsinə,
