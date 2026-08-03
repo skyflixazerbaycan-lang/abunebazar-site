@@ -1517,11 +1517,33 @@ function CustomerAuthPage({ t, lang, settings }) {
 const FAKE_FIRST_NAMES = [
   "Anar", "Rəşad", "Aysel", "Nərmin", "Tural", "Günel", "Elvin", "Ləman",
   "Kamran", "Sevinc", "Orxan", "Aygün", "Murad", "Zeynəb", "Fərid", "Xəyalə",
+  "Vüqar", "Nigar", "Elşən", "Səbinə", "Cavid", "Ülviyyə", "Rövşən", "Türkan",
+  "Samir", "Aytac", "Kənan", "Gülnar", "İlkin", "Röya", "Vüsal", "Şəbnəm",
+  "Emin", "Nazrin", "Ruslan", "Fidan", "Rauf", "Kəmalə", "Nicat", "Aynur",
+  "Farid", "Lalə", "Ceyhun", "Vəfa", "Şahin", "Mələk", "Namiq", "Günay",
+  "Elnur", "Sona", "Toğrul", "Zöhrə", "Ramin", "Pərviz", "Aydan", "Ayla",
+  "Bəxtiyar", "Nərgiz", "Fuad", "İlahə", "Elgün", "Şəms", "Aslan", "Zülfiyyə",
+  "Sənan", "Konul", "Mehdi", "Sədaqət", "Xəyal", "Aygerim", "Ravan", "Yeganə",
+  "Emil", "Rəna", "Fərrux", "Sadə", "İntiqam", "Diana", "Nihat", "Kifayət",
+  "Fərman", "Ayxan", "Zaur", "Nurlan", "Cəmil", "Fatimə", "İsmayıl", "Xatirə",
+  "Vahid", "Solmaz", "Rasim", "Sevil", "Elmar", "Nərmin", "Tahir", "Aqşin",
+  "Etibar", "Könül", "Hüseyn", "Şəlalə",
 ];
 
-function maskName(name) {
-  if (name.length <= 2) return name[0] + "***";
-  return name[0] + "***" + name[name.length - 1];
+const FAKE_LAST_NAMES = [
+  "Əliyev", "Məmmədov", "Həsənov", "Quliyev", "İbrahimov", "Rəhimov", "Cəfərov", "Vəliyev",
+  "Nəbiyev", "Abbasov", "Kərimov", "Süleymanov", "Şirinov", "Novruzov", "Hüseynov", "Bağırov",
+  "Mustafayev", "Tağıyev", "Salahov", "Zeynalov", "İsmayılov", "Xəlilov", "Əkbərov", "Sadıqov",
+  "Rüstəmov", "Fətullayev", "Orucov", "Babayev", "Dadaşov", "Camalov", "Əhmədov", "Yusifov",
+  "Rzayev", "Şükürov", "Piriyev", "Mirzəyev", "Hacıyev", "Talıbov", "Qasımov", "Nağıyev",
+  "Əzizov", "Sadıqov", "Cəbrayılov", "İskəndərov", "Vəkilov", "Feyzullayev", "Hümbətov", "Zülfüqarov",
+  "Balayev", "Şahbazov", "Qurbanov", "Nəsirov", "Fərəcov", "Xanlarov", "Muradov", "Ramazanov",
+  "Cavadov", "Bədəlov", "Şıxəliyev", "Musayev",
+];
+
+function maskName(first, last) {
+  const maskedLast = last.length <= 2 ? last[0] + "***" : last[0] + "***" + last[last.length - 1] + ".";
+  return first + " " + maskedLast;
 }
 
 function FakePurchaseWidget({ products }) {
@@ -1533,8 +1555,8 @@ function FakePurchaseWidget({ products }) {
     function showOne() {
       const product = products[Math.floor(Math.random() * products.length)];
       const first = FAKE_FIRST_NAMES[Math.floor(Math.random() * FAKE_FIRST_NAMES.length)];
-      const fakeLast = FAKE_FIRST_NAMES[Math.floor(Math.random() * FAKE_FIRST_NAMES.length)];
-      setCurrent({ name: first + " " + maskName(fakeLast), product: product.name, price: product.price });
+      const last = FAKE_LAST_NAMES[Math.floor(Math.random() * FAKE_LAST_NAMES.length)];
+      setCurrent({ name: maskName(first, last), product: product.name, price: product.price });
       setVisible(true);
       setTimeout(() => setVisible(false), 4500);
     }
@@ -2163,39 +2185,19 @@ export default function App() {
     setActiveMessage(null);
   }
 
-  // Lightweight online-presence counter (works for logged in and anonymous visitors)
-  const [onlineCount, setOnlineCount] = useState(1);
+  // Cosmetic "online now" counter that gently drifts between 20-70
+  const [onlineCount, setOnlineCount] = useState(() => 20 + Math.floor(Math.random() * 50));
   useEffect(() => {
-    let sessionId;
-    try {
-      sessionId = localStorage.getItem("skyflix_session_id");
-      if (!sessionId) {
-        sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
-        localStorage.setItem("skyflix_session_id", sessionId);
-      }
-    } catch {
-      sessionId = Math.random().toString(36).slice(2);
-    }
-
-    async function ping() {
-      await supabase.from("site_presence").upsert({ session_id: sessionId, last_seen: new Date().toISOString() });
-    }
-    async function countOnline() {
-      const { data } = await supabase.from("site_presence").select("last_seen");
-      if (data) {
-        const cutoff = Date.now() - 60000;
-        const active = data.filter((row) => new Date(row.last_seen).getTime() > cutoff).length;
-        setOnlineCount(Math.max(active, 1));
-      }
-    }
-    ping();
-    countOnline();
-    const pingInterval = setInterval(ping, 20000);
-    const countInterval = setInterval(countOnline, 15000);
-    return () => {
-      clearInterval(pingInterval);
-      clearInterval(countInterval);
-    };
+    const interval = setInterval(() => {
+      setOnlineCount((prev) => {
+        const delta = Math.floor(Math.random() * 9) - 4;
+        let next = prev + delta;
+        if (next < 20) next = 20 + Math.floor(Math.random() * 5);
+        if (next > 70) next = 70 - Math.floor(Math.random() * 5);
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const [lang, setLang] = useState(() => {
