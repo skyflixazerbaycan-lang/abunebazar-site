@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
@@ -102,6 +102,13 @@ const I18N = {
     otpButton: "Təsdiqlə",
     otpError: "Kod yanlışdır və ya vaxtı keçib. Yenidən cəhd edin.",
     otpResend: "Kodu yenidən göndər",
+    balanceLabel: "Balansınız",
+    balanceTopUp: "Balansı artır",
+    balanceMaintenance: "Hazırda texniki iş gedir.",
+    balanceWhatsappNote: "Sifariş vermək üçün WhatsApp-a yazın. Sabah biz əlavə edərik.",
+    balanceWhatsappBtn: "WhatsApp-a yaz",
+    bannedTitle: "Hesabınız bloklanıb",
+    bannedText: "Hesabınız administrator tərəfindən bloklanıb. Ətraflı məlumat üçün dəstək ilə əlaqə saxlayın.",
     loading: "Yüklənir...",
     hello: "Salam!",
     ordersNote: "Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.",
@@ -206,6 +213,13 @@ const I18N = {
     otpButton: "Confirm",
     otpError: "The code is incorrect or has expired. Please try again.",
     otpResend: "Resend code",
+    balanceLabel: "Your balance",
+    balanceTopUp: "Top up balance",
+    balanceMaintenance: "Currently under maintenance.",
+    balanceWhatsappNote: "Message us on WhatsApp to place an order. We'll add this feature tomorrow.",
+    balanceWhatsappBtn: "Message on WhatsApp",
+    bannedTitle: "Your account is blocked",
+    bannedText: "Your account has been blocked by an administrator. Contact support for details.",
     loading: "Loading...",
     hello: "Hello!",
     ordersNote: "You'll receive updates about your orders on WhatsApp.",
@@ -310,6 +324,13 @@ const I18N = {
     otpButton: "დადასტურება",
     otpError: "კოდი არასწორია ან ვადა გაუვიდა. ცადეთ ხელახლა.",
     otpResend: "კოდის ხელახლა გაგზავნა",
+    balanceLabel: "თქვენი ბალანსი",
+    balanceTopUp: "ბალანსის შევსება",
+    balanceMaintenance: "ამჟამად მიმდინარეობს ტექნიკური სამუშაოები.",
+    balanceWhatsappNote: "შეკვეთისთვის მოგვწერეთ WhatsApp-ზე. ხვალ დავამატებთ ამ ფუნქციას.",
+    balanceWhatsappBtn: "მოწერა WhatsApp-ზე",
+    bannedTitle: "თქვენი ანგარიში დაბლოკილია",
+    bannedText: "თქვენი ანგარიში დაბლოკილია ადმინისტრატორის მიერ. დეტალებისთვის დაუკავშირდით მხარდაჭერას.",
     loading: "იტვირთება...",
     hello: "გამარჯობა!",
     ordersNote: "თქვენი შეკვეთების შესახებ ინფორმაციას მიიღებთ WhatsApp-ის საშუალებით.",
@@ -414,6 +435,13 @@ const I18N = {
     otpButton: "Подтвердить",
     otpError: "Код неверен или срок его действия истёк. Попробуйте снова.",
     otpResend: "Отправить код повторно",
+    balanceLabel: "Ваш баланс",
+    balanceTopUp: "Пополнить баланс",
+    balanceMaintenance: "Ведутся технические работы.",
+    balanceWhatsappNote: "Напишите нам в WhatsApp, чтобы сделать заказ. Добавим эту функцию завтра.",
+    balanceWhatsappBtn: "Написать в WhatsApp",
+    bannedTitle: "Ваш аккаунт заблокирован",
+    bannedText: "Ваш аккаунт заблокирован администратором. Свяжитесь с поддержкой для уточнения деталей.",
     loading: "Загрузка...",
     hello: "Привет!",
     ordersNote: "Информацию о ваших заказах вы будете получать через WhatsApp.",
@@ -1196,7 +1224,7 @@ function RulesModal({ onClose, t, lang }) {
   );
 }
 
-function CustomerAuthPage({ t, lang }) {
+function CustomerAuthPage({ t, lang, settings }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
@@ -1212,6 +1240,8 @@ function CustomerAuthPage({ t, lang }) {
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
   const [otpSending, setOtpSending] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [showTopUp, setShowTopUp] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -1223,6 +1253,21 @@ function CustomerAuthPage({ t, lang }) {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("balance, banned")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(data);
+      });
+  }, [session]);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -1327,6 +1372,21 @@ function CustomerAuthPage({ t, lang }) {
 
   if (session) {
     const u = session.user;
+    if (profile?.banned) {
+      return (
+        <section className="ab-section ab-page-pad">
+          <div className="ad-login-wrap">
+            <PageHead kicker={t("accountKickerMine")} title={t("bannedTitle")} sub={t("bannedText")} />
+            <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
+              {t("logout")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+    const rawNumber = settings?.contact_whatsapp || "517873090";
+    const digits = rawNumber.replace(/[^0-9]/g, "");
+    const waLink = `https://wa.me/${digits}`;
     return (
       <section className="ab-section ab-page-pad">
         <div className="ad-login-wrap">
@@ -1343,6 +1403,26 @@ function CustomerAuthPage({ t, lang }) {
               </label>
             )}
           </div>
+
+          <div className="ab-balance-card">
+            <div>
+              <div className="ab-balance-label">{t("balanceLabel")}</div>
+              <div className="ab-balance-amount">{Number(profile?.balance || 0).toFixed(2)} ₼</div>
+            </div>
+            <button className="ab-btn ab-btn-gold" onClick={() => setShowTopUp((v) => !v)}>
+              <Wallet size={16} /> {t("balanceTopUp")}
+            </button>
+          </div>
+          {showTopUp && (
+            <div className="ab-topup-note">
+              <p>{t("balanceMaintenance")}</p>
+              <p>{t("balanceWhatsappNote")}</p>
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-ghost" style={{ marginTop: 10 }}>
+                <MessageCircle size={16} /> {t("balanceWhatsappBtn")}
+              </a>
+            </div>
+          )}
+
           <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
           <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
             {t("logout")}
@@ -1431,6 +1511,81 @@ function CustomerAuthPage({ t, lang }) {
       </div>
       {showRules && <RulesModal onClose={() => setShowRules(false)} t={t} lang={lang} />}
     </section>
+  );
+}
+
+const FAKE_FIRST_NAMES = [
+  "Anar", "Rəşad", "Aysel", "Nərmin", "Tural", "Günel", "Elvin", "Ləman",
+  "Kamran", "Sevinc", "Orxan", "Aygün", "Murad", "Zeynəb", "Fərid", "Xəyalə",
+];
+
+function maskName(name) {
+  if (name.length <= 2) return name[0] + "***";
+  return name[0] + "***" + name[name.length - 1];
+}
+
+function FakePurchaseWidget({ products }) {
+  const [visible, setVisible] = useState(false);
+  const [current, setCurrent] = useState(null);
+
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    function showOne() {
+      const product = products[Math.floor(Math.random() * products.length)];
+      const first = FAKE_FIRST_NAMES[Math.floor(Math.random() * FAKE_FIRST_NAMES.length)];
+      const fakeLast = FAKE_FIRST_NAMES[Math.floor(Math.random() * FAKE_FIRST_NAMES.length)];
+      setCurrent({ name: first + " " + maskName(fakeLast), product: product.name, price: product.price });
+      setVisible(true);
+      setTimeout(() => setVisible(false), 4500);
+    }
+    const first = setTimeout(showOne, 4000);
+    const interval = setInterval(showOne, 9000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(interval);
+    };
+  }, [products]);
+
+  if (!current) return null;
+
+  return (
+    <div className={`ab-fake-purchase ${visible ? "show" : ""}`}>
+      <div className="ab-fake-purchase-icon">
+        <ShoppingCart size={16} />
+      </div>
+      <div>
+        <div className="ab-fake-purchase-name">{current.name}</div>
+        <div className="ab-fake-purchase-detail">
+          {current.product} — {current.price} ₼
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnlineCounter({ count }) {
+  return (
+    <div className="ab-online-counter">
+      <span className="ab-online-dot" />
+      {count} online
+    </div>
+  );
+}
+
+function MessageBanner({ message, onDismiss }) {
+  if (!message) return null;
+  return (
+    <div className="ab-msg-overlay">
+      <div className="ab-msg-box">
+        <button className="ab-msg-close" onClick={onDismiss} aria-label="Bağla">
+          <X size={20} />
+        </button>
+        <p>{message.message}</p>
+        <button className="ab-btn ab-btn-gold" onClick={onDismiss} style={{ marginTop: 16 }}>
+          Anladım
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1529,6 +1684,10 @@ function AdminPage({ onDataChanged }) {
   const [status, setStatus] = useState("");
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [expandedCustomer, setExpandedCustomer] = useState(null);
+  const [balanceInput, setBalanceInput] = useState("");
+  const [messageInput, setMessageInput] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -1664,6 +1823,55 @@ function AdminPage({ onDataChanged }) {
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
     if (!error) onDataChanged();
   }
+
+  async function addBalance(customerId) {
+    const amount = parseFloat(balanceInput);
+    if (!amount || amount <= 0) {
+      flash("Düzgün məbləğ daxil edin.");
+      return;
+    }
+    const cust = customers.find((c) => c.id === customerId);
+    const newBalance = Number(cust?.balance || 0) + amount;
+    const { error } = await supabase.from("profiles").update({ balance: newBalance }).eq("id", customerId);
+    if (!error) {
+      setCustomers((prev) => prev.map((c) => (c.id === customerId ? { ...c, balance: newBalance } : c)));
+      setBalanceInput("");
+      flash("Balans əlavə olundu ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  async function toggleBan(customerId, currentlyBanned) {
+    const { error } = await supabase.from("profiles").update({ banned: !currentlyBanned }).eq("id", customerId);
+    if (!error) {
+      setCustomers((prev) => prev.map((c) => (c.id === customerId ? { ...c, banned: !currentlyBanned } : c)));
+      flash(!currentlyBanned ? "Müştəri bloklandı ✓" : "Blok ləğv edildi ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  async function sendMessage(customerId) {
+    if (!messageInput.trim()) {
+      flash("Mesaj mətnini yazın.");
+      return;
+    }
+    const { error } = await supabase.from("user_messages").insert({ user_id: customerId, message: messageInput.trim() });
+    if (!error) {
+      setMessageInput("");
+      flash("Mesaj göndərildi ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  const filteredCustomers = customers.filter((c) => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (c.email || "").toLowerCase().includes(q) || (c.full_name || "").toLowerCase().includes(q);
+  });
+
 
   if (checkingSession) {
     return (
@@ -1822,16 +2030,63 @@ function AdminPage({ onDataChanged }) {
         </button>
       </div>
 
-      <h3 className="ad-section-title">Müştərilər ({customers.length})</h3>
+      <h3 className="ad-section-title">Müştərilər ({filteredCustomers.length})</h3>
+      <input
+        className="ad-customer-search"
+        placeholder="Email və ya ad üzrə axtar..."
+        value={customerSearch}
+        onChange={(e) => setCustomerSearch(e.target.value)}
+      />
       <div className="ad-products">
-        {customers.map((c) => (
-          <div className="ad-customer-row" key={c.id}>
-            <span className="ad-customer-email">{c.email}</span>
-            <span className="ad-customer-name">{c.full_name || "—"}</span>
-            <span className="ad-customer-date">{new Date(c.created_at).toLocaleDateString("az-AZ")}</span>
+        {filteredCustomers.map((c) => (
+          <div className="ad-customer-block" key={c.id}>
+            <div
+              className="ad-customer-row"
+              onClick={() => setExpandedCustomer(expandedCustomer === c.id ? null : c.id)}
+              style={{ cursor: "pointer" }}
+            >
+              <span className="ad-customer-email">{c.email}</span>
+              <span className="ad-customer-name">{c.full_name || "—"}</span>
+              <span className="ad-customer-balance">{Number(c.balance || 0).toFixed(2)} ₼</span>
+              {c.banned && <span className="ad-banned-tag">Bloklu</span>}
+              <span className="ad-customer-date">{new Date(c.created_at).toLocaleDateString("az-AZ")}</span>
+            </div>
+            {expandedCustomer === c.id && (
+              <div className="ad-customer-actions">
+                <div className="ad-customer-action-row">
+                  <input
+                    type="number"
+                    placeholder="Məbləğ (₼)"
+                    value={balanceInput}
+                    onChange={(e) => setBalanceInput(e.target.value)}
+                  />
+                  <button className="ab-btn ab-btn-gold" onClick={() => addBalance(c.id)}>
+                    <Wallet size={15} /> Balans əlavə et
+                  </button>
+                  <button
+                    className={c.banned ? "ab-btn ab-btn-ghost" : "ad-delete"}
+                    onClick={() => toggleBan(c.id, c.banned)}
+                  >
+                    <Ban size={15} /> {c.banned ? "Blokdan çıxar" : "Ban et"}
+                  </button>
+                </div>
+                <div className="ad-customer-action-row">
+                  <input
+                    type="text"
+                    placeholder="Mesaj yaz..."
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="ab-btn ab-btn-gold" onClick={() => sendMessage(c.id)}>
+                    <Send size={15} /> Mesaj əlavə et
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
-        {customers.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ qeydiyyatdan keçən yoxdur.</p>}
+        {filteredCustomers.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Nəticə tapılmadı.</p>}
       </div>
 
       <h3 className="ad-section-title">Sifarişlər ({orders.length})</h3>
@@ -1872,6 +2127,75 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // Admin -> customer message banner
+  const [activeMessage, setActiveMessage] = useState(null);
+  useEffect(() => {
+    if (!session) {
+      setActiveMessage(null);
+      return;
+    }
+    async function checkBanAndMessages() {
+      const { data: prof } = await supabase.from("profiles").select("banned").eq("id", session.user.id).single();
+      if (prof?.banned) {
+        window.alert(t("bannedText"));
+        await supabase.auth.signOut();
+        return;
+      }
+      const { data } = await supabase
+        .from("user_messages")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("dismissed", false)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) setActiveMessage(data[0]);
+    }
+    checkBanAndMessages();
+    const interval = setInterval(checkBanAndMessages, 30000);
+    return () => clearInterval(interval);
+  }, [session]);
+
+  async function dismissMessage() {
+    if (!activeMessage) return;
+    await supabase.from("user_messages").update({ dismissed: true }).eq("id", activeMessage.id);
+    setActiveMessage(null);
+  }
+
+  // Lightweight online-presence counter (works for logged in and anonymous visitors)
+  const [onlineCount, setOnlineCount] = useState(1);
+  useEffect(() => {
+    let sessionId;
+    try {
+      sessionId = localStorage.getItem("skyflix_session_id");
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem("skyflix_session_id", sessionId);
+      }
+    } catch {
+      sessionId = Math.random().toString(36).slice(2);
+    }
+
+    async function ping() {
+      await supabase.from("site_presence").upsert({ session_id: sessionId, last_seen: new Date().toISOString() });
+    }
+    async function countOnline() {
+      const { data } = await supabase.from("site_presence").select("last_seen");
+      if (data) {
+        const cutoff = Date.now() - 60000;
+        const active = data.filter((row) => new Date(row.last_seen).getTime() > cutoff).length;
+        setOnlineCount(Math.max(active, 1));
+      }
+    }
+    ping();
+    countOnline();
+    const pingInterval = setInterval(ping, 20000);
+    const countInterval = setInterval(countOnline, 15000);
+    return () => {
+      clearInterval(pingInterval);
+      clearInterval(countInterval);
+    };
   }, []);
 
   const [lang, setLang] = useState(() => {
@@ -1946,6 +2270,9 @@ export default function App() {
   return (
     <div className="ab-root">
       <VideoWidget videoId="jhgJV0Pg54Y" />
+      <FakePurchaseWidget products={products} />
+      <OnlineCounter count={onlineCount} />
+      <MessageBanner message={activeMessage} onDismiss={dismissMessage} />
       <style>{`
         :root{
           --bg:#FFFFFF;
@@ -2236,6 +2563,52 @@ export default function App() {
 
         .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
 
+        .ab-fake-purchase{
+          position:fixed; bottom:22px; left:22px; z-index:55;
+          display:flex; align-items:center; gap:12px;
+          background:var(--bg); border:1px solid var(--line); border-radius:14px;
+          padding:12px 16px; max-width:280px;
+          box-shadow:0 16px 32px -12px rgba(0,0,0,0.25);
+          transform:translateY(20px); opacity:0; pointer-events:none;
+          transition:transform .4s ease, opacity .4s ease;
+        }
+        .ab-fake-purchase.show{ transform:translateY(0); opacity:1; }
+        .ab-fake-purchase-icon{
+          width:34px; height:34px; border-radius:50%; background:var(--surface2); color:var(--gold);
+          display:flex; align-items:center; justify-content:center; flex-shrink:0;
+        }
+        .ab-fake-purchase-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; }
+        .ab-fake-purchase-detail{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+        .ab-online-counter{
+          position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:54;
+          display:flex; align-items:center; gap:7px;
+          background:var(--bg); border:1px solid var(--line); border-radius:100px;
+          padding:7px 14px; font-size:12px; color:var(--muted);
+          box-shadow:0 8px 20px -10px rgba(0,0,0,0.2);
+        }
+        .ab-online-dot{
+          width:8px; height:8px; border-radius:50%; background:#2ecc71;
+          box-shadow:0 0 0 0 rgba(46,204,113,0.6);
+          animation:ab-pulse 1.8s infinite;
+        }
+        @keyframes ab-pulse{
+          0%{ box-shadow:0 0 0 0 rgba(46,204,113,0.55); }
+          70%{ box-shadow:0 0 0 8px rgba(46,204,113,0); }
+          100%{ box-shadow:0 0 0 0 rgba(46,204,113,0); }
+        }
+
+        .ab-msg-overlay{
+          position:fixed; inset:0; z-index:90; background:rgba(26,18,16,0.6);
+          display:flex; align-items:center; justify-content:center; padding:20px;
+        }
+        .ab-msg-box{
+          position:relative; background:var(--bg); border-radius:20px; max-width:440px; width:100%;
+          padding:32px 28px; text-align:center; box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+        }
+        .ab-msg-box p{ font-size:16px; line-height:1.6; margin:10px 0 0; }
+        .ab-msg-close{ position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
+
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
         .ab-kicker{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--gold); letter-spacing:.08em; margin-bottom:10px; }
@@ -2367,6 +2740,25 @@ export default function App() {
           border:1px solid var(--line); border-radius:12px; padding:12px 16px; background:var(--surface);
           font-size:13.5px;
         }
+        .ad-customer-search{
+          width:100%; max-width:360px; padding:10px 14px; border-radius:9px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--text);
+          margin-bottom:14px;
+        }
+        .ad-customer-block{ display:flex; flex-direction:column; gap:0; }
+        .ad-customer-balance{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-weight:700; }
+        .ad-banned-tag{
+          background:rgba(225,18,42,0.12); color:var(--gold); border-radius:100px; padding:3px 10px; font-size:11.5px; font-weight:700;
+        }
+        .ad-customer-actions{
+          border:1px solid var(--line); border-top:none; border-radius:0 0 12px 12px; padding:14px 16px; background:var(--bg);
+          display:flex; flex-direction:column; gap:10px;
+        }
+        .ad-customer-action-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .ad-customer-action-row input{
+          padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--text);
+        }
         .ad-customer-email{ font-weight:600; color:var(--text); }
         .ad-customer-name{ color:var(--muted); }
         .ad-customer-date{ color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin-left:auto; }
@@ -2382,6 +2774,19 @@ export default function App() {
         }
 
         .ab-agree-row{ display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--muted); cursor:pointer; }
+
+        .ab-balance-card{
+          display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+          border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-top:20px;
+          background:linear-gradient(120deg, rgba(225,18,42,0.08), rgba(140,22,32,0.05));
+        }
+        .ab-balance-label{ font-size:12.5px; color:var(--muted); }
+        .ab-balance-amount{ font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; color:var(--gold); margin-top:2px; }
+        .ab-topup-note{
+          border:1px dashed var(--line); border-radius:12px; padding:16px 18px; margin-top:12px;
+          font-size:13.5px; color:var(--muted); line-height:1.6;
+        }
+        .ab-topup-note p{ margin:0 0 6px; }
         .ab-agree-row input{ margin-top:3px; accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
         .ab-rules-link{
           background:none; border:none; padding:0; color:var(--gold); font-weight:600; cursor:pointer;
@@ -2522,7 +2927,7 @@ export default function App() {
         {page === "qaydalar" && <QaydalarPage t={t} lang={lang} />}
         {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
-        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} />}
+        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} settings={settings} />}
         {page === "sebet" && (
           <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} />
         )}
