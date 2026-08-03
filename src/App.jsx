@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2 } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
-  { id: "all", labelKey: "catAll" },
-  { id: "streaming", labelKey: "catStreaming" },
-  { id: "music", labelKey: "catMusic" },
-  { id: "ai", labelKey: "catAi" },
+  { id: "all", labelKey: "catAll", icon: LayoutGrid },
+  { id: "streaming", labelKey: "catStreaming", icon: Tv },
+  { id: "music", labelKey: "catMusic", icon: Music2 },
+  { id: "ai", labelKey: "catAi", icon: Bot },
 ];
 
 const NAV_ITEMS = [
@@ -729,6 +729,37 @@ function HomePage({ go, products, onAdd, lang, t }) {
         </div>
       </div>
 
+      <Reveal className="ab-trustbadges">
+        <div className="ab-trustbadge">
+          <BadgeCheck size={20} strokeWidth={1.75} />
+          <div>
+            <h4>{t("trustAccounts")}</h4>
+            <p>{t("trust1Text")}</p>
+          </div>
+        </div>
+        <div className="ab-trustbadge">
+          <Zap size={20} strokeWidth={1.75} />
+          <div>
+            <h4>{t("step3Title")}</h4>
+            <p>{t("trust2Text")}</p>
+          </div>
+        </div>
+        <div className="ab-trustbadge">
+          <Headset size={20} strokeWidth={1.75} />
+          <div>
+            <h4>{t("trustSupport")}</h4>
+            <p>{t("trust3Text")}</p>
+          </div>
+        </div>
+        <div className="ab-trustbadge">
+          <Star size={20} strokeWidth={1.75} />
+          <div>
+            <h4>{t("trustCustomers")}</h4>
+            <p>{t("trustTitleWhy")}</p>
+          </div>
+        </div>
+      </Reveal>
+
       <section className="ab-section" style={{ paddingTop: 60 }}>
         <PageHead kicker={t("popularKicker")} title={t("popularTitle")} sub={t("popularSub")} />
         <div className="ab-grid">
@@ -764,6 +795,7 @@ function PaketlerPage({ products, onAdd, t }) {
             className={`ab-pill ${cat === c.id ? "active" : ""}`}
             onClick={() => setCat(c.id)}
           >
+            <c.icon size={14} strokeWidth={2.1} />
             {t(c.labelKey)}
           </button>
         ))}
@@ -2324,6 +2356,19 @@ export default function App() {
         }
         .ab-reveal-in{ opacity:1; transform:translateY(0); }
 
+        .ab-trustbadges{
+          display:grid; grid-template-columns:repeat(2,1fr); gap:1px;
+          background:var(--line); margin:0 4vw; border-radius:16px; overflow:hidden;
+          border:1px solid var(--line); transform:translateY(-26px);
+        }
+        @media(min-width:900px){ .ab-trustbadges{ grid-template-columns:repeat(4,1fr); } }
+        .ab-trustbadge{
+          background:var(--bg); padding:22px 20px; display:flex; gap:12px; align-items:flex-start;
+        }
+        .ab-trustbadge svg{ color:var(--gold); flex-shrink:0; margin-top:2px; }
+        .ab-trustbadge h4{ font-size:13.5px; margin:0 0 3px; font-family:'Space Grotesk',sans-serif; }
+        .ab-trustbadge p{ font-size:11.5px; color:var(--muted); margin:0; line-height:1.45; }
+
         .ab-ticker{
           overflow:hidden; background:#170405; border-bottom:1px solid rgba(255,255,255,0.08);
           height:32px; display:flex; align-items:center;
@@ -2407,7 +2452,7 @@ export default function App() {
         .ab-langoption:hover{ background:var(--surface2); color:var(--text); }
         .ab-langoption.active{ color:var(--gold); }
         .ab-mobile-langrow{ display:flex; gap:8px; margin-top:20px; }
-        .ab-mobile-langrow .ab-pill{ flex:1; text-align:center; }
+        .ab-mobile-langrow .ab-pill{ flex:1; justify-content:center; }
 
         .ab-ge-strip{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
         .ab-ge-flag{ width:36px; height:auto; border-radius:4px; box-shadow:0 3px 8px rgba(0,0,0,0.3); flex-shrink:0; }
@@ -2670,6 +2715,7 @@ export default function App() {
 
         .ab-cat-pills{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:32px; }
         .ab-pill{
+          display:inline-flex; align-items:center; gap:7px;
           padding:9px 18px; border-radius:100px; border:1px solid var(--line);
           background:var(--surface); color:var(--muted); font-size:13.5px; font-weight:600;
           cursor:pointer; transition:all .2s ease; font-family:'Inter',sans-serif;
