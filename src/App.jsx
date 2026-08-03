@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
@@ -7,6 +7,7 @@ const CATEGORIES = [
   { id: "streaming", labelKey: "catStreaming", icon: Tv },
   { id: "music", labelKey: "catMusic", icon: Music2 },
   { id: "ai", labelKey: "catAi", icon: Bot },
+  { id: "games", labelKey: "catGames", icon: Gamepad2 },
 ];
 
 const NAV_ITEMS = [
@@ -124,6 +125,7 @@ const I18N = {
     catStreaming: "Streaming",
     catMusic: "Musiqi",
     catAi: "AI Alətləri",
+    catGames: "Oyun",
 
     navHome: "Ana səhifə",
     navPackages: "Paketlər",
@@ -235,6 +237,7 @@ const I18N = {
     catStreaming: "Streaming",
     catMusic: "Music",
     catAi: "AI Tools",
+    catGames: "Games",
 
     navHome: "Home",
     navPackages: "Packages",
@@ -346,6 +349,7 @@ const I18N = {
     catStreaming: "სტრიმინგი",
     catMusic: "მუსიკა",
     catAi: "AI ხელსაწყოები",
+    catGames: "თამაშები",
 
     navHome: "მთავარი",
     navPackages: "პაკეტები",
@@ -457,6 +461,7 @@ const I18N = {
     catStreaming: "Стриминг",
     catMusic: "Музыка",
     catAi: "AI-инструменты",
+    catGames: "Игры",
 
     navHome: "Главная",
     navPackages: "Пакеты",
@@ -1646,68 +1651,62 @@ function MessageBanner({ message, onDismiss }) {
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
-  const unmutedRef = useRef(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
-    const target = document.createElement("div");
-    wrapperRef.current.appendChild(target);
 
-    function createPlayer() {
-      playerRef.current = new window.YT.Player(target, {
-        videoId,
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          loop: 1,
-          playlist: videoId,
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          playsinline: 1,
-        },
-        events: {
-          onReady: (e) => {
-            e.target.playVideo();
+    function startPlayer() {
+      if (startedRef.current) return;
+      startedRef.current = true;
+
+      const target = document.createElement("div");
+      wrapperRef.current.appendChild(target);
+
+      function createPlayer() {
+        playerRef.current = new window.YT.Player(target, {
+          videoId,
+          playerVars: {
+            autoplay: 1,
+            mute: 0,
+            loop: 1,
+            playlist: videoId,
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            playsinline: 1,
           },
-        },
-      });
-    }
-    if (window.YT && window.YT.Player) {
-      createPlayer();
-    } else {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
-      window.onYouTubeIframeAPIReady = createPlayer;
-    }
-
-    function unmuteOnInteract() {
-      if (unmutedRef.current) return;
-      const p = playerRef.current;
-      if (p && p.unMute) {
-        p.unMute();
-        p.playVideo();
-        unmutedRef.current = true;
+          events: {
+            onReady: (e) => {
+              e.target.playVideo();
+            },
+          },
+        });
+      }
+      if (window.YT && window.YT.Player) {
+        createPlayer();
+      } else {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+        window.onYouTubeIframeAPIReady = createPlayer;
       }
     }
-    window.addEventListener("click", unmuteOnInteract);
-    window.addEventListener("touchstart", unmuteOnInteract);
-    window.addEventListener("keydown", unmuteOnInteract);
-    window.addEventListener("scroll", unmuteOnInteract, { passive: true });
+
+    window.addEventListener("click", startPlayer);
+    window.addEventListener("touchstart", startPlayer);
+    window.addEventListener("keydown", startPlayer);
+    window.addEventListener("scroll", startPlayer, { passive: true });
 
     return () => {
-      window.removeEventListener("click", unmuteOnInteract);
-      window.removeEventListener("touchstart", unmuteOnInteract);
-      window.removeEventListener("keydown", unmuteOnInteract);
-      window.removeEventListener("scroll", unmuteOnInteract);
+      window.removeEventListener("click", startPlayer);
+      window.removeEventListener("touchstart", startPlayer);
+      window.removeEventListener("keydown", startPlayer);
+      window.removeEventListener("scroll", startPlayer);
       if (playerRef.current && playerRef.current.destroy) {
         try {
           playerRef.current.destroy();
         } catch (e) {}
-      }
-      if (wrapperRef.current && target.parentNode === wrapperRef.current) {
-        wrapperRef.current.removeChild(target);
       }
     };
   }, [videoId]);
