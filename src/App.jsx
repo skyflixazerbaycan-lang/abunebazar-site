@@ -2167,7 +2167,7 @@ function AdminPage({ onDataChanged }) {
   );
 }
 
-function ProductTicker({ products }) {
+const ProductTicker = React.memo(function ProductTicker({ products }) {
   if (!products || products.length === 0) return null;
   const items = [...products, ...products, ...products];
   return (
@@ -2182,7 +2182,7 @@ function ProductTicker({ products }) {
       </div>
     </div>
   );
-}
+});
 
 export default function App() {
   useGoogleFonts();
@@ -2309,7 +2309,7 @@ export default function App() {
 
   useEffect(() => {
     const onScroll = () => setNavSolid(window.scrollY > 24);
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
