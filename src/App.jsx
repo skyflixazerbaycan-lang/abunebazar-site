@@ -2135,6 +2135,23 @@ function AdminPage({ onDataChanged }) {
   );
 }
 
+function ProductTicker({ products }) {
+  if (!products || products.length === 0) return null;
+  const items = [...products, ...products, ...products];
+  return (
+    <div className="ab-ticker">
+      <div className="ab-ticker-track">
+        {items.map((p, i) => (
+          <span className="ab-ticker-item" key={i}>
+            <Ticket size={12} strokeWidth={2} />
+            {p.name} <b>{p.price} ₼</b>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   useGoogleFonts();
   const [page, go] = useHashRoute();
@@ -2307,6 +2324,27 @@ export default function App() {
         }
         .ab-reveal-in{ opacity:1; transform:translateY(0); }
 
+        .ab-ticker{
+          overflow:hidden; background:#170405; border-bottom:1px solid rgba(255,255,255,0.08);
+          height:32px; display:flex; align-items:center;
+        }
+        .ab-ticker-track{
+          display:flex; align-items:center; gap:36px; white-space:nowrap;
+          animation:ab-ticker-scroll 38s linear infinite;
+          padding-left:36px;
+        }
+        .ab-ticker-item{
+          display:inline-flex; align-items:center; gap:7px;
+          font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.02em;
+          color:rgba(255,255,255,0.68);
+        }
+        .ab-ticker-item svg{ color:#FF6B6B; flex-shrink:0; }
+        .ab-ticker-item b{ color:#FFFFFF; font-weight:600; margin-left:2px; }
+        @keyframes ab-ticker-scroll{
+          from{ transform:translateX(0); }
+          to{ transform:translateX(-33.3333%); }
+        }
+
         .ab-nav{
           position:sticky; top:0; z-index:40;
           display:flex; align-items:center; justify-content:space-between;
@@ -2330,12 +2368,19 @@ export default function App() {
         .ab-navlinks{ display:none; gap:6px; }
         @media(min-width:800px){ .ab-navlinks{ display:flex; } }
         .ab-navlink{
-          background:none; border:none; cursor:pointer;
+          background:none; border:none; cursor:pointer; position:relative;
           font-family:'Inter',sans-serif; font-size:14.5px; color:var(--muted);
           padding:8px 13px; border-radius:8px; transition:color .2s ease, background .2s ease;
         }
+        .ab-navlink::after{
+          content:""; position:absolute; left:13px; right:13px; bottom:4px; height:2px;
+          background:var(--gold); border-radius:2px;
+          transform:scaleX(0); transform-origin:left; transition:transform .28s cubic-bezier(.4,0,.2,1);
+        }
+        .ab-navlink:hover::after{ transform:scaleX(1); }
         .ab-navlink:hover{ color:var(--text); }
         .ab-navlink.active{ color:var(--text); background:var(--surface2); }
+        .ab-navlink.active::after{ transform:scaleX(1); }
 
         .ab-navright{ display:flex; align-items:center; gap:10px; }
         .ab-menubtn{ display:flex; background:none; border:1px solid var(--line); border-radius:8px; padding:8px; color:var(--text); cursor:pointer; }
@@ -2437,11 +2482,17 @@ export default function App() {
           border:1px solid transparent;
           cursor:pointer;
           display:inline-flex; align-items:center; gap:6px;
-          transition:transform .15s ease, background .2s ease, border-color .2s ease;
+          transition:transform .15s ease, background .2s ease, border-color .2s ease, box-shadow .25s ease;
         }
         .ab-btn:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
-        .ab-btn-gold{ background:var(--gold); color:#FFFFFF; }
-        .ab-btn-gold:hover{ transform:translateY(-1px); }
+        .ab-btn-gold{ background:var(--gold); color:#FFFFFF; position:relative; overflow:hidden; }
+        .ab-btn-gold::before{
+          content:""; position:absolute; top:0; left:-60%; width:40%; height:100%;
+          background:linear-gradient(115deg, transparent, rgba(255,255,255,0.35), transparent);
+          transform:skewX(-20deg);
+        }
+        .ab-btn-gold:hover{ transform:translateY(-1px); box-shadow:0 10px 24px -10px rgba(225,18,42,0.55); }
+        .ab-btn-gold:hover::before{ left:130%; transition:left .65s ease; }
         .ab-btn-ghost{ background:transparent; color:var(--text); border-color:var(--line); }
         .ab-btn-ghost:hover{ border-color:var(--muted); }
         .ab-btn-onscreen{ background:#FFFFFF; color:var(--gold); }
@@ -2641,7 +2692,10 @@ export default function App() {
           background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden;
           transition:border-color .2s ease, transform .2s ease, box-shadow .2s ease;
         }
-        .ab-ticket:hover{ border-color:rgba(225,18,42,0.45); transform:translateY(-3px); box-shadow:0 16px 30px -18px rgba(26,18,16,0.35); }
+        .ab-ticket:hover{
+          border-color:rgba(225,18,42,0.5); transform:translateY(-4px);
+          box-shadow:0 20px 38px -18px rgba(225,18,42,0.28), 0 8px 16px -10px rgba(26,18,16,0.25);
+        }
 
         .ab-ticket-top{ display:flex; justify-content:space-between; align-items:flex-start; padding:20px 20px 22px; }
         .ab-ticket-eyebrow{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted); letter-spacing:.08em; margin-bottom:6px; }
@@ -2824,6 +2878,7 @@ export default function App() {
         .ab-rules-page .ab-rule-item p{ font-size:14px; }
       `}</style>
 
+      <ProductTicker products={products} />
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
         <button className="ab-brand" onClick={() => navigate("home")}>
           <span className="ab-brand-mark">
