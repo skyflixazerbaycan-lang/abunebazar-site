@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2 } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const CATEGORIES = [
@@ -13,6 +13,7 @@ const CATEGORIES = [
 const NAV_ITEMS = [
   { key: "home", labelKey: "navHome" },
   { key: "paketler", labelKey: "navPackages" },
+  { key: "reylerall", labelKey: "navReviews" },
   { key: "necehisleyir", labelKey: "navHow" },
   { key: "etibar", labelKey: "navTrust" },
   { key: "qaydalar", labelKey: "navRules" },
@@ -110,6 +111,17 @@ const I18N = {
     balanceWhatsappBtn: "WhatsApp-a yaz",
     bannedTitle: "Hesabınız bloklanıb",
     bannedText: "Hesabınız administrator tərəfindən bloklanıb. Ətraflı məlumat üçün dəstək ilə əlaqə saxlayın.",
+    reviewsWord: "rəy",
+    noReviewsYet: "Bu məhsula hələ rəy yazılmayıb.",
+    noReviewsShort: "Rəy yoxdur",
+    verifiedPurchase: "Satın aldı",
+    commentPlaceholder: "Rəyinizi yazın...",
+    submitReview: "Rəyi göndər",
+    reviewCommentRequired: "Rəy mətnini yazın.",
+    reviewGenericError: "Xəta baş verdi, yenidən cəhd edin.",
+    alreadyReviewed: "Bu məhsula artıq rəy yazmısınız.",
+    notEligibleReview: "Yalnız bu məhsulu satın almış müştərilər rəy yaza bilər.",
+    loginToReview: "Rəy yazmaq üçün hesabınıza daxil olun.",
     loading: "Yüklənir...",
     hello: "Salam!",
     ordersNote: "Sifarişləriniz haqqında WhatsApp üzərindən məlumat alacaqsınız.",
@@ -132,6 +144,7 @@ const I18N = {
     navHow: "Necə işləyir",
     navTrust: "Etibarlılıq",
     navRules: "Qaydalar",
+    navReviews: "Rəylər",
     navContact: "Əlaqə",
 
     rulesIntro: "SkyFlix Azerbaycan olaraq bütün müştərilərimiz üçün eyni şəkildə tətbiq olunan qaydalar aşağıda qeyd edilib.",
@@ -222,6 +235,17 @@ const I18N = {
     balanceWhatsappBtn: "Message on WhatsApp",
     bannedTitle: "Your account is blocked",
     bannedText: "Your account has been blocked by an administrator. Contact support for details.",
+    reviewsWord: "reviews",
+    noReviewsYet: "No reviews yet for this product.",
+    noReviewsShort: "No reviews",
+    verifiedPurchase: "Verified purchase",
+    commentPlaceholder: "Write your review...",
+    submitReview: "Submit review",
+    reviewCommentRequired: "Please write your review.",
+    reviewGenericError: "Something went wrong, please try again.",
+    alreadyReviewed: "You have already reviewed this product.",
+    notEligibleReview: "Only customers who purchased this product can leave a review.",
+    loginToReview: "Log in to your account to leave a review.",
     loading: "Loading...",
     hello: "Hello!",
     ordersNote: "You'll receive updates about your orders on WhatsApp.",
@@ -244,6 +268,7 @@ const I18N = {
     navHow: "How it works",
     navTrust: "Trust",
     navRules: "Rules",
+    navReviews: "Reviews",
     navContact: "Contact",
 
     rulesIntro: "The rules below apply equally to all SkyFlix Azerbaycan customers. Full details are currently available in Azerbaijani.",
@@ -334,6 +359,17 @@ const I18N = {
     balanceWhatsappBtn: "მოწერა WhatsApp-ზე",
     bannedTitle: "თქვენი ანგარიში დაბლოკილია",
     bannedText: "თქვენი ანგარიში დაბლოკილია ადმინისტრატორის მიერ. დეტალებისთვის დაუკავშირდით მხარდაჭერას.",
+    reviewsWord: "შეფასება",
+    noReviewsYet: "ამ პროდუქტს ჯერ არ აქვს შეფასება.",
+    noReviewsShort: "შეფასება არ არის",
+    verifiedPurchase: "შეძენილია",
+    commentPlaceholder: "დაწერეთ თქვენი შეფასება...",
+    submitReview: "გაგზავნა",
+    reviewCommentRequired: "გთხოვთ დაწეროთ შეფასება.",
+    reviewGenericError: "დაფიქსირდა შეცდომა, სცადეთ ხელახლა.",
+    alreadyReviewed: "თქვენ უკვე დატოვეთ შეფასება ამ პროდუქტზე.",
+    notEligibleReview: "შეფასების დატოვება შეუძლიათ მხოლოდ იმ მომხმარებლებს, ვინც შეიძინა ეს პროდუქტი.",
+    loginToReview: "შეფასების დასატოვებლად შედით თქვენს ანგარიშში.",
     loading: "იტვირთება...",
     hello: "გამარჯობა!",
     ordersNote: "თქვენი შეკვეთების შესახებ ინფორმაციას მიიღებთ WhatsApp-ის საშუალებით.",
@@ -356,6 +392,7 @@ const I18N = {
     navHow: "როგორ მუშაობს",
     navTrust: "სანდოობა",
     navRules: "წესები",
+    navReviews: "შეფასებები",
     navContact: "კონტაქტი",
 
     rulesIntro: "ქვემოთ მოცემული წესები თანაბრად ვრცელდება SkyFlix Azerbaycan-ის ყველა მომხმარებელზე.",
@@ -446,6 +483,17 @@ const I18N = {
     balanceWhatsappBtn: "Написать в WhatsApp",
     bannedTitle: "Ваш аккаунт заблокирован",
     bannedText: "Ваш аккаунт заблокирован администратором. Свяжитесь с поддержкой для уточнения деталей.",
+    reviewsWord: "отзывов",
+    noReviewsYet: "У этого товара пока нет отзывов.",
+    noReviewsShort: "Нет отзывов",
+    verifiedPurchase: "Купил(а)",
+    commentPlaceholder: "Напишите ваш отзыв...",
+    submitReview: "Отправить отзыв",
+    reviewCommentRequired: "Пожалуйста, напишите отзыв.",
+    reviewGenericError: "Произошла ошибка, попробуйте снова.",
+    alreadyReviewed: "Вы уже оставили отзыв на этот товар.",
+    notEligibleReview: "Оставлять отзывы могут только клиенты, купившие этот товар.",
+    loginToReview: "Войдите в аккаунт, чтобы оставить отзыв.",
     loading: "Загрузка...",
     hello: "Привет!",
     ordersNote: "Информацию о ваших заказах вы будете получать через WhatsApp.",
@@ -468,6 +516,7 @@ const I18N = {
     navHow: "Как это работает",
     navTrust: "Надёжность",
     navRules: "Правила",
+    navReviews: "Отзывы",
     navContact: "Контакты",
 
     rulesIntro: "Правила ниже одинаково применяются ко всем клиентам SkyFlix Azerbaycan.",
@@ -515,6 +564,7 @@ function useHashRoute() {
 function useAppData() {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState({});
+  const [reviews, setReviews] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   async function reload() {
@@ -526,6 +576,8 @@ function useAppData() {
       sett.forEach((s) => (obj[s.key] = s.value));
       setSettings(obj);
     }
+    const { data: revs } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
+    if (revs) setReviews(revs);
     setLoaded(true);
   }
 
@@ -533,7 +585,7 @@ function useAppData() {
     reload();
   }, []);
 
-  return { products, settings, reload, loaded };
+  return { products, settings, reviews, reload, loaded };
 }
 
 function Reveal({ children, delay = 0, className = "" }) {
@@ -571,7 +623,11 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p, onAdd, t }) {
+function TicketCard({ p, onAdd, t, reviews, onOpenReviews }) {
+  const productReviews = (reviews || []).filter((r) => r.product_id === p.id);
+  const avg = productReviews.length
+    ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
+    : 0;
   return (
     <div className="ab-ticket">
       {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
@@ -595,6 +651,14 @@ function TicketCard({ p, onAdd, t }) {
           <span className="ab-price-per">/{p.period}</span>
         </div>
       </div>
+      {onOpenReviews && (
+        <button className="ab-ticket-reviews" onClick={() => onOpenReviews(p)}>
+          <Star size={13} fill={productReviews.length ? "#E1122A" : "none"} strokeWidth={1.5} />
+          {productReviews.length ? avg.toFixed(1) : t("noReviewsShort")}
+          <span className="ab-ticket-reviews-count">({productReviews.length})</span>
+          <MessageSquare size={13} style={{ marginLeft: "auto" }} />
+        </button>
+      )}
       {onAdd && (
         <button className="ab-ticket-addbtn" onClick={() => onAdd(p)}>
           <ShoppingCart size={15} /> {t("addToCart")}
@@ -671,7 +735,7 @@ function HeroSlideshow({ products }) {
   );
 }
 
-function HomePage({ go, products, onAdd, lang, t }) {
+function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
   return (
     <>
       <div className="ab-screen">
@@ -770,7 +834,7 @@ function HomePage({ go, products, onAdd, lang, t }) {
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} onAdd={onAdd} t={t} />
+              <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} />
             </Reveal>
           ))}
         </div>
@@ -786,7 +850,7 @@ function HomePage({ go, products, onAdd, lang, t }) {
   );
 }
 
-function PaketlerPage({ products, onAdd, t }) {
+function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
@@ -808,7 +872,7 @@ function PaketlerPage({ products, onAdd, t }) {
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} onAdd={onAdd} t={t} />
+            <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} />
           </Reveal>
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
@@ -1200,6 +1264,60 @@ function getRuleGroups(lang) {
   if (lang === "ka") return RULE_GROUPS_KA;
   if (lang === "ru") return RULE_GROUPS_RU;
   return RULE_GROUPS_AZ;
+}
+
+function ReviewsPage({ reviews, products, t }) {
+  const sorted = [...(reviews || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const avg = sorted.length ? sorted.reduce((s, r) => s + r.rating, 0) / sorted.length : 0;
+
+  return (
+    <section className="ab-section ab-page-pad">
+      <PageHead kicker={t("navReviews")} title={t("navReviews")} sub={t("noReviewsYet")} />
+      {sorted.length > 0 && (
+        <div className="ab-review-summary" style={{ marginBottom: 30 }}>
+          <div className="ab-review-avg">{avg.toFixed(1)}</div>
+          <div>
+            <div className="ab-review-stars">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star key={n} size={16} fill={n <= Math.round(avg) ? "#E1122A" : "none"} color="#E1122A" strokeWidth={1.5} />
+              ))}
+            </div>
+            <div className="ab-review-count">{sorted.length} {t("reviewsWord")}</div>
+          </div>
+        </div>
+      )}
+      <div className="ab-reviews-grid">
+        {sorted.map((r, i) => {
+          const prod = products.find((p) => p.id === r.product_id);
+          return (
+            <Reveal key={r.id} delay={(i % 6) * 60}>
+              <div className="ab-review-card">
+                <div className="ab-review-item-head">
+                  <span className="ab-review-name">{r.customer_name}</span>
+                  <span className="ab-review-verified">
+                    <CheckCircle2 size={12} /> {t("verifiedPurchase")}
+                  </span>
+                </div>
+                {prod && <div className="ab-review-product">{prod.name}</div>}
+                <div className="ab-review-stars">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} size={13} fill={n <= r.rating ? "#E1122A" : "none"} color="#E1122A" strokeWidth={1.5} />
+                  ))}
+                </div>
+                <p className="ab-review-comment">{r.comment}</p>
+                {r.admin_reply && (
+                  <div className="ab-review-reply">
+                    <strong>SkyFlix Azerbaycan:</strong> {r.admin_reply}
+                  </div>
+                )}
+              </div>
+            </Reveal>
+          );
+        })}
+      </div>
+      {sorted.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noReviewsYet")}</p>}
+    </section>
+  );
 }
 
 function QaydalarPage({ t, lang }) {
@@ -1648,6 +1766,138 @@ function MessageBanner({ message, onDismiss }) {
   );
 }
 
+function ReviewsModal({ product, reviews, session, t, onClose, onSubmitted }) {
+  const [eligible, setEligible] = useState(null);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const productReviews = (reviews || []).filter((r) => r.product_id === product.id);
+  const avg = productReviews.length
+    ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
+    : 0;
+
+  useEffect(() => {
+    if (!session) {
+      setEligible(false);
+      return;
+    }
+    if (productReviews.some((r) => r.user_id === session.user.id)) {
+      setAlreadyReviewed(true);
+      setEligible(false);
+      return;
+    }
+    supabase
+      .from("orders")
+      .select("items")
+      .eq("user_id", session.user.id)
+      .then(({ data }) => {
+        const purchased = (data || []).some((o) => (o.items || []).some((it) => it.id === product.id));
+        setEligible(purchased);
+      });
+  }, [session, product.id]);
+
+  async function submitReview() {
+    if (!comment.trim()) {
+      setError(t("reviewCommentRequired"));
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    const name = session.user.user_metadata?.full_name || session.user.email.split("@")[0];
+    const { error: err } = await supabase.from("reviews").insert({
+      product_id: product.id,
+      user_id: session.user.id,
+      customer_name: name,
+      rating,
+      comment: comment.trim(),
+    });
+    setSubmitting(false);
+    if (err) {
+      setError(t("reviewGenericError"));
+    } else {
+      setComment("");
+      onSubmitted();
+    }
+  }
+
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ab-modal-head">
+          <h3>{product.name}</h3>
+          <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="ab-review-summary">
+          <div className="ab-review-avg">{productReviews.length ? avg.toFixed(1) : "—"}</div>
+          <div>
+            <div className="ab-review-stars">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star key={n} size={15} fill={n <= Math.round(avg) ? "#E1122A" : "none"} color="#E1122A" strokeWidth={1.5} />
+              ))}
+            </div>
+            <div className="ab-review-count">{productReviews.length} {t("reviewsWord")}</div>
+          </div>
+        </div>
+
+        <div className="ab-review-list">
+          {productReviews.length === 0 && <p className="ab-review-empty">{t("noReviewsYet")}</p>}
+          {productReviews.map((r) => (
+            <div className="ab-review-item" key={r.id}>
+              <div className="ab-review-item-head">
+                <span className="ab-review-name">{r.customer_name}</span>
+                <span className="ab-review-verified">
+                  <CheckCircle2 size={12} /> {t("verifiedPurchase")}
+                </span>
+              </div>
+              <div className="ab-review-stars">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star key={n} size={12} fill={n <= r.rating ? "#E1122A" : "none"} color="#E1122A" strokeWidth={1.5} />
+                ))}
+              </div>
+              <p className="ab-review-comment">{r.comment}</p>
+              {r.admin_reply && (
+                <div className="ab-review-reply">
+                  <strong>SkyFlix Azerbaycan:</strong> {r.admin_reply}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {eligible === true && (
+          <div className="ab-review-form">
+            <div className="ab-review-stars ab-review-stars-input">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setRating(n)} className="ab-star-btn">
+                  <Star size={22} fill={n <= rating ? "#E1122A" : "none"} color="#E1122A" strokeWidth={1.5} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              placeholder={t("commentPlaceholder")}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+            />
+            {error && <p className="ad-error">{error}</p>}
+            <button className="ab-btn ab-btn-gold" onClick={submitReview} disabled={submitting} style={{ justifyContent: "center" }}>
+              {t("submitReview")}
+            </button>
+          </div>
+        )}
+        {eligible === false && alreadyReviewed && <p className="ab-review-note">{t("alreadyReviewed")}</p>}
+        {eligible === false && !alreadyReviewed && session && <p className="ab-review-note">{t("notEligibleReview")}</p>}
+        {eligible === false && !session && <p className="ab-review-note">{t("loginToReview")}</p>}
+      </div>
+    </div>
+  );
+}
+
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
@@ -1739,6 +1989,8 @@ function AdminPage({ onDataChanged }) {
   const [orders, setOrders] = useState([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [expandedCustomer, setExpandedCustomer] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [replyInputs, setReplyInputs] = useState({});
   const [balanceInput, setBalanceInput] = useState("");
   const [messageInput, setMessageInput] = useState("");
 
@@ -1770,6 +2022,8 @@ function AdminPage({ onDataChanged }) {
     if (profs) setCustomers(profs);
     const { data: ords } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
     if (ords) setOrders(ords);
+    const { data: revs } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
+    if (revs) setReviews(revs);
   }
 
   async function uploadImage(file) {
@@ -1914,6 +2168,22 @@ function AdminPage({ onDataChanged }) {
     if (!error) {
       setMessageInput("");
       flash("Mesaj göndərildi ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  async function replyToReview(reviewId) {
+    const text = (replyInputs[reviewId] || "").trim();
+    if (!text) {
+      flash("Cavab mətnini yazın.");
+      return;
+    }
+    const { error } = await supabase.from("reviews").update({ admin_reply: text }).eq("id", reviewId);
+    if (!error) {
+      setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, admin_reply: text } : r)));
+      setReplyInputs((prev) => ({ ...prev, [reviewId]: "" }));
+      flash("Cavab yadda saxlanıldı ✓");
     } else {
       flash("Xəta baş verdi.");
     }
@@ -2162,6 +2432,43 @@ function AdminPage({ onDataChanged }) {
         ))}
         {orders.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ sifariş yoxdur.</p>}
       </div>
+
+      <h3 className="ad-section-title">Rəylər ({reviews.length})</h3>
+      <div className="ad-products">
+        {reviews.map((r) => {
+          const prod = products.find((p) => p.id === r.product_id);
+          return (
+            <div className="ad-review-row" key={r.id}>
+              <div className="ad-order-head">
+                <span className="ad-customer-email">{r.customer_name}</span>
+                <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{prod ? prod.name : "—"}</span>
+                <span className="ad-customer-balance">{"★".repeat(r.rating)}</span>
+                <span className="ad-customer-date">{new Date(r.created_at).toLocaleDateString("az-AZ")}</span>
+              </div>
+              <p style={{ fontSize: 13.5, margin: "6px 0" }}>{r.comment}</p>
+              {r.admin_reply ? (
+                <div className="ab-review-reply">
+                  <strong>Cavabınız:</strong> {r.admin_reply}
+                </div>
+              ) : (
+                <div className="ad-customer-action-row">
+                  <input
+                    type="text"
+                    placeholder="Cavab yaz..."
+                    value={replyInputs[r.id] || ""}
+                    onChange={(e) => setReplyInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="ab-btn ab-btn-gold" onClick={() => replyToReview(r.id)}>
+                    <Send size={15} /> Cavab yaz
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {reviews.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ rəy yoxdur.</p>}
+      </div>
     </section>
   );
 }
@@ -2190,7 +2497,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE", ru: "RU" };
-  const { products, settings, reload, loaded } = useAppData();
+  const { products, settings, reviews, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
   useEffect(() => {
@@ -2201,6 +2508,7 @@ export default function App() {
 
   // Admin -> customer message banner
   const [activeMessage, setActiveMessage] = useState(null);
+  const [reviewsModalProduct, setReviewsModalProduct] = useState(null);
   useEffect(() => {
     if (!session) {
       setActiveMessage(null);
@@ -2262,6 +2570,19 @@ export default function App() {
   }, [lang]);
   const t = (key) => I18N[lang][key] || I18N.az[key] || key;
 
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("skyflix_theme") || "light";
+    } catch {
+      return "light";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("skyflix_theme", theme);
+    } catch {}
+  }, [theme]);
+
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem("skyflix_cart");
@@ -2318,11 +2639,24 @@ export default function App() {
   };
 
   return (
-    <div className="ab-root">
+    <div className={`ab-root ${theme === "dark" ? "dark" : ""}`}>
       <VideoWidget videoId="jhgJV0Pg54Y" />
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
       <MessageBanner message={activeMessage} onDismiss={dismissMessage} />
+      {reviewsModalProduct && (
+        <ReviewsModal
+          product={reviewsModalProduct}
+          reviews={reviews}
+          session={session}
+          t={t}
+          onClose={() => setReviewsModalProduct(null)}
+          onSubmitted={() => {
+            reload();
+            setReviewsModalProduct(null);
+          }}
+        />
+      )}
       <style>{`
         :root{
           --bg:#FFFFFF;
@@ -2334,6 +2668,18 @@ export default function App() {
           --muted:#7A6C6A;
           --line: rgba(26,18,16,0.12);
         }
+        .ab-root.dark{
+          --bg:#150708;
+          --surface:#1D0D0E;
+          --surface2:#2A1315;
+          --gold:#FF3B4E;
+          --teal:#E1122A;
+          --text:#F5EBEA;
+          --muted:#A98D8B;
+          --line: rgba(255,255,255,0.1);
+        }
+        .ab-root.dark .ab-notch{ background:var(--bg); }
+        .ab-root.dark .ab-btn-onscreen{ background:#1D0D0E; color:#FFFFFF; }
         *{box-sizing:border-box;}
         .ab-root{
           background:var(--bg);
@@ -2341,6 +2687,7 @@ export default function App() {
           font-family:'Inter',sans-serif;
           min-height:100vh;
           overflow-x:hidden;
+          transition:background .3s ease, color .3s ease;
         }
         .ab-root h1,.ab-root h2,.ab-root h3{
           font-family:'Space Grotesk',sans-serif;
@@ -2397,7 +2744,8 @@ export default function App() {
           border-bottom:1px solid transparent;
         }
         .ab-nav.solid{
-          background:rgba(255,255,255,0.85);
+          background:var(--bg);
+          opacity:0.97;
           backdrop-filter:blur(10px);
           border-bottom:1px solid var(--line);
         }
@@ -2468,6 +2816,50 @@ export default function App() {
           display:flex; align-items:center; justify-content:center; padding:0 4px;
         }
 
+        .ab-ticket-reviews{
+          width:100%; border:none; border-top:1px solid var(--line);
+          background:var(--bg); color:var(--muted);
+          padding:9px 14px; font-size:12px; font-weight:600; cursor:pointer;
+          display:flex; align-items:center; gap:5px;
+          font-family:'Inter',sans-serif;
+        }
+        .ab-ticket-reviews:hover{ color:var(--text); }
+        .ab-ticket-reviews-count{ color:var(--muted); font-weight:400; }
+
+        .ab-review-summary{ display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+        .ab-review-avg{ font-family:'JetBrains Mono',monospace; font-size:32px; font-weight:700; color:var(--gold); }
+        .ab-review-stars{ display:flex; gap:2px; }
+        .ab-review-count{ font-size:12px; color:var(--muted); margin-top:3px; }
+        .ab-review-list{ display:flex; flex-direction:column; gap:16px; max-height:320px; overflow-y:auto; margin-bottom:16px; }
+        .ab-review-empty{ color:var(--muted); font-size:13.5px; }
+        .ab-review-item{ border-bottom:1px solid var(--line); padding-bottom:14px; }
+        .ab-review-item-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+        .ab-review-name{ font-weight:600; font-size:13.5px; font-family:'Space Grotesk',sans-serif; }
+        .ab-review-verified{
+          display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--teal);
+          background:rgba(140,22,32,0.08); padding:3px 8px; border-radius:100px; font-weight:600;
+        }
+        .ab-review-comment{ font-size:13.5px; color:var(--text); margin:6px 0 0; line-height:1.5; }
+        .ab-review-reply{
+          margin-top:8px; padding:10px 12px; background:var(--surface2); border-radius:10px; font-size:12.5px; color:var(--text);
+        }
+        .ab-review-form{ border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:10px; }
+        .ab-review-stars-input{ gap:4px; }
+        .ab-star-btn{ background:none; border:none; cursor:pointer; padding:2px; }
+        .ab-review-form textarea{
+          padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--text); resize:vertical;
+        }
+        .ab-review-note{ color:var(--muted); font-size:13px; border-top:1px solid var(--line); padding-top:14px; margin:0; }
+
+        .ab-reviews-grid{ display:grid; gap:18px; grid-template-columns:1fr; }
+        @media(min-width:700px){ .ab-reviews-grid{ grid-template-columns:repeat(2,1fr); } }
+        @media(min-width:1080px){ .ab-reviews-grid{ grid-template-columns:repeat(3,1fr); } }
+        .ab-review-card{
+          border:1px solid var(--line); border-radius:16px; padding:20px; background:var(--surface);
+        }
+        .ab-review-product{ font-size:11.5px; color:var(--gold); font-weight:600; margin:2px 0 8px; }
+
         .ab-ticket-addbtn{
           width:100%; border:none; border-top:1px solid var(--line);
           background:var(--surface2); color:var(--text);
@@ -2507,7 +2899,7 @@ export default function App() {
 
         .ab-mobilemenu{
           position:fixed; inset:0; z-index:50;
-          background:rgba(255,255,255,0.97);
+          background:var(--bg); opacity:0.98;
           display:flex; flex-direction:column;
           padding:20px 6vw;
           animation:ab-fadein .2s ease both;
@@ -2864,7 +3256,7 @@ export default function App() {
         .ad-customer-name{ color:var(--muted); }
         .ad-customer-date{ color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin-left:auto; }
 
-        .ad-order-row{
+        .ad-order-row, .ad-review-row{
           border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--surface);
         }
         .ad-order-head{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; font-size:13.5px; }
@@ -2943,6 +3335,13 @@ export default function App() {
           ))}
         </div>
         <div className="ab-navright">
+          <button
+            className="ab-langbtn"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title="Tema / Theme"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <div className="ab-langwrap">
             <button className="ab-langbtn" onClick={() => setLangMenuOpen((v) => !v)} title="Dil / Language / ენა">
               {LANG_NAMES[lang]}
@@ -3018,15 +3417,27 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button
+            className="ab-navlink"
+            style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}
+            onClick={() => {
+              setTheme(theme === "dark" ? "light" : "dark");
+              setMenuOpen(false);
+            }}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
         </div>
       )}
 
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} />}
-        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} />}
+        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} />}
         {page === "necehisleyir" && <NeceIsleyirPage t={t} />}
         {page === "etibar" && <EtibarPage t={t} />}
         {page === "qaydalar" && <QaydalarPage t={t} lang={lang} />}
+        {page === "reylerall" && <ReviewsPage reviews={reviews} products={products} t={t} />}
         {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
         {page === "hesab" && <CustomerAuthPage t={t} lang={lang} settings={settings} />}
