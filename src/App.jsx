@@ -47,6 +47,15 @@ const I18N = {
     packagesTitle: "Populyar abunəliklər",
     packagesSub: "Hər bilet bir hesaba giriş deməkdir — seç, ödə, izləməyə başla.",
     noProductsInCategory: "Bu kateqoriyada hələ paket yoxdur.",
+    faqTitle: "Tez-tez verilən suallar",
+    faqQ1: "Sifariş necə verilir?",
+    faqA1: "İstədiyiniz paketi seçib \"Səbətə əlavə et\" düyməsinə basın, sonra səbətdən \"WhatsApp ilə tamamla\" ilə sifarişi göndərin.",
+    faqQ2: "Ödəniş necə aparılır?",
+    faqA2: "Ödəniş WhatsApp üzərindən razılaşdırılır — bank kartı və digər üsullarla ödəyə bilərsiniz.",
+    faqQ3: "Hesab nə qədər müddətə çatdırılır?",
+    faqA3: "Ödəniş təsdiqləndikdən sonra hesabınız ən qısa müddət ərzində təqdim olunur.",
+    faqQ4: "Problem yaranarsa nə etməliyəm?",
+    faqA4: "WhatsApp üzərindən bizə yazın — komandamız məsələni operativ həll edəcək.",
     addToCart: "Səbətə əlavə et",
 
     howKicker: "NECƏ İŞLƏYİR",
@@ -171,6 +180,15 @@ const I18N = {
     packagesTitle: "Popular subscriptions",
     packagesSub: "Every ticket is access to an account — choose, pay, start watching.",
     noProductsInCategory: "No packages in this category yet.",
+    faqTitle: "Frequently Asked Questions",
+    faqQ1: "How do I place an order?",
+    faqA1: "Choose the package you want, click \"Add to cart\", then complete your order via WhatsApp from the cart.",
+    faqQ2: "How do I pay?",
+    faqA2: "Payment is arranged via WhatsApp — you can pay by card or other methods.",
+    faqQ3: "How long does delivery take?",
+    faqA3: "Once payment is confirmed, your account is delivered in the shortest possible time.",
+    faqQ4: "What if I have a problem?",
+    faqA4: "Message us on WhatsApp — our team will resolve it promptly.",
     addToCart: "Add to cart",
 
     howKicker: "HOW IT WORKS",
@@ -295,6 +313,15 @@ const I18N = {
     packagesTitle: "პოპულარული გამოწერები",
     packagesSub: "თითოეული ბილეთი წვდომაა ერთ ანგარიშზე — აირჩიე, გადაიხადე, დაიწყე ყურება.",
     noProductsInCategory: "ამ კატეგორიაში ჯერ არ არის პაკეტები.",
+    faqTitle: "ხშირად დასმული კითხვები",
+    faqQ1: "როგორ გავაკეთო შეკვეთა?",
+    faqA1: "აირჩიეთ სასურველი პაკეტი, დააჭირეთ „კალათაში დამატებას", შემდეგ კალათიდან დაასრულეთ შეკვეთა WhatsApp-ის საშუალებით.",
+    faqQ2: "როგორ ხდება გადახდა?",
+    faqA2: "გადახდა ეთანხმება WhatsApp-ის საშუალებით — შეგიძლიათ გადაიხადოთ ბარათით ან სხვა მეთოდით.",
+    faqQ3: "რამდენ ხანში მოხდება მიწოდება?",
+    faqA3: "გადახდის დადასტურების შემდეგ თქვენი ანგარიში მიეწოდება უმოკლეს შესაძლო დროში.",
+    faqQ4: "რა ვქნა, თუ პრობლემა წარმოიშვა?",
+    faqA4: "მოგვწერეთ WhatsApp-ზე — ჩვენი გუნდი სწრაფად მოაგვარებს საკითხს.",
     addToCart: "კალათაში დამატება",
 
     howKicker: "როგორ მუშაობს",
@@ -419,6 +446,15 @@ const I18N = {
     packagesTitle: "Популярные подписки",
     packagesSub: "Каждый билет — это доступ к аккаунту: выбери, оплати, начни смотреть.",
     noProductsInCategory: "В этой категории пока нет пакетов.",
+    faqTitle: "Часто задаваемые вопросы",
+    faqQ1: "Как сделать заказ?",
+    faqA1: "Выберите нужный пакет, нажмите «Добавить в корзину», затем завершите заказ через WhatsApp из корзины.",
+    faqQ2: "Как происходит оплата?",
+    faqA2: "Оплата согласовывается через WhatsApp — можно оплатить картой или другим способом.",
+    faqQ3: "Сколько времени занимает доставка?",
+    faqA3: "После подтверждения оплаты аккаунт предоставляется в кратчайшие сроки.",
+    faqQ4: "Что делать при проблеме?",
+    faqA4: "Напишите нам в WhatsApp — наша команда оперативно решит вопрос.",
     addToCart: "Добавить в корзину",
 
     howKicker: "КАК ЭТО РАБОТАЕТ",
@@ -850,6 +886,30 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
   );
 }
 
+function FaqAccordion({ t }) {
+  const [open, setOpen] = useState(null);
+  const items = [
+    { q: t("faqQ1"), a: t("faqA1") },
+    { q: t("faqQ2"), a: t("faqA2") },
+    { q: t("faqQ3"), a: t("faqA3") },
+    { q: t("faqQ4"), a: t("faqA4") },
+  ];
+  return (
+    <div className="ab-faq">
+      <h3 className="ab-faq-title">{t("faqTitle")}</h3>
+      {items.map((item, i) => (
+        <div className="ab-faq-item" key={i}>
+          <button className="ab-faq-q" onClick={() => setOpen(open === i ? null : i)}>
+            {item.q}
+            <ChevronRight size={16} className={`ab-faq-chevron ${open === i ? "open" : ""}`} />
+          </button>
+          {open === i && <p className="ab-faq-a">{item.a}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
@@ -877,6 +937,9 @@ function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews }) {
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
       </div>
+      <Reveal>
+        <FaqAccordion t={t} />
+      </Reveal>
     </section>
   );
 }
@@ -1898,6 +1961,18 @@ function ReviewsModal({ product, reviews, session, t, onClose, onSubmitted }) {
   );
 }
 
+function LiveChatButton({ settings }) {
+  const rawNumber = settings?.contact_whatsapp || "517873090";
+  const digits = rawNumber.replace(/[^0-9]/g, "");
+  const waLink = `https://wa.me/${digits}`;
+  return (
+    <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-livechat-btn" title="Canlı Dəstək">
+      <MessageCircle size={22} />
+      <span className="ab-livechat-pulse" />
+    </a>
+  );
+}
+
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
@@ -2139,23 +2214,31 @@ function AdminPage({ onDataChanged }) {
     }
     const cust = customers.find((c) => c.id === customerId);
     const newBalance = Number(cust?.balance || 0) + amount;
-    const { error } = await supabase.from("profiles").update({ balance: newBalance }).eq("id", customerId);
-    if (!error) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ balance: newBalance })
+      .eq("id", customerId)
+      .select();
+    if (!error && data && data.length > 0) {
       setCustomers((prev) => prev.map((c) => (c.id === customerId ? { ...c, balance: newBalance } : c)));
       setBalanceInput("");
       flash("Balans əlavə olundu ✓");
     } else {
-      flash("Xəta baş verdi.");
+      flash("Xəta: dəyişiklik saxlanmadı. Supabase-də admin update icazəsini yoxlayın.");
     }
   }
 
   async function toggleBan(customerId, currentlyBanned) {
-    const { error } = await supabase.from("profiles").update({ banned: !currentlyBanned }).eq("id", customerId);
-    if (!error) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ banned: !currentlyBanned })
+      .eq("id", customerId)
+      .select();
+    if (!error && data && data.length > 0) {
       setCustomers((prev) => prev.map((c) => (c.id === customerId ? { ...c, banned: !currentlyBanned } : c)));
       flash(!currentlyBanned ? "Müştəri bloklandı ✓" : "Blok ləğv edildi ✓");
     } else {
-      flash("Xəta baş verdi.");
+      flash("Xəta: dəyişiklik saxlanmadı. Supabase-də admin update icazəsini yoxlayın.");
     }
   }
 
@@ -2641,6 +2724,7 @@ export default function App() {
   return (
     <div className={`ab-root ${theme === "dark" ? "dark" : ""}`}>
       <VideoWidget videoId="jhgJV0Pg54Y" />
+      <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
       <MessageBanner message={activeMessage} onDismiss={dismissMessage} />
@@ -3051,6 +3135,36 @@ export default function App() {
         .ab-ticket-img{ width:100%; height:130px; background-size:cover; background-position:center; }
 
         .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
+
+        .ab-faq{ margin-top:60px; max-width:760px; }
+        .ab-faq-title{ font-size:22px; margin:0 0 20px; font-family:'Space Grotesk',sans-serif; }
+        .ab-faq-item{ border-bottom:1px solid var(--line); }
+        .ab-faq-q{
+          width:100%; display:flex; align-items:center; justify-content:space-between;
+          background:none; border:none; text-align:left; cursor:pointer;
+          padding:16px 0; font-size:14.5px; font-weight:600; color:var(--text);
+          font-family:'Inter',sans-serif;
+        }
+        .ab-faq-chevron{ transition:transform .25s ease; color:var(--muted); flex-shrink:0; }
+        .ab-faq-chevron.open{ transform:rotate(90deg); }
+        .ab-faq-a{ color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 18px; }
+
+        .ab-livechat-btn{
+          position:fixed; bottom:22px; right:22px; z-index:56;
+          width:56px; height:56px; border-radius:50%;
+          background:#25D366; color:#FFFFFF;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 12px 28px -10px rgba(37,211,102,0.6);
+          text-decoration:none;
+        }
+        .ab-livechat-pulse{
+          position:absolute; inset:0; border-radius:50%; background:#25D366;
+          animation:ab-livechat-ping 2.2s cubic-bezier(0,0,.2,1) infinite; z-index:-1;
+        }
+        @keyframes ab-livechat-ping{
+          0%{ transform:scale(1); opacity:.6; }
+          100%{ transform:scale(1.9); opacity:0; }
+        }
 
         .ab-fake-purchase{
           position:fixed; bottom:22px; left:22px; z-index:55;
