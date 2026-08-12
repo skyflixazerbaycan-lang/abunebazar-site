@@ -1,14 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
-const CATEGORIES = [
-  { id: "all", labelKey: "catAll", icon: LayoutGrid },
-  { id: "streaming", labelKey: "catStreaming", icon: Tv },
-  { id: "music", labelKey: "catMusic", icon: Music2 },
-  { id: "ai", labelKey: "catAi", icon: Bot },
-  { id: "games", labelKey: "catGames", icon: Gamepad2 },
-];
+const ICON_MAP = {
+  LayoutGrid, Tv, Music2, Bot, Gamepad2, Zap, Star, Shield, Headset, BadgeCheck,
+  Wallet, MessageCircle, Ticket, Clock, Film, Book, Dumbbell, Palette, Camera, Briefcase,
+};
+const ICON_NAMES = Object.keys(ICON_MAP);
 
 const NAV_ITEMS = [
   { key: "home", labelKey: "navHome" },
@@ -575,6 +573,7 @@ function useGoogleFonts() {
 function useHashRoute() {
   const getPage = () => {
     const h = window.location.hash.replace("#", "");
+    if (h.startsWith("mehsul-")) return h;
     return ALL_PAGES.includes(h) ? h : "home";
   };
   const [page, setPage] = useState(getPage);
@@ -601,6 +600,7 @@ function useAppData() {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState({});
   const [reviews, setReviews] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   async function reload() {
@@ -614,6 +614,8 @@ function useAppData() {
     }
     const { data: revs } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
     if (revs) setReviews(revs);
+    const { data: cats } = await supabase.from("categories").select("*").order("sort_order");
+    if (cats) setCategories(cats);
     setLoaded(true);
   }
 
@@ -621,7 +623,7 @@ function useAppData() {
     reload();
   }, []);
 
-  return { products, settings, reviews, reload, loaded };
+  return { products, settings, reviews, categories, reload, loaded };
 }
 
 function Reveal({ children, delay = 0, className = "" }) {
@@ -659,32 +661,38 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p, onAdd, t, reviews, onOpenReviews }) {
+function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
   const productReviews = (reviews || []).filter((r) => r.product_id === p.id);
   const avg = productReviews.length
     ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
     : 0;
   return (
     <div className="ab-ticket">
-      {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
-      <div className="ab-ticket-top">
-        <div>
-          <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
-          <div className="ab-ticket-name">{p.name}</div>
-          <div className="ab-ticket-plan">{p.plan}</div>
+      <div
+        className="ab-ticket-clickzone"
+        onClick={() => go && go("mehsul-" + p.id)}
+        style={{ cursor: go ? "pointer" : "default" }}
+      >
+        {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
+        <div className="ab-ticket-top">
+          <div>
+            <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
+            <div className="ab-ticket-name">{p.name}</div>
+            <div className="ab-ticket-plan">{p.plan}</div>
+          </div>
+          <Ticket size={20} strokeWidth={1.75} className="ab-ticket-icon" />
         </div>
-        <Ticket size={20} strokeWidth={1.75} className="ab-ticket-icon" />
-      </div>
-      <div className="ab-ticket-perf">
-        <Notch side="left" />
-        <Notch side="right" />
-      </div>
-      <div className="ab-ticket-bottom">
-        <div className="ab-ticket-code">{p.code}</div>
-        <div className="ab-ticket-price">
-          <span className="ab-price-num">{p.price}</span>
-          <span className="ab-price-cur">₼</span>
-          <span className="ab-price-per">/{p.period}</span>
+        <div className="ab-ticket-perf">
+          <Notch side="left" />
+          <Notch side="right" />
+        </div>
+        <div className="ab-ticket-bottom">
+          <div className="ab-ticket-code">{p.code}</div>
+          <div className="ab-ticket-price">
+            <span className="ab-price-num">{p.price}</span>
+            <span className="ab-price-cur">₼</span>
+            <span className="ab-price-per">/{p.period}</span>
+          </div>
         </div>
       </div>
       {onOpenReviews && (
@@ -870,7 +878,7 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} />
+              <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} />
             </Reveal>
           ))}
         </div>
@@ -910,7 +918,112 @@ function FaqAccordion({ t }) {
   );
 }
 
-function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews }) {
+function ProductDetailPage({ productId, products, onAdd, t, reviews, onOpenReviews, go }) {
+  const p = products.find((prod) => prod.id === productId);
+  const [selectedMonths, setSelectedMonths] = useState(null);
+
+  useEffect(() => {
+    if (p?.has_duration_options && p.duration_options?.length > 0) {
+      setSelectedMonths(p.duration_options[0].months);
+    }
+  }, [p?.id]);
+
+  if (!p) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <PageHead kicker="" title={t("noReviewsShort")} />
+        <button className="ab-btn ab-btn-ghost" onClick={() => go("paketler")}>
+          <ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t("seeAllPackages")}
+        </button>
+      </section>
+    );
+  }
+
+  const productReviews = (reviews || []).filter((r) => r.product_id === p.id);
+  const avg = productReviews.length
+    ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
+    : 0;
+
+  const hasDurations = p.has_duration_options && p.duration_options && p.duration_options.length > 0;
+  const activeVariant = hasDurations ? p.duration_options.find((d) => d.months === selectedMonths) : null;
+  const displayPrice = activeVariant ? activeVariant.price : p.price;
+
+  function handleAdd() {
+    if (hasDurations && activeVariant) {
+      onAdd({
+        id: p.id,
+        name: `${p.name} (${activeVariant.months} ay)`,
+        price: activeVariant.price,
+        period: `${activeVariant.months} ay`,
+        variantMonths: activeVariant.months,
+      });
+    } else {
+      onAdd(p);
+    }
+  }
+
+  return (
+    <section className="ab-section ab-page-pad">
+      <button className="ab-btn ab-btn-ghost" onClick={() => go("paketler")} style={{ marginBottom: 24 }}>
+        <ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t("seeAllPackages")}
+      </button>
+      <div className="ab-detail-grid">
+        <div className="ab-detail-media">
+          {p.image_url ? (
+            <div className="ab-detail-img" style={{ backgroundImage: `url(${p.image_url})` }} />
+          ) : (
+            <div className="ab-detail-img ab-detail-img-fallback">
+              <Ticket size={40} strokeWidth={1.5} />
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
+          <h1 className="ab-detail-name">{p.name}</h1>
+          <p className="ab-detail-plan">{p.plan}</p>
+
+          <button className="ab-ticket-reviews" style={{ borderTop: "none", padding: "0 0 14px" }} onClick={() => onOpenReviews(p)}>
+            <Star size={14} fill={productReviews.length ? "#E1122A" : "none"} strokeWidth={1.5} />
+            {productReviews.length ? avg.toFixed(1) : t("noReviewsShort")}
+            <span className="ab-ticket-reviews-count">({productReviews.length} {t("reviewsWord")})</span>
+          </button>
+
+          {p.description && <p className="ab-detail-description">{p.description}</p>}
+
+          {hasDurations && (
+            <div className="ab-duration-picker">
+              <div className="ab-duration-label">Neçə aylıq?</div>
+              <div className="ab-duration-options">
+                {p.duration_options.map((d) => (
+                  <button
+                    key={d.months}
+                    className={`ab-duration-pill ${selectedMonths === d.months ? "active" : ""}`}
+                    onClick={() => setSelectedMonths(d.months)}
+                  >
+                    {d.months} ay
+                    <span>{d.price} ₼</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="ab-detail-price">
+            <span className="ab-price-num">{displayPrice}</span>
+            <span className="ab-price-cur">₼</span>
+            {!hasDurations && <span className="ab-price-per">/{p.period}</span>}
+          </div>
+
+          <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleAdd}>
+            <ShoppingCart size={16} /> {t("addToCart")}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews, categories, go }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
@@ -918,21 +1031,28 @@ function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews }) {
     <section className="ab-section ab-page-pad">
       <PageHead kicker={t("packagesKicker")} title={t("packagesTitle")} sub={t("packagesSub")} />
       <Reveal className="ab-cat-pills">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            className={`ab-pill ${cat === c.id ? "active" : ""}`}
-            onClick={() => setCat(c.id)}
-          >
-            <c.icon size={14} strokeWidth={2.1} />
-            {t(c.labelKey)}
-          </button>
-        ))}
+        <button className={`ab-pill ${cat === "all" ? "active" : ""}`} onClick={() => setCat("all")}>
+          <LayoutGrid size={14} strokeWidth={2.1} />
+          {t("catAll")}
+        </button>
+        {categories.map((c) => {
+          const Icon = ICON_MAP[c.icon] || LayoutGrid;
+          return (
+            <button
+              key={c.slug}
+              className={`ab-pill ${cat === c.slug ? "active" : ""}`}
+              onClick={() => setCat(c.slug)}
+            >
+              <Icon size={14} strokeWidth={2.1} />
+              {c.label}
+            </button>
+          );
+        })}
       </Reveal>
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} />
+            <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} />
           </Reveal>
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
@@ -1065,7 +1185,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
 
       <div className="ab-cart-list">
         {cart.map((item) => (
-          <div className="ab-cart-row" key={item.id}>
+          <div className="ab-cart-row" key={item.cartKey || item.id}>
             <div className="ab-cart-info">
               <div className="ab-cart-name">{item.name}</div>
               <div className="ab-cart-unit">
@@ -1073,16 +1193,16 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
               </div>
             </div>
             <div className="ab-cart-qty">
-              <button onClick={() => updateQty(item.id, item.qty - 1)} aria-label="Azalt">
+              <button onClick={() => updateQty(item.cartKey || item.id, item.qty - 1)} aria-label="Azalt">
                 <Minus size={13} />
               </button>
               <span>{item.qty}</span>
-              <button onClick={() => updateQty(item.id, item.qty + 1)} aria-label="Artır">
+              <button onClick={() => updateQty(item.cartKey || item.id, item.qty + 1)} aria-label="Artır">
                 <Plus size={13} />
               </button>
             </div>
             <div className="ab-cart-linetotal">{(parseFloat(item.price) * item.qty).toFixed(2)} ₼</div>
-            <button className="ab-cart-remove" onClick={() => removeFromCart(item.id)} aria-label="Sil">
+            <button className="ab-cart-remove" onClick={() => removeFromCart(item.cartKey || item.id)} aria-label="Sil">
               <X size={16} />
             </button>
           </div>
@@ -2058,6 +2178,7 @@ function AdminPage({ onDataChanged }) {
     code: "",
     category: "streaming",
     image_url: "",
+    description: "",
   });
   const [status, setStatus] = useState("");
   const [customers, setCustomers] = useState([]);
@@ -2068,6 +2189,9 @@ function AdminPage({ onDataChanged }) {
   const [replyInputs, setReplyInputs] = useState({});
   const [balanceInput, setBalanceInput] = useState("");
   const [messageInput, setMessageInput] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [expandedProduct, setExpandedProduct] = useState(null);
+  const [newCategory, setNewCategory] = useState({ label: "", icon: "LayoutGrid" });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -2099,6 +2223,8 @@ function AdminPage({ onDataChanged }) {
     if (ords) setOrders(ords);
     const { data: revs } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
     if (revs) setReviews(revs);
+    const { data: cats } = await supabase.from("categories").select("*").order("sort_order");
+    if (cats) setCategories(cats);
   }
 
   async function uploadImage(file) {
@@ -2166,10 +2292,46 @@ function AdminPage({ onDataChanged }) {
         code: p.code,
         category: p.category,
         image_url: p.image_url,
+        description: p.description,
+        has_duration_options: p.has_duration_options,
+        duration_options: p.duration_options,
       })
       .eq("id", p.id);
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
     if (!error) onDataChanged();
+  }
+
+  function toggleDurationOptions(id, enabled) {
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, has_duration_options: enabled, duration_options: enabled ? p.duration_options || [{ months: 1, price: p.price }] : p.duration_options }
+          : p
+      )
+    );
+  }
+
+  function updateDurationRow(id, index, field, value) {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        const opts = [...(p.duration_options || [])];
+        opts[index] = { ...opts[index], [field]: field === "months" ? parseInt(value) || 0 : parseFloat(value) || 0 };
+        return { ...p, duration_options: opts };
+      })
+    );
+  }
+
+  function addDurationRow(id) {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, duration_options: [...(p.duration_options || []), { months: 1, price: 0 }] } : p))
+    );
+  }
+
+  function removeDurationRow(id, index) {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, duration_options: (p.duration_options || []).filter((_, i) => i !== index) } : p))
+    );
   }
 
   async function deleteProduct(id) {
@@ -2190,7 +2352,7 @@ function AdminPage({ onDataChanged }) {
       .select();
     if (!error && data) {
       setProducts((prev) => [...prev, ...data]);
-      setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming" });
+      setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming", image_url: "", description: "" });
       flash("Məhsul əlavə olundu ✓");
       onDataChanged();
     } else {
@@ -2267,6 +2429,63 @@ function AdminPage({ onDataChanged }) {
       setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, admin_reply: text } : r)));
       setReplyInputs((prev) => ({ ...prev, [reviewId]: "" }));
       flash("Cavab yadda saxlanıldı ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  function slugify(text) {
+    return (
+      text
+        .toLowerCase()
+        .replace(/[əƏ]/g, "e")
+        .replace(/[üÜ]/g, "u")
+        .replace(/[öÖ]/g, "o")
+        .replace(/[çÇ]/g, "c")
+        .replace(/[şŞ]/g, "s")
+        .replace(/[ğĞ]/g, "g")
+        .replace(/[ıİ]/g, "i")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "kateqoriya-" + Date.now()
+    );
+  }
+
+  async function updateCategoryField(id, field, value) {
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+  }
+
+  async function saveCategory(cat) {
+    flash("Yadda saxlanılır...");
+    const { error } = await supabase
+      .from("categories")
+      .update({ label: cat.label, icon: cat.icon })
+      .eq("id", cat.id);
+    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
+    if (!error) onDataChanged();
+  }
+
+  async function deleteCategory(id) {
+    if (!window.confirm("Bu kateqoriyanı silmək istədiyinizə əminsiniz? (bu kateqoriyadakı məhsullar 'kateqoriyasız' qalacaq)")) return;
+    await supabase.from("categories").delete().eq("id", id);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    onDataChanged();
+  }
+
+  async function addCategory() {
+    if (!newCategory.label.trim()) {
+      flash("Kateqoriya adını yazın.");
+      return;
+    }
+    const slug = slugify(newCategory.label.trim());
+    const { data, error } = await supabase
+      .from("categories")
+      .insert({ slug, label: newCategory.label.trim(), icon: newCategory.icon, sort_order: categories.length + 1 })
+      .select();
+    if (!error && data) {
+      setCategories((prev) => [...prev, ...data]);
+      setNewCategory({ label: "", icon: "LayoutGrid" });
+      flash("Kateqoriya əlavə olundu ✓");
+      onDataChanged();
     } else {
       flash("Xəta baş verdi.");
     }
@@ -2356,32 +2575,100 @@ function AdminPage({ onDataChanged }) {
       <h3 className="ad-section-title">Məhsullar</h3>
       <div className="ad-products">
         {products.map((p) => (
-          <div className="ad-product-row" key={p.id}>
-            <input value={p.name} onChange={(e) => updateField(p.id, "name", e.target.value)} placeholder="Ad" />
-            <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
-            <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
-            <input value={p.image_url || ""} onChange={(e) => updateField(p.id, "image_url", e.target.value)} placeholder="Şəkil linki (URL)" />
-            <input
-              type="file"
-              accept="image/*"
-              id={`img-${p.id}`}
-              style={{ display: "none" }}
-              onChange={(e) => handleExistingImageFile(p.id, e.target.files[0])}
-            />
-            <button className="ab-btn ab-btn-ghost" onClick={() => document.getElementById(`img-${p.id}`).click()}>
-              Şəkil seç
-            </button>
-            <select value={p.category} onChange={(e) => updateField(p.id, "category", e.target.value)}>
-              <option value="streaming">Streaming</option>
-              <option value="music">Musiqi</option>
-              <option value="ai">AI Alətləri</option>
-            </select>
-            <button className="ab-btn ab-btn-ghost" onClick={() => saveProduct(p)}>
-              Saxla
-            </button>
-            <button className="ad-delete" onClick={() => deleteProduct(p.id)}>
-              Sil
-            </button>
+          <div className="ad-product-block" key={p.id}>
+            <div className="ad-product-row">
+              <input value={p.name} onChange={(e) => updateField(p.id, "name", e.target.value)} placeholder="Ad" />
+              <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
+              <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
+              <input value={p.image_url || ""} onChange={(e) => updateField(p.id, "image_url", e.target.value)} placeholder="Şəkil linki (URL)" />
+              <input
+                type="file"
+                accept="image/*"
+                id={`img-${p.id}`}
+                style={{ display: "none" }}
+                onChange={(e) => handleExistingImageFile(p.id, e.target.files[0])}
+              />
+              <button className="ab-btn ab-btn-ghost" onClick={() => document.getElementById(`img-${p.id}`).click()}>
+                Şəkil seç
+              </button>
+              <select value={p.category} onChange={(e) => updateField(p.id, "category", e.target.value)}>
+                {categories.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="ab-btn ab-btn-ghost"
+                onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
+              >
+                {expandedProduct === p.id ? "Bağla" : "Ətraflı"}
+              </button>
+              <button className="ab-btn ab-btn-ghost" onClick={() => saveProduct(p)}>
+                Saxla
+              </button>
+              <button className="ad-delete" onClick={() => deleteProduct(p.id)}>
+                Sil
+              </button>
+            </div>
+
+            {expandedProduct === p.id && (
+              <div className="ad-customer-actions">
+                <label style={{ fontSize: 13, color: "var(--muted)" }}>
+                  Açıqlama
+                  <textarea
+                    className="ad-desc-textarea"
+                    value={p.description || ""}
+                    onChange={(e) => updateField(p.id, "description", e.target.value)}
+                    placeholder="Məhsul haqqında açıqlama..."
+                    rows={3}
+                  />
+                </label>
+
+                <label className="ab-agree-row" style={{ cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!p.has_duration_options}
+                    onChange={(e) => toggleDurationOptions(p.id, e.target.checked)}
+                  />
+                  <span>Aylıq seçim düyməsi göstərilsin (yalnız müddətli abunəliklər üçün)</span>
+                </label>
+
+                {p.has_duration_options && (
+                  <div className="ad-duration-editor">
+                    {(p.duration_options || []).map((d, i) => (
+                      <div className="ad-customer-action-row" key={i}>
+                        <input
+                          type="number"
+                          placeholder="Ay"
+                          value={d.months}
+                          onChange={(e) => updateDurationRow(p.id, i, "months", e.target.value)}
+                          style={{ maxWidth: 90 }}
+                        />
+                        <span style={{ color: "var(--muted)", fontSize: 13 }}>ay —</span>
+                        <input
+                          type="number"
+                          placeholder="Qiymət"
+                          value={d.price}
+                          onChange={(e) => updateDurationRow(p.id, i, "price", e.target.value)}
+                          style={{ maxWidth: 110 }}
+                        />
+                        <span style={{ color: "var(--muted)", fontSize: 13 }}>₼</span>
+                        <button className="ad-delete" onClick={() => removeDurationRow(p.id, i)}>
+                          Sil
+                        </button>
+                      </div>
+                    ))}
+                    <button className="ab-btn ab-btn-ghost" onClick={() => addDurationRow(p.id)} style={{ alignSelf: "flex-start" }}>
+                      + Ay əlavə et
+                    </button>
+                  </div>
+                )}
+                <button className="ab-btn ab-btn-gold" onClick={() => saveProduct(p)} style={{ alignSelf: "flex-start" }}>
+                  Dəyişiklikləri saxla
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -2427,11 +2714,61 @@ function AdminPage({ onDataChanged }) {
           value={newProduct.category}
           onChange={(e) => setNewProduct((n) => ({ ...n, category: e.target.value }))}
         >
-          <option value="streaming">Streaming</option>
-          <option value="music">Musiqi</option>
-          <option value="ai">AI Alətləri</option>
+          {categories.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
+          ))}
         </select>
         <button className="ab-btn ab-btn-gold" onClick={addProduct}>
+          Əlavə et
+        </button>
+      </div>
+      <textarea
+        className="ad-desc-textarea"
+        style={{ marginTop: 10, maxWidth: 500 }}
+        value={newProduct.description}
+        onChange={(e) => setNewProduct((n) => ({ ...n, description: e.target.value }))}
+        placeholder="Açıqlama (istəyə bağlı)"
+        rows={2}
+      />
+
+      <h3 className="ad-section-title">Kateqoriyalar</h3>
+      <div className="ad-products">
+        {categories.map((c) => (
+          <div className="ad-product-row" key={c.id} style={{ gridTemplateColumns: "1.4fr 1fr auto auto" }}>
+            <input value={c.label} onChange={(e) => updateCategoryField(c.id, "label", e.target.value)} placeholder="Ad" />
+            <select value={c.icon} onChange={(e) => updateCategoryField(c.id, "icon", e.target.value)}>
+              {ICON_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <button className="ab-btn ab-btn-ghost" onClick={() => saveCategory(c)}>
+              Saxla
+            </button>
+            <button className="ad-delete" onClick={() => deleteCategory(c.id)}>
+              Sil
+            </button>
+          </div>
+        ))}
+      </div>
+      <h3 className="ad-section-title">Yeni kateqoriya əlavə et</h3>
+      <div className="ad-product-row" style={{ gridTemplateColumns: "1.4fr 1fr auto" }}>
+        <input
+          value={newCategory.label}
+          onChange={(e) => setNewCategory((n) => ({ ...n, label: e.target.value }))}
+          placeholder="Kateqoriya adı"
+        />
+        <select value={newCategory.icon} onChange={(e) => setNewCategory((n) => ({ ...n, icon: e.target.value }))}>
+          {ICON_NAMES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <button className="ab-btn ab-btn-gold" onClick={addCategory}>
           Əlavə et
         </button>
       </div>
@@ -2580,7 +2917,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE", ru: "RU" };
-  const { products, settings, reviews, reload, loaded } = useAppData();
+  const { products, settings, reviews, categories, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
   useEffect(() => {
@@ -2687,25 +3024,37 @@ export default function App() {
       go("hesab");
       return;
     }
+    const cartKey = product.id + (product.variantMonths ? "-" + product.variantMonths : "");
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
+      const existing = prev.find((i) => i.cartKey === cartKey);
       if (existing) {
-        return prev.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i));
+        return prev.map((i) => (i.cartKey === cartKey ? { ...i, qty: i.qty + 1 } : i));
       }
-      return [...prev, { id: product.id, name: product.name, price: product.price, period: product.period, qty: 1 }];
+      return [
+        ...prev,
+        {
+          cartKey,
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          period: product.period,
+          variantMonths: product.variantMonths || null,
+          qty: 1,
+        },
+      ];
     });
   }
 
-  function updateQty(id, qty) {
+  function updateQty(cartKey, qty) {
     if (qty <= 0) {
-      setCart((prev) => prev.filter((i) => i.id !== id));
+      setCart((prev) => prev.filter((i) => i.cartKey !== cartKey));
     } else {
-      setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
+      setCart((prev) => prev.map((i) => (i.cartKey === cartKey ? { ...i, qty } : i)));
     }
   }
 
-  function removeFromCart(id) {
-    setCart((prev) => prev.filter((i) => i.id !== id));
+  function removeFromCart(cartKey) {
+    setCart((prev) => prev.filter((i) => i.cartKey !== cartKey));
   }
 
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
@@ -3136,6 +3485,34 @@ export default function App() {
 
         .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
 
+        .ab-detail-grid{ display:grid; gap:36px; grid-template-columns:1fr; max-width:900px; }
+        @media(min-width:800px){ .ab-detail-grid{ grid-template-columns:0.9fr 1.1fr; } }
+        .ab-detail-media{ position:sticky; top:100px; align-self:start; }
+        .ab-detail-img{
+          width:100%; aspect-ratio:4/3; border-radius:20px; background-size:cover; background-position:center;
+          border:1px solid var(--line);
+        }
+        .ab-detail-img-fallback{ display:flex; align-items:center; justify-content:center; background:var(--surface2); color:var(--gold); }
+        .ab-detail-name{ font-size:clamp(24px,3vw,32px); margin:8px 0 4px; font-family:'Space Grotesk',sans-serif; }
+        .ab-detail-plan{ color:var(--muted); font-size:14.5px; margin:0 0 6px; }
+        .ab-detail-description{ font-size:14.5px; color:var(--text); line-height:1.7; margin:16px 0; }
+        .ab-duration-picker{ margin:20px 0; }
+        .ab-duration-label{ font-size:13px; font-weight:600; color:var(--muted); margin-bottom:10px; }
+        .ab-duration-options{ display:flex; flex-wrap:wrap; gap:10px; }
+        .ab-duration-pill{
+          display:flex; flex-direction:column; align-items:center; gap:3px;
+          padding:10px 18px; border-radius:12px; border:1px solid var(--line);
+          background:var(--surface); color:var(--text); cursor:pointer; font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px;
+          transition:all .2s ease;
+        }
+        .ab-duration-pill span{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); font-weight:400; }
+        .ab-duration-pill.active{ background:var(--gold); border-color:var(--gold); color:#FFFFFF; }
+        .ab-duration-pill.active span{ color:rgba(255,255,255,0.85); }
+        .ab-detail-price{ margin-top:18px; font-family:'JetBrains Mono',monospace; }
+        .ab-detail-price .ab-price-num{ font-size:32px; }
+
+        .ab-ticket-clickzone{ display:contents; }
+
         .ab-faq{ margin-top:60px; max-width:760px; }
         .ab-faq-title{ font-size:22px; margin:0 0 20px; font-family:'Space Grotesk',sans-serif; }
         .ab-faq-item{ border-bottom:1px solid var(--line); }
@@ -3332,6 +3709,14 @@ export default function App() {
         @media(min-width:900px){
           .ad-product-row{ grid-template-columns:1.4fr 1.4fr 0.8fr 1fr auto auto; }
         }
+        .ad-product-block .ad-product-row{ border-radius:12px 12px 0 0; }
+        .ad-product-block:has(.ad-customer-actions) .ad-product-row{ border-bottom:none; }
+        .ad-desc-textarea{
+          width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+          font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--text); resize:vertical;
+          margin-top:6px;
+        }
+        .ad-duration-editor{ display:flex; flex-direction:column; gap:8px; }
         .ad-product-row input, .ad-product-row select{
           padding:9px 10px; border-radius:8px; border:1px solid var(--line);
           font-family:'Inter',sans-serif; font-size:13.5px; background:var(--bg); color:var(--text);
@@ -3547,7 +3932,18 @@ export default function App() {
 
       <main className="ab-page" key={page}>
         {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} />}
-        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} categories={categories} go={go} />}
+        {page.startsWith("mehsul-") && (
+          <ProductDetailPage
+            productId={page.replace("mehsul-", "")}
+            products={products}
+            onAdd={addToCart}
+            t={t}
+            reviews={reviews}
+            onOpenReviews={setReviewsModalProduct}
+            go={go}
+          />
+        )}
         {page === "necehisleyir" && <NeceIsleyirPage t={t} />}
         {page === "etibar" && <EtibarPage t={t} />}
         {page === "qaydalar" && <QaydalarPage t={t} lang={lang} />}
