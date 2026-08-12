@@ -25,6 +25,7 @@ const ADMIN_EMAIL = "skyflixazerbaycan@gmail.com";
 const I18N = {
   az: {
     eyebrow: "Ən qısa müddətdə təhvil",
+    megaSlogan: "QAFQAZIN ƏN BÖYÜK VƏ ƏN KEYFİYYƏTLİ, GÜVƏNİLİR DİJİTAL MAĞAZASI — SKYFLİX AZƏRBAYCAN",
     heroLine1: "Bir bilet.",
     heroLine2Pre: "Bütün ",
     heroLine2Em: "ekranlar",
@@ -158,6 +159,7 @@ const I18N = {
   },
   en: {
     eyebrow: "Delivered in the shortest time",
+    megaSlogan: "THE CAUCASUS' LARGEST AND MOST TRUSTED DIGITAL STORE — SKYFLIX AZERBAIJAN",
     heroLine1: "One ticket.",
     heroLine2Pre: "Every ",
     heroLine2Em: "screen",
@@ -291,6 +293,7 @@ const I18N = {
   },
   ka: {
     eyebrow: "მიწოდება უმოკლეს დროში",
+    megaSlogan: "კავკასიის ყველაზე დიდი და საიმედო ციფრული მაღაზია — SKYFLIX AZERBAIJAN",
     heroLine1: "ერთი ბილეთი.",
     heroLine2Pre: "ყველა ",
     heroLine2Em: "ეკრანი",
@@ -424,6 +427,7 @@ const I18N = {
   },
   ru: {
     eyebrow: "Доставка в кратчайшие сроки",
+    megaSlogan: "САМЫЙ КРУПНЫЙ И НАДЁЖНЫЙ ЦИФРОВОЙ МАГАЗИН НА КАВКАЗЕ — SKYFLIX AZERBAIJAN",
     heroLine1: "Один билет.",
     heroLine2Pre: "Все ",
     heroLine2Em: "экраны",
@@ -704,7 +708,10 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
         </button>
       )}
       {onAdd && (
-        <button className="ab-ticket-addbtn" onClick={() => onAdd(p)}>
+        <button
+          className="ab-ticket-addbtn"
+          onClick={() => (p.has_duration_options ? go && go("mehsul-" + p.id) : onAdd(p))}
+        >
           <ShoppingCart size={15} /> {t("addToCart")}
         </button>
       )}
@@ -788,7 +795,7 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
         <div className="ab-screen-sweep" />
         <div className="ab-screen-grain" />
         <div className="ab-mega-banner">
-          QAFQAZIN ƏN BÖYÜK VƏ ƏN KEYFİYYƏTLİ, GÜVƏNİLİR DİJİTAL MAĞAZASI — SKYFLİX AZƏRBAYCAN
+          {t("megaSlogan")}
         </div>
         <div className="ab-hero">
           <div>
@@ -892,6 +899,7 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
         </Reveal>
       </section>
 
+      <AdSlot label="Ana səhifə" />
       <CtaBanner go={go} t={t} />
     </>
   );
@@ -921,7 +929,7 @@ function FaqAccordion({ t }) {
   );
 }
 
-function ProductDetailPage({ productId, products, onAdd, t, reviews, onOpenReviews, go }) {
+function ProductDetailPage({ productId, products, onAdd, t, lang, reviews, onOpenReviews, go }) {
   const p = products.find((prod) => prod.id === productId);
   const [selectedMonths, setSelectedMonths] = useState(null);
 
@@ -991,7 +999,10 @@ function ProductDetailPage({ productId, products, onAdd, t, reviews, onOpenRevie
             <span className="ab-ticket-reviews-count">({productReviews.length} {t("reviewsWord")})</span>
           </button>
 
-          {p.description && <p className="ab-detail-description">{p.description}</p>}
+          {(() => {
+            const desc = lang !== "az" && p["description_" + lang] ? p["description_" + lang] : p.description;
+            return desc && <p className="ab-detail-description">{desc}</p>;
+          })()}
 
           {hasDurations && (
             <div className="ab-duration-picker">
@@ -1065,6 +1076,7 @@ function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews, categories, 
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
       </div>
+      <AdSlot label="Paketlər" />
       <Reveal>
         <FaqAccordion t={t} />
       </Reveal>
@@ -1146,6 +1158,16 @@ function ElaqePage({ settings, t }) {
   );
 }
 
+function AdSlot({ label }) {
+  return (
+    <Reveal className="ab-ad-slot">
+      <div className="ab-ad-slot-tag">REKLAM YERİ{label ? ` · ${label}` : ""}</div>
+      <div className="ab-ad-slot-text">Burada sizin reklamınız ola bilər</div>
+      <div className="ab-ad-slot-sub">Reklam sifarişi üçün bizimlə əlaqə saxlayın</div>
+    </Reveal>
+  );
+}
+
 function CtaBanner({ go, t }) {
   return (
     <Reveal className="ab-cta">
@@ -1162,7 +1184,61 @@ function CtaBanner({ go, t }) {
   );
 }
 
-function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
+function recommendationMessage(p) {
+  const name = (p.name || "").toLowerCase();
+  if (name.includes("youtube")) return "Bəlkə YouTube-da reklamlardan azad olarsınız?";
+  if (name.includes("spotify") || name.includes("music") || name.includes("musiqi")) return "Musiqini də reklamsız dinləməyə nə deyirsiniz?";
+  if (name.includes("netflix") || name.includes("disney") || name.includes("apple tv")) return "Bunu da izləmə siyahınıza əlavə edin?";
+  if (name.includes("chatgpt") || name.includes("ai")) return "İşinizi asanlaşdıra biləcək başqa bir alət də var:";
+  return "Bunu da sınamaq istərdinizmi?";
+}
+
+function CartRecommendationCard({ p, onAdd, go }) {
+  const [months, setMonths] = useState(p.has_duration_options && p.duration_options?.length ? p.duration_options[0].months : null);
+  const activeVariant = p.has_duration_options ? (p.duration_options || []).find((d) => d.months === months) : null;
+  const price = activeVariant ? activeVariant.price : p.price;
+
+  function handleAdd() {
+    if (p.has_duration_options) {
+      go && go("mehsul-" + p.id);
+      return;
+    }
+    onAdd(p);
+  }
+
+  return (
+    <div className="ab-cross-card">
+      <div className="ab-cross-msg">{recommendationMessage(p)}</div>
+      <div className="ab-cross-body">
+        {p.image_url && <div className="ab-cross-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
+        <div className="ab-cross-info">
+          <div className="ab-cross-name">{p.name}</div>
+          {p.has_duration_options && p.duration_options?.length > 0 ? (
+            <div className="ab-cross-durations">
+              {p.duration_options.map((d) => (
+                <button
+                  key={d.months}
+                  className={`ab-duration-pill ${months === d.months ? "active" : ""}`}
+                  onClick={() => setMonths(d.months)}
+                  style={{ padding: "5px 10px", fontSize: 12 }}
+                >
+                  {d.months} ay <span>{d.price} ₼</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="ab-cross-price">{price} ₼</div>
+          )}
+        </div>
+        <button className="ab-btn ab-btn-ghost" onClick={handleAdd}>
+          <Plus size={14} /> Əlavə et
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onAdd, go }) {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
@@ -1226,6 +1302,22 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t }) {
           <MessageCircle size={16} /> {t("completeOrder")}
         </a>
       </div>
+
+      {products && products.length > 0 && (() => {
+        const cartIds = new Set(cart.map((i) => i.id));
+        const recs = products.filter((p) => !cartIds.has(p.id)).slice(0, 2);
+        if (recs.length === 0) return null;
+        return (
+          <div className="ab-cross-sell">
+            <h3 className="ad-section-title" style={{ marginTop: 40 }}>Bunlar da xoşunuza gələ bilər</h3>
+            <div className="ab-cross-list">
+              {recs.map((p) => (
+                <CartRecommendationCard key={p.id} p={p} onAdd={onAdd} go={go} />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
@@ -1477,6 +1569,7 @@ function ReviewsPage({ reviews, products, t }) {
           </div>
         </div>
       )}
+      <AdSlot label="Rəylər" />
       <div className="ab-reviews-grid">
         {sorted.map((r, i) => {
           const prod = products.find((p) => p.id === r.product_id);
@@ -2201,6 +2294,7 @@ function AdminPage({ onDataChanged }) {
   const [categories, setCategories] = useState([]);
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: "", icon: "LayoutGrid" });
+  const [visitorCount, setVisitorCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -2234,6 +2328,8 @@ function AdminPage({ onDataChanged }) {
     if (revs) setReviews(revs);
     const { data: cats } = await supabase.from("categories").select("*").order("sort_order");
     if (cats) setCategories(cats);
+    const { count } = await supabase.from("visitor_ips").select("*", { count: "exact", head: true });
+    if (typeof count === "number") setVisitorCount(count);
   }
 
   async function uploadImage(file) {
@@ -2289,8 +2385,26 @@ function AdminPage({ onDataChanged }) {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   }
 
+  async function autoTranslate(text) {
+    if (!text || !text.trim()) return { en: "", ka: "", ru: "" };
+    async function translateOne(target) {
+      try {
+        const res = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=az|${target}`
+        );
+        const data = await res.json();
+        return data?.responseData?.translatedText || "";
+      } catch {
+        return "";
+      }
+    }
+    const [en, ka, ru] = await Promise.all([translateOne("en"), translateOne("ka"), translateOne("ru")]);
+    return { en, ka, ru };
+  }
+
   async function saveProduct(p) {
-    flash("Yadda saxlanılır...");
+    flash("Yadda saxlanılır və tərcümə edilir...");
+    const tr = await autoTranslate(p.description);
     const { error } = await supabase
       .from("products")
       .update({
@@ -2302,12 +2416,15 @@ function AdminPage({ onDataChanged }) {
         category: p.category,
         image_url: p.image_url,
         description: p.description,
+        description_en: tr.en,
+        description_ka: tr.ka,
+        description_ru: tr.ru,
         has_duration_options: p.has_duration_options,
         duration_options: p.duration_options,
         discount_percent: p.discount_percent,
       })
       .eq("id", p.id);
-    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
+    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı və tərcümə olundu ✓");
     if (!error) onDataChanged();
   }
 
@@ -2356,14 +2473,16 @@ function AdminPage({ onDataChanged }) {
       flash("Ad və qiymət mütləqdir.");
       return;
     }
+    flash("Əlavə edilir və tərcümə olunur...");
+    const tr = await autoTranslate(newProduct.description);
     const { data, error } = await supabase
       .from("products")
-      .insert({ ...newProduct, sort_order: products.length + 1 })
+      .insert({ ...newProduct, description_en: tr.en, description_ka: tr.ka, description_ru: tr.ru, sort_order: products.length + 1 })
       .select();
     if (!error && data) {
       setProducts((prev) => [...prev, ...data]);
       setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming", image_url: "", description: "", discount_percent: "" });
-      flash("Məhsul əlavə olundu ✓");
+      flash("Məhsul əlavə olundu və tərcümə edildi ✓");
       onDataChanged();
     } else {
       flash("Xəta baş verdi.");
@@ -2567,6 +2686,14 @@ function AdminPage({ onDataChanged }) {
       </div>
 
       {status && <div className="ad-status">{status}</div>}
+
+      <div className="ad-stat-card">
+        <span className="ad-stat-dot" />
+        <div>
+          <div className="ad-stat-number">{visitorCount}</div>
+          <div className="ad-stat-label">Saytı ziyarət edən unikal IP sayı</div>
+        </div>
+      </div>
 
       <h3 className="ad-section-title">Əlaqə keçidi</h3>
       <div className="ad-settings">
@@ -2997,6 +3124,25 @@ export default function App() {
       });
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Log visitor IP for admin stats
+  useEffect(() => {
+    fetch("https://api.ipify.org?format=json")
+      .then((r) => r.json())
+      .then(async ({ ip }) => {
+        if (!ip) return;
+        const { data: existing } = await supabase.from("visitor_ips").select("ip, visits").eq("ip", ip).maybeSingle();
+        if (existing) {
+          await supabase
+            .from("visitor_ips")
+            .update({ last_seen: new Date().toISOString(), visits: existing.visits + 1 })
+            .eq("ip", ip);
+        } else {
+          await supabase.from("visitor_ips").insert({ ip });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const [lang, setLang] = useState(() => {
@@ -3548,6 +3694,16 @@ export default function App() {
         .ab-duration-pill span{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); font-weight:400; }
         .ab-duration-pill.active{ background:var(--gold); border-color:var(--gold); color:#FFFFFF; }
         .ab-duration-pill.active span{ color:rgba(255,255,255,0.85); }
+
+        .ab-cross-list{ display:flex; flex-direction:column; gap:14px; max-width:560px; }
+        .ab-cross-card{ border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--surface); }
+        .ab-cross-msg{ font-size:13px; color:var(--gold); font-weight:600; margin-bottom:10px; }
+        .ab-cross-body{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .ab-cross-img{ width:44px; height:44px; border-radius:10px; background-size:cover; background-position:center; flex-shrink:0; }
+        .ab-cross-info{ flex:1; min-width:120px; }
+        .ab-cross-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; }
+        .ab-cross-price{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:13px; margin-top:2px; }
+        .ab-cross-durations{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
         .ab-detail-price{ margin-top:18px; font-family:'JetBrains Mono',monospace; }
         .ab-detail-price .ab-price-num{ font-size:32px; }
         .ab-detail-discount{
@@ -3556,6 +3712,18 @@ export default function App() {
         }
 
         .ab-ticket-clickzone{ display:contents; }
+
+        .ab-ad-slot{
+          margin:44px 0; padding:30px 24px; border-radius:16px;
+          border:2px dashed var(--line); background:var(--surface);
+          text-align:center;
+        }
+        .ab-ad-slot-tag{
+          font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.08em;
+          color:var(--muted); margin-bottom:8px;
+        }
+        .ab-ad-slot-text{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:var(--text); }
+        .ab-ad-slot-sub{ font-size:12.5px; color:var(--muted); margin-top:4px; }
 
         .ab-faq{ margin-top:60px; max-width:760px; }
         .ab-faq-title{ font-size:22px; margin:0 0 20px; font-family:'Space Grotesk',sans-serif; }
@@ -3750,6 +3918,14 @@ export default function App() {
           display:inline-block; background:var(--surface2); color:var(--text);
           padding:8px 14px; border-radius:8px; font-size:13.5px; margin-bottom:20px;
         }
+        .ad-stat-card{
+          display:flex; align-items:center; gap:12px;
+          border:1px solid var(--line); border-radius:14px; padding:16px 20px; margin-bottom:24px;
+          background:var(--surface); max-width:360px;
+        }
+        .ad-stat-dot{ width:10px; height:10px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+        .ad-stat-number{ font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; color:var(--gold); }
+        .ad-stat-label{ font-size:12px; color:var(--muted); }
         .ad-section-title{ font-size:19px; margin:36px 0 16px; font-family:'Space Grotesk',sans-serif; }
         .ad-settings{ display:flex; flex-direction:column; gap:14px; max-width:420px; }
         .ad-settings label{ display:flex; flex-direction:column; gap:6px; font-size:13.5px; color:var(--muted); }
@@ -3996,6 +4172,7 @@ export default function App() {
             products={products}
             onAdd={addToCart}
             t={t}
+            lang={lang}
             reviews={reviews}
             onOpenReviews={setReviewsModalProduct}
             go={go}
@@ -4009,7 +4186,7 @@ export default function App() {
         {page === "admin" && <AdminPage onDataChanged={reload} />}
         {page === "hesab" && <CustomerAuthPage t={t} lang={lang} settings={settings} />}
         {page === "sebet" && (
-          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} />
+          <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} products={products} onAdd={addToCart} go={go} />
         )}
       </main>
 
