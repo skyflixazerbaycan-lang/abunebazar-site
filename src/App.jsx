@@ -2563,6 +2563,17 @@ function AdminPage({ onDataChanged }) {
     }
   }
 
+  async function deleteReview(reviewId) {
+    if (!window.confirm("Bu rəyi silmək istədiyinizə əminsiniz?")) return;
+    const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+    if (!error) {
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+      flash("Rəy silindi ✓");
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
   function slugify(text) {
     return (
       text
@@ -3015,6 +3026,9 @@ function AdminPage({ onDataChanged }) {
                 <span style={{ color: "var(--muted)", fontSize: 12.5 }}>{prod ? prod.name : "—"}</span>
                 <span className="ad-customer-balance">{"★".repeat(r.rating)}</span>
                 <span className="ad-customer-date">{new Date(r.created_at).toLocaleDateString("az-AZ")}</span>
+                <button className="ad-delete" onClick={() => deleteReview(r.id)}>
+                  Sil
+                </button>
               </div>
               <p style={{ fontSize: 13.5, margin: "6px 0" }}>{r.comment}</p>
               {r.admin_reply ? (
