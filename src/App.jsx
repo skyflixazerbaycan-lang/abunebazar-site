@@ -2295,6 +2295,10 @@ function AdminPage({ onDataChanged }) {
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: "", icon: "LayoutGrid" });
   const [visitorCount, setVisitorCount] = useState(0);
+  const [bulkSubject, setBulkSubject] = useState("");
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkResult, setBulkResult] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -2495,6 +2499,26 @@ function AdminPage({ onDataChanged }) {
     const { error } = await supabase.from("settings").upsert(rows);
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
     if (!error) onDataChanged();
+  }
+
+  async function sendBulkEmail() {
+    if (!bulkSubject.trim() || !bulkMessage.trim()) {
+      setBulkResult("Mövzu və mətn mütləqdir.");
+      return;
+    }
+    setBulkSending(true);
+    setBulkResult("");
+    const { data, error } = await supabase.functions.invoke("send-bulk-email", {
+      body: { subject: bulkSubject, message: bulkMessage },
+    });
+    setBulkSending(false);
+    if (error) {
+      setBulkResult("Xəta baş verdi: " + error.message);
+    } else {
+      setBulkResult(`Göndərildi: ${data.sent} / ${data.total}`);
+      setBulkSubject("");
+      setBulkMessage("");
+    }
   }
 
   async function addBalance(customerId) {
@@ -2704,6 +2728,28 @@ function AdminPage({ onDataChanged }) {
           <div className="ad-stat-number">{visitorCount}</div>
           <div className="ad-stat-label">Saytı ziyarət edən unikal IP sayı</div>
         </div>
+      </div>
+
+      <h3 className="ad-section-title">Kütləvi email göndər (bütün qeydiyyatlı müştərilərə)</h3>
+      <div className="ad-settings">
+        <label>
+          Mövzu
+          <input value={bulkSubject} onChange={(e) => setBulkSubject(e.target.value)} placeholder="Məs. Bu həftə xüsusi endirim!" />
+        </label>
+        <label>
+          Mətn
+          <textarea
+            className="ad-desc-textarea"
+            value={bulkMessage}
+            onChange={(e) => setBulkMessage(e.target.value)}
+            placeholder="Müştərilərə göndəriləcək mətni yazın..."
+            rows={5}
+          />
+        </label>
+        {bulkResult && <p style={{ fontSize: 13, color: "var(--muted)" }}>{bulkResult}</p>}
+        <button className="ab-btn ab-btn-gold" onClick={sendBulkEmail} disabled={bulkSending} style={{ alignSelf: "flex-start" }}>
+          <Send size={15} /> {bulkSending ? "Göndərilir..." : "Hamısına göndər"}
+        </button>
       </div>
 
       <h3 className="ad-section-title">Əlaqə keçidi</h3>
