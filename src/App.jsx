@@ -674,14 +674,14 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
         style={{ cursor: go ? "pointer" : "default" }}
       >
         {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
+        {p.discount_percent > 0 && <div className="ab-discount-badge">-{p.discount_percent}%</div>}
         <div className="ab-ticket-top">
           <div>
             <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
             <div className="ab-ticket-name">{p.name}</div>
             <div className="ab-ticket-plan">{p.plan}</div>
           </div>
-          <Ticket size={20} strokeWidth={1.75} className="ab-ticket-icon" />
-        </div>
+          </div>
         <div className="ab-ticket-perf">
           <Notch side="left" />
           <Notch side="right" />
@@ -756,7 +756,7 @@ function HeroSlideshow({ products }) {
                 <div className="ab-slide-3d-img" style={{ backgroundImage: `url(${p.image_url})` }} />
               ) : (
                 <div className="ab-slide-3d-icon">
-                  <Ticket size={24} strokeWidth={1.75} />
+                  <img src="/skyflix-icon.png" alt="" style={{ width: 28, height: 28 }} />
                 </div>
               )}
               <div className="ab-slide-3d-name">{p.name}</div>
@@ -787,6 +787,9 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
         <div className="ab-screen-blob b2" />
         <div className="ab-screen-sweep" />
         <div className="ab-screen-grain" />
+        <div className="ab-mega-banner">
+          QAFQAZIN ƏN BÖYÜK VƏ ƏN KEYFİYYƏTLİ, GÜVƏNİLİR DİJİTAL MAĞAZASI — SKYFLİX AZƏRBAYCAN
+        </div>
         <div className="ab-hero">
           <div>
             {lang === "ka" && (
@@ -973,7 +976,7 @@ function ProductDetailPage({ productId, products, onAdd, t, reviews, onOpenRevie
             <div className="ab-detail-img" style={{ backgroundImage: `url(${p.image_url})` }} />
           ) : (
             <div className="ab-detail-img ab-detail-img-fallback">
-              <Ticket size={40} strokeWidth={1.5} />
+              <img src="/skyflix-icon.png" alt="" style={{ width: 60, height: 60 }} />
             </div>
           )}
         </div>
@@ -1013,6 +1016,11 @@ function ProductDetailPage({ productId, products, onAdd, t, reviews, onOpenRevie
             <span className="ab-price-cur">₼</span>
             {!hasDurations && <span className="ab-price-per">/{p.period}</span>}
           </div>
+          {p.discount_percent > 0 && (
+            <div className="ab-detail-discount">
+              <Zap size={14} /> Rəsmi qiymətdən <strong>{p.discount_percent}%</strong> ucuz
+            </div>
+          )}
 
           <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleAdd}>
             <ShoppingCart size={16} /> {t("addToCart")}
@@ -2179,6 +2187,7 @@ function AdminPage({ onDataChanged }) {
     category: "streaming",
     image_url: "",
     description: "",
+    discount_percent: "",
   });
   const [status, setStatus] = useState("");
   const [customers, setCustomers] = useState([]);
@@ -2295,6 +2304,7 @@ function AdminPage({ onDataChanged }) {
         description: p.description,
         has_duration_options: p.has_duration_options,
         duration_options: p.duration_options,
+        discount_percent: p.discount_percent,
       })
       .eq("id", p.id);
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
@@ -2352,7 +2362,7 @@ function AdminPage({ onDataChanged }) {
       .select();
     if (!error && data) {
       setProducts((prev) => [...prev, ...data]);
-      setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming", image_url: "", description: "" });
+      setNewProduct({ name: "", plan: "", price: "", period: "AY", code: "", category: "streaming", image_url: "", description: "", discount_percent: "" });
       flash("Məhsul əlavə olundu ✓");
       onDataChanged();
     } else {
@@ -2580,6 +2590,13 @@ function AdminPage({ onDataChanged }) {
               <input value={p.name} onChange={(e) => updateField(p.id, "name", e.target.value)} placeholder="Ad" />
               <input value={p.plan} onChange={(e) => updateField(p.id, "plan", e.target.value)} placeholder="Plan" />
               <input value={p.price} onChange={(e) => updateField(p.id, "price", e.target.value)} placeholder="Qiymət" />
+              <input
+                type="number"
+                value={p.discount_percent || ""}
+                onChange={(e) => updateField(p.id, "discount_percent", e.target.value)}
+                placeholder="Endirim %"
+                style={{ maxWidth: 100 }}
+              />
               <input value={p.image_url || ""} onChange={(e) => updateField(p.id, "image_url", e.target.value)} placeholder="Şəkil linki (URL)" />
               <input
                 type="file"
@@ -2689,6 +2706,13 @@ function AdminPage({ onDataChanged }) {
           value={newProduct.price}
           onChange={(e) => setNewProduct((n) => ({ ...n, price: e.target.value }))}
           placeholder="Qiymət"
+        />
+        <input
+          type="number"
+          value={newProduct.discount_percent}
+          onChange={(e) => setNewProduct((n) => ({ ...n, discount_percent: e.target.value }))}
+          placeholder="Endirim %"
+          style={{ maxWidth: 100 }}
         />
         <input
           value={newProduct.code}
@@ -2901,7 +2925,6 @@ const ProductTicker = React.memo(function ProductTicker({ products }) {
       <div className="ab-ticker-track">
         {items.map((p, i) => (
           <span className="ab-ticker-item" key={i}>
-            <Ticket size={12} strokeWidth={2} />
             {p.name} <b>{p.price} ₼</b>
           </span>
         ))}
@@ -3184,12 +3207,11 @@ export default function App() {
         }
         .ab-brand{ display:flex; align-items:center; gap:9px; font-weight:700; font-size:19px; background:none; border:none; color:inherit; cursor:pointer; padding:0; font-family:'Space Grotesk',sans-serif; }
         .ab-brand-mark{
-          width:26px;height:26px;border-radius:7px;
-          background:linear-gradient(135deg,var(--gold),var(--teal));
+          width:30px;height:30px;
           display:flex;align-items:center;justify-content:center;
-          transform:rotate(-8deg);
           flex-shrink:0;
         }
+        .ab-brand-mark img{ width:100%; height:100%; object-fit:contain; }
         .ab-navlinks{ display:none; gap:6px; }
         @media(min-width:800px){ .ab-navlinks{ display:flex; } }
         .ab-navlink{
@@ -3426,6 +3448,24 @@ export default function App() {
           opacity:.05; mix-blend-mode:overlay; pointer-events:none;
         }
 
+        .ab-mega-banner{
+          position:relative; z-index:1;
+          padding:22px 6vw 0;
+          font-family:'Space Grotesk',sans-serif;
+          font-weight:700; text-transform:uppercase;
+          font-size:clamp(14px,2.1vw,20px);
+          line-height:1.4; letter-spacing:.01em;
+          text-align:center;
+          background:linear-gradient(90deg, #FFD84D, #FF6B6B, #FFD84D);
+          background-size:200% auto;
+          -webkit-background-clip:text; background-clip:text; color:transparent;
+          animation:ab-shine 5s linear infinite;
+        }
+        @keyframes ab-shine{
+          0%{ background-position:0% center; }
+          100%{ background-position:200% center; }
+        }
+
         .ab-hero{
           position:relative; z-index:1;
           padding:76px 6vw 60px;
@@ -3510,6 +3550,10 @@ export default function App() {
         .ab-duration-pill.active span{ color:rgba(255,255,255,0.85); }
         .ab-detail-price{ margin-top:18px; font-family:'JetBrains Mono',monospace; }
         .ab-detail-price .ab-price-num{ font-size:32px; }
+        .ab-detail-discount{
+          display:inline-flex; align-items:center; gap:6px; margin-top:8px;
+          color:var(--gold); font-size:13px; font-weight:600;
+        }
 
         .ab-ticket-clickzone{ display:contents; }
 
@@ -3619,10 +3663,23 @@ export default function App() {
         .ab-ticket{
           background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden;
           transition:border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+          position:relative;
         }
         .ab-ticket:hover{
           border-color:rgba(225,18,42,0.5); transform:translateY(-4px);
           box-shadow:0 20px 38px -18px rgba(225,18,42,0.28), 0 8px 16px -10px rgba(26,18,16,0.25);
+        }
+        .ab-discount-badge{
+          position:absolute; top:14px; right:-8px; z-index:2;
+          background:linear-gradient(135deg,#FFD84D,#E1122A);
+          color:#FFFFFF; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12.5px;
+          padding:5px 14px 5px 12px; border-radius:6px 0 0 6px;
+          box-shadow:0 6px 14px -4px rgba(0,0,0,0.35);
+          letter-spacing:.02em;
+        }
+        .ab-discount-badge::after{
+          content:""; position:absolute; top:100%; right:0; border-style:solid;
+          border-width:4px 8px 0 0; border-color:#8a0d1c transparent transparent transparent;
         }
 
         .ab-ticket-top{ display:flex; justify-content:space-between; align-items:flex-start; padding:20px 20px 22px; }
@@ -3818,7 +3875,7 @@ export default function App() {
       <nav className={`ab-nav ${navSolid ? "solid" : ""}`}>
         <button className="ab-brand" onClick={() => navigate("home")}>
           <span className="ab-brand-mark">
-            <Ticket size={14} color="#FFFFFF" strokeWidth={2.4} />
+            <img src="/skyflix-icon.png" alt="SkyFlix" />
           </span>
           SkyFlix Azerbaycan
         </button>
@@ -3883,7 +3940,7 @@ export default function App() {
           <div className="ab-mobilemenu-head">
             <div className="ab-brand">
               <span className="ab-brand-mark">
-                <Ticket size={14} color="#FFFFFF" strokeWidth={2.4} />
+                <img src="/skyflix-icon.png" alt="SkyFlix" />
               </span>
               SkyFlix Azerbaycan
             </div>
@@ -3959,7 +4016,7 @@ export default function App() {
       <footer className="ab-footer">
         <button className="ab-brand" style={{ fontSize: 15 }} onClick={() => navigate("home")}>
           <span className="ab-brand-mark" style={{ width: 20, height: 20 }}>
-            <Ticket size={11} color="#FFFFFF" strokeWidth={2.4} />
+            <img src="/skyflix-icon.png" alt="SkyFlix" />
           </span>
           SkyFlix Azerbaycan
         </button>
