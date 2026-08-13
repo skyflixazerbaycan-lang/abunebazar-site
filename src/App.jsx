@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const ICON_MAP = {
@@ -605,6 +605,7 @@ function useAppData() {
   const [settings, setSettings] = useState({});
   const [reviews, setReviews] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [wheelPrizes, setWheelPrizes] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   async function reload() {
@@ -620,6 +621,8 @@ function useAppData() {
     if (revs) setReviews(revs);
     const { data: cats } = await supabase.from("categories").select("*").order("sort_order");
     if (cats) setCategories(cats);
+    const { data: prizes } = await supabase.from("wheel_prizes").select("*").order("sort_order");
+    if (prizes) setWheelPrizes(prizes);
     setLoaded(true);
   }
 
@@ -627,7 +630,7 @@ function useAppData() {
     reload();
   }, []);
 
-  return { products, settings, reviews, categories, reload, loaded };
+  return { products, settings, reviews, categories, wheelPrizes, reload, loaded };
 }
 
 function Reveal({ children, delay = 0, className = "" }) {
@@ -1238,22 +1241,70 @@ function CartRecommendationCard({ p, onAdd, go }) {
   );
 }
 
+const PROMO_CODE = "sky2manat";
+const PROMO_MIN = 10;
+const PROMO_DISCOUNT = 2;
+const PAY_CARD_NAME = "Elbrus Allahverdiyev";
+const PAY_CARD_BANK = "Kapital Bank";
+const PAY_CARD_NUMBER = "4169742323992731";
+
+function formatCardNumber(num) {
+  return num.replace(/(.{4})/g, "$1 ").trim();
+}
+
 function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onAdd, go }) {
   const [session, setSession] = useState(null);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
   }, []);
 
-  const total = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
+  const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
+  const discount = promoApplied && subtotal >= PROMO_MIN ? PROMO_DISCOUNT : 0;
+  const total = Math.max(subtotal - discount, 0);
+  const remainingForPromo = Math.max(PROMO_MIN - subtotal, 0);
+
+  function applyPromo() {
+    setPromoError("");
+    if (promoInput.trim().toLowerCase() !== PROMO_CODE) {
+      setPromoError("Promokod düzgün deyil.");
+      return;
+    }
+    if (subtotal < PROMO_MIN) {
+      setPromoError(`Endirim üçün minimum ${PROMO_MIN} ₼-lıq məhsul seçməlisiniz. Daha ${remainingForPromo.toFixed(2)} ₼ qaldı!`);
+      return;
+    }
+    setPromoApplied(true);
+  }
 
   const rawNumber = settings.contact_whatsapp || "517873090";
   const digits = rawNumber.replace(/[^0-9]/g, "");
   const lines = cart.map(
     (item) => `- ${item.name} x${item.qty} — ${(parseFloat(item.price) * item.qty).toFixed(2)} ₼`
   );
-  const message = `Salam! Sifariş etmək istəyirəm:\n${lines.join("\n")}\n\nCəmi: ${total.toFixed(2)} ₼`;
-  const waLink = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  const orderSummary = lines.join("\n") + (discount > 0 ? `\n\nEndirim (${PROMO_CODE.toUpperCase()}): -${discount.toFixed(2)} ₼` : "") + `\n\nCəmi: ${total.toFixed(2)} ₼`;
+
+  const orderMessage = `Salam! Sifariş etmək istəyirəm:\n${orderSummary}`;
+  const orderWaLink = `https://wa.me/${digits}?text=${encodeURIComponent(orderMessage)}`;
+
+  const paidMessage = `Salam! Mən aşağıdakı sifariş üçün ${total.toFixed(2)} ₼ məbləğini bu karta (${PAY_CARD_BANK}, ${PAY_CARD_NAME}) saytınız vasitəsilə ödədim. Qəbzi göndərirəm. Sifarişimi təsdiq edin:\n${orderSummary}`;
+  const paidWaLink = `https://wa.me/${digits}?text=${encodeURIComponent(paidMessage)}`;
+
+  function logOrder() {
+    supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {});
+  }
+
+  function copyCard() {
+    navigator.clipboard.writeText(PAY_CARD_NUMBER).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   if (cart.length === 0) {
     return (
@@ -1266,6 +1317,19 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   return (
     <section className="ab-section ab-page-pad">
       <PageHead kicker={t("cartKicker")} title={t("cartTitle")} sub={t("cartSub")} />
+
+      {!promoApplied && subtotal < PROMO_MIN && (
+        <div className="ab-promo-progress">
+          <Tag size={15} />
+          Endirimi əldə etməyə son <strong>{remainingForPromo.toFixed(2)} ₼</strong> qaldı!
+        </div>
+      )}
+      {promoApplied && (
+        <div className="ab-promo-progress ab-promo-progress-active">
+          <CheckCircle2 size={15} />
+          <strong>{PROMO_CODE.toUpperCase()}</strong> promokodu tətbiq olundu — {PROMO_DISCOUNT} ₼ endirim qazandınız!
+        </div>
+      )}
 
       <div className="ab-cart-list">
         {cart.map((item) => (
@@ -1293,14 +1357,81 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
         ))}
       </div>
 
+      {!promoApplied && (
+        <div className="ab-promo-box">
+          <input
+            value={promoInput}
+            onChange={(e) => setPromoInput(e.target.value)}
+            placeholder="Promokod daxil edin"
+          />
+          <button className="ab-btn ab-btn-ghost" onClick={applyPromo}>
+            Tətbiq et
+          </button>
+        </div>
+      )}
+      {promoError && <p className="ad-error" style={{ marginTop: 8 }}>{promoError}</p>}
+
       <div className="ab-cart-summary">
+        <div className="ab-cart-total-row">
+          <span>Ara cəmi</span>
+          <span>{subtotal.toFixed(2)} ₼</span>
+        </div>
+        {discount > 0 && (
+          <div className="ab-cart-total-row ab-cart-discount-row">
+            <span>Endirim</span>
+            <span>-{discount.toFixed(2)} ₼</span>
+          </div>
+        )}
         <div className="ab-cart-total-row">
           <span>{t("cartTotal")}</span>
           <span className="ab-cart-total">{total.toFixed(2)} ₼</span>
         </div>
-        <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => { supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {}); }}>
-          <MessageCircle size={16} /> {t("completeOrder")}
-        </a>
+
+        {!showPayment ? (
+          <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => setShowPayment(true)}>
+            <CreditCard size={16} /> Ödəniş et
+          </button>
+        ) : (
+          <div className="ab-pay-card">
+            <div className="ab-pay-card-head">
+              <CreditCard size={18} /> Kart məlumatları
+            </div>
+            <div className="ab-pay-card-row">
+              <span>Kart sahibi</span>
+              <strong>{PAY_CARD_NAME}</strong>
+            </div>
+            <div className="ab-pay-card-row">
+              <span>Bank</span>
+              <strong>{PAY_CARD_BANK}</strong>
+            </div>
+            <div className="ab-pay-card-row">
+              <span>Kart nömrəsi</span>
+              <div className="ab-pay-card-number">
+                <strong>{formatCardNumber(PAY_CARD_NUMBER)}</strong>
+                <button onClick={copyCard} aria-label="Kopyala">
+                  {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+            <div className="ab-pay-card-row ab-pay-card-total">
+              <span>Ödəniləcək məbləğ</span>
+              <strong>{total.toFixed(2)} ₼</strong>
+            </div>
+            <p className="ab-pay-instructions">
+              Yuxarıdakı kart nömrəsinə göstərilən məbləği köçürün. Ödənişi etdikdən sonra aşağıdakı düyməyə basaraq qəbzi WhatsApp üzərindən bizə göndərin — sifarişiniz təsdiqləndikdən sonra hesablarınız hazırlanıb göndəriləcək.
+            </p>
+            <a
+              href={paidWaLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ab-btn ab-btn-gold"
+              style={{ width: "100%", justifyContent: "center" }}
+              onClick={logOrder}
+            >
+              <MessageCircle size={16} /> Ödədim, qəbzi göndər
+            </a>
+          </div>
+        )}
       </div>
 
       {products && products.length > 0 && (() => {
@@ -2182,6 +2313,146 @@ function ReviewsModal({ product, reviews, session, t, onClose, onSubmitted }) {
   );
 }
 
+function SpinWheel({ prizes, session, go, onClose }) {
+  const [spinsUsed, setSpinsUsed] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!session) {
+      setLoaded(true);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("wheel_spins_used")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => {
+        setSpinsUsed(data?.wheel_spins_used || 0);
+        setLoaded(true);
+      });
+  }, [session]);
+
+  const list = prizes && prizes.length > 0 ? prizes : [];
+  const segAngle = list.length > 0 ? 360 / list.length : 0;
+  const colors = ["#E1122A", "#8C1620", "#FFD84D", "#E1122A", "#8C1620", "#FFD84D"];
+
+  function handleSpin() {
+    if (!session) {
+      onClose();
+      go("hesab");
+      return;
+    }
+    if (spinning || spinsUsed >= 3 || list.length === 0) return;
+
+    let targetPrize;
+    if (spinsUsed < 2) {
+      targetPrize = list.find((p) => p.type === "try_again") || list[list.length - 1];
+    } else {
+      targetPrize = list.find((p) => p.type === "discount" && Number(p.amount) === 2) || list.find((p) => p.type === "discount") || list[0];
+    }
+
+    const idx = list.findIndex((p) => p.id === targetPrize.id);
+    const targetCenter = idx * segAngle + segAngle / 2;
+    const currentMod = ((rotation % 360) + 360) % 360;
+    const desiredMod = (360 - targetCenter) % 360;
+    let delta = (desiredMod - currentMod + 360) % 360;
+    delta += 360 * 5;
+
+    setSpinning(true);
+    setResult(null);
+    setRotation((prev) => prev + delta);
+
+    setTimeout(async () => {
+      setSpinning(false);
+      setResult(targetPrize);
+      const newCount = spinsUsed + 1;
+      setSpinsUsed(newCount);
+      await supabase.from("profiles").update({ wheel_spins_used: newCount }).eq("id", session.user.id);
+    }, 4200);
+  }
+
+  function copyPromo() {
+    navigator.clipboard.writeText(PROMO_CODE.toUpperCase()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-wheel-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
+          <X size={18} />
+        </button>
+        <h3 className="ab-wheel-title">
+          <Gift size={18} /> Bəxtini sına!
+        </h3>
+        <p className="ab-wheel-sub">Çarxı fırlat, endirim promokodu qazan</p>
+
+        <div className="ab-wheel-wrap">
+          <div className="ab-wheel-pointer" />
+          <div
+            className="ab-wheel-disc"
+            style={{
+              transform: `rotate(${rotation}deg)`,
+              background: `conic-gradient(${list
+                .map((p, i) => `${colors[i % colors.length]} ${i * segAngle}deg ${(i + 1) * segAngle}deg`)
+                .join(", ")})`,
+            }}
+          >
+            {list.map((p, i) => {
+              const center = i * segAngle + segAngle / 2;
+              return (
+                <div key={p.id} className="ab-wheel-label-wrap" style={{ transform: `rotate(${center}deg)` }}>
+                  <div className="ab-wheel-label" style={{ transform: `translateX(-50%) rotate(${-center}deg)` }}>
+                    {p.image_url && <img src={p.image_url} alt="" />}
+                    <span>{p.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {loaded && spinsUsed >= 3 ? (
+          <p className="ab-wheel-used-up">Fırlatma haqqınız bitib — hər istifadəçi cəmi 3 dəfə fırlada bilər.</p>
+        ) : (
+          <button className="ab-btn ab-btn-gold" onClick={handleSpin} disabled={spinning || !loaded} style={{ width: "100%", justifyContent: "center", marginTop: 16 }}>
+            <RotateCw size={16} /> {spinning ? "Fırlanır..." : "Fırlat"}
+          </button>
+        )}
+        {loaded && spinsUsed < 3 && (
+          <p className="ab-wheel-count">Qalan fırlatma haqqınız: {3 - spinsUsed}</p>
+        )}
+
+        {result && (
+          <div className="ab-wheel-result">
+            {result.type === "discount" ? (
+              <>
+                <p>
+                  🎉 Təbriklər! <strong>{result.amount} ₼ endirim</strong> qazandınız!
+                </p>
+                <div className="ab-wheel-promo-box">
+                  <strong>{PROMO_CODE.toUpperCase()}</strong>
+                  <button onClick={copyPromo}>{copied ? <CheckCircle2 size={15} /> : <Copy size={15} />}</button>
+                </div>
+                <p className="ab-wheel-note">Bu kodu səbətdə (minimum {PROMO_MIN} ₼-lıq sifarişdə) tətbiq edin.</p>
+              </>
+            ) : (
+              <p>Bu dəfə uğursuz oldu 😔 Yenidən cəhd edin!</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LiveChatButton({ settings }) {
   const rawNumber = settings?.contact_whatsapp || "517873090";
   const digits = rawNumber.replace(/[^0-9]/g, "");
@@ -2294,6 +2565,7 @@ function AdminPage({ onDataChanged }) {
   const [categories, setCategories] = useState([]);
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: "", icon: "LayoutGrid" });
+  const [wheelPrizes, setWheelPrizes] = useState([]);
   const [visitorCount, setVisitorCount] = useState(0);
   const [bulkSubject, setBulkSubject] = useState("");
   const [bulkMessage, setBulkMessage] = useState("");
@@ -2332,6 +2604,8 @@ function AdminPage({ onDataChanged }) {
     if (revs) setReviews(revs);
     const { data: cats } = await supabase.from("categories").select("*").order("sort_order");
     if (cats) setCategories(cats);
+    const { data: prizes } = await supabase.from("wheel_prizes").select("*").order("sort_order");
+    if (prizes) setWheelPrizes(prizes);
     const { count } = await supabase.from("visitor_ips").select("*", { count: "exact", head: true });
     if (typeof count === "number") setVisitorCount(count);
   }
@@ -2653,6 +2927,52 @@ function AdminPage({ onDataChanged }) {
     } else {
       flash("Xəta baş verdi.");
     }
+  }
+
+  function updateWheelPrizeField(id, field, value) {
+    setWheelPrizes((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  }
+
+  async function saveWheelPrize(p) {
+    flash("Yadda saxlanılır...");
+    const { error } = await supabase
+      .from("wheel_prizes")
+      .update({ label: p.label, type: p.type, amount: p.amount, image_url: p.image_url })
+      .eq("id", p.id);
+    flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı ✓");
+    if (!error) onDataChanged();
+  }
+
+  async function handleWheelImageFile(id, file) {
+    if (!file) return;
+    flash("Şəkil yüklənir...");
+    const url = await uploadImage(file);
+    if (url) {
+      updateWheelPrizeField(id, "image_url", url);
+      await supabase.from("wheel_prizes").update({ image_url: url }).eq("id", id);
+      flash("Şəkil yükləndi ✓");
+    }
+  }
+
+  async function addWheelPrize() {
+    const { data, error } = await supabase
+      .from("wheel_prizes")
+      .insert({ label: "Yeni seçim", type: "try_again", amount: 0, sort_order: wheelPrizes.length + 1 })
+      .select();
+    if (!error && data) {
+      setWheelPrizes((prev) => [...prev, ...data]);
+      flash("Seçim əlavə olundu ✓");
+      onDataChanged();
+    } else {
+      flash("Xəta baş verdi.");
+    }
+  }
+
+  async function deleteWheelPrize(id) {
+    if (!window.confirm("Bu çarx seçimini silmək istədiyinizə əminsiniz?")) return;
+    await supabase.from("wheel_prizes").delete().eq("id", id);
+    setWheelPrizes((prev) => prev.filter((p) => p.id !== id));
+    onDataChanged();
   }
 
   const filteredCustomers = customers.filter((c) => {
@@ -2981,6 +3301,45 @@ function AdminPage({ onDataChanged }) {
         </button>
       </div>
 
+      <h3 className="ad-section-title">Bəxt Çarxı — seçimlər</h3>
+      <div className="ad-products">
+        {wheelPrizes.map((p) => (
+          <div className="ad-product-row" key={p.id} style={{ gridTemplateColumns: "1.2fr 0.9fr 0.7fr auto auto auto" }}>
+            <input value={p.label} onChange={(e) => updateWheelPrizeField(p.id, "label", e.target.value)} placeholder="Yazı (məs. 2 ₼ endirim)" />
+            <select value={p.type} onChange={(e) => updateWheelPrizeField(p.id, "type", e.target.value)}>
+              <option value="discount">Endirim</option>
+              <option value="try_again">Bəxtini bir daha sına</option>
+            </select>
+            <input
+              type="number"
+              value={p.amount || ""}
+              onChange={(e) => updateWheelPrizeField(p.id, "amount", e.target.value)}
+              placeholder="Məbləğ ₼"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              id={`wheel-img-${p.id}`}
+              style={{ display: "none" }}
+              onChange={(e) => handleWheelImageFile(p.id, e.target.files[0])}
+            />
+            <button className="ab-btn ab-btn-ghost" onClick={() => document.getElementById(`wheel-img-${p.id}`).click()}>
+              Şəkil seç
+            </button>
+            <button className="ab-btn ab-btn-ghost" onClick={() => saveWheelPrize(p)}>
+              Saxla
+            </button>
+            <button className="ad-delete" onClick={() => deleteWheelPrize(p.id)}>
+              Sil
+            </button>
+          </div>
+        ))}
+        {wheelPrizes.length === 0 && <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Hələ çarx seçimi yoxdur.</p>}
+      </div>
+      <button className="ab-btn ab-btn-gold" onClick={addWheelPrize} style={{ marginTop: 10 }}>
+        + Yeni seçim əlavə et
+      </button>
+
       <h3 className="ad-section-title">Müştərilər ({filteredCustomers.length})</h3>
       <input
         className="ad-customer-search"
@@ -3127,13 +3486,30 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const LANG_NAMES = { az: "AZ", en: "EN", ka: "GE", ru: "RU" };
-  const { products, settings, reviews, categories, reload, loaded } = useAppData();
+  const { products, settings, reviews, categories, wheelPrizes, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const [showWheel, setShowWheel] = useState(false);
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = localStorage.getItem("skyflix_wheel_seen") === "1";
+    } catch {}
+    if (!seen) {
+      const timer = setTimeout(() => {
+        setShowWheel(true);
+        try {
+          localStorage.setItem("skyflix_wheel_seen", "1");
+        } catch {}
+      }, 2200);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Admin -> customer message banner
@@ -3306,6 +3682,12 @@ export default function App() {
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
       <MessageBanner message={activeMessage} onDismiss={dismissMessage} />
+      <button className="ab-wheel-fab" onClick={() => setShowWheel(true)} title="Bəxtini sına">
+        <Gift size={22} />
+      </button>
+      {showWheel && (
+        <SpinWheel prizes={wheelPrizes} session={session} go={go} onClose={() => setShowWheel(false)} />
+      )}
       {reviewsModalProduct && (
         <ReviewsModal
           product={reviewsModalProduct}
@@ -3555,7 +3937,46 @@ export default function App() {
         .ab-cart-remove{ background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
         .ab-cart-remove:hover{ color:var(--gold); }
         .ab-cart-summary{ border-top:1px solid var(--line); padding-top:22px; max-width:440px; }
-        .ab-cart-total-row{ display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:600; font-family:'Space Grotesk',sans-serif; }
+        .ab-cart-total-row{ display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:600; font-family:'Space Grotesk',sans-serif; margin-bottom:6px; }
+        .ab-cart-discount-row{ color:var(--gold); font-size:14px; font-weight:600; }
+
+        .ab-promo-progress{
+          display:flex; align-items:center; gap:8px;
+          background:var(--surface2); border-radius:12px; padding:12px 16px;
+          font-size:13.5px; color:var(--text); margin-bottom:18px;
+        }
+        .ab-promo-progress svg{ color:var(--gold); flex-shrink:0; }
+        .ab-promo-progress-active{ background:rgba(46,204,113,0.12); }
+        .ab-promo-progress-active svg{ color:#2ecc71; }
+
+        .ab-promo-box{ display:flex; gap:10px; margin:18px 0 4px; max-width:420px; }
+        .ab-promo-box input{
+          flex:1; padding:11px 14px; border-radius:10px; border:1px solid var(--line);
+          font-family:'JetBrains Mono',monospace; font-size:13.5px; background:var(--surface); color:var(--text);
+          text-transform:uppercase;
+        }
+
+        .ab-pay-card{
+          margin-top:16px; padding:20px; border-radius:16px;
+          border:1px solid var(--line); background:var(--surface);
+        }
+        .ab-pay-card-head{
+          display:flex; align-items:center; gap:8px; font-weight:600; font-family:'Space Grotesk',sans-serif;
+          margin-bottom:14px; font-size:15px;
+        }
+        .ab-pay-card-row{
+          display:flex; justify-content:space-between; align-items:center;
+          padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; color:var(--muted);
+        }
+        .ab-pay-card-row strong{ color:var(--text); font-family:'JetBrains Mono',monospace; font-size:14px; }
+        .ab-pay-card-number{ display:flex; align-items:center; gap:10px; }
+        .ab-pay-card-number button{
+          background:var(--surface2); border:none; border-radius:8px; padding:6px; cursor:pointer; color:var(--gold);
+          display:flex; align-items:center; justify-content:center;
+        }
+        .ab-pay-card-total{ border-bottom:none; padding-top:14px; }
+        .ab-pay-card-total strong{ color:var(--gold); font-size:18px; }
+        .ab-pay-instructions{ font-size:12.5px; color:var(--muted); line-height:1.6; margin:14px 0; }
         .ab-cart-total{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:22px; }
 
         .ab-mobilemenu{
@@ -3860,6 +4281,56 @@ export default function App() {
         }
         .ab-msg-box p{ font-size:16px; line-height:1.6; margin:10px 0 0; }
         .ab-msg-close{ position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
+
+        .ab-wheel-modal{
+          position:relative; background:var(--bg); border-radius:24px; max-width:380px; width:100%;
+          padding:30px 24px; text-align:center; box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+        }
+        .ab-wheel-title{
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          font-size:20px; margin:0 0 4px; font-family:'Space Grotesk',sans-serif; color:var(--gold);
+        }
+        .ab-wheel-sub{ color:var(--muted); font-size:13px; margin:0 0 20px; }
+        .ab-wheel-wrap{ position:relative; width:240px; height:240px; margin:0 auto; }
+        .ab-wheel-pointer{
+          position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+          width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent;
+          border-top:20px solid var(--text); z-index:3;
+        }
+        .ab-wheel-disc{
+          width:100%; height:100%; border-radius:50%; position:relative; overflow:hidden;
+          border:5px solid var(--surface2); box-shadow:0 10px 30px -10px rgba(0,0,0,0.4);
+          transition:transform 4.2s cubic-bezier(.17,.67,.16,.99);
+        }
+        .ab-wheel-label-wrap{ position:absolute; inset:0; }
+        .ab-wheel-label{
+          position:absolute; top:18px; left:50%; width:80px;
+          display:flex; flex-direction:column; align-items:center; gap:3px;
+          font-size:10.5px; font-weight:700; color:#FFFFFF; text-align:center; line-height:1.2;
+          text-shadow:0 1px 3px rgba(0,0,0,0.4);
+        }
+        .ab-wheel-label img{ width:22px; height:22px; border-radius:6px; object-fit:cover; }
+        .ab-wheel-used-up{ color:var(--muted); font-size:13px; margin-top:18px; }
+        .ab-wheel-count{ color:var(--muted); font-size:12px; margin-top:10px; }
+        .ab-wheel-result{
+          margin-top:18px; padding-top:16px; border-top:1px solid var(--line);
+          font-size:14px;
+        }
+        .ab-wheel-promo-box{
+          display:inline-flex; align-items:center; gap:10px; margin:10px 0;
+          background:var(--surface2); border-radius:10px; padding:10px 16px;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; color:var(--gold);
+        }
+        .ab-wheel-promo-box button{ background:none; border:none; color:var(--gold); cursor:pointer; display:flex; }
+        .ab-wheel-note{ color:var(--muted); font-size:12px; margin:0; }
+
+        .ab-wheel-fab{
+          position:fixed; bottom:90px; left:22px; z-index:53;
+          width:52px; height:52px; border-radius:50%;
+          background:linear-gradient(135deg,#FFD84D,var(--gold)); color:#FFFFFF;
+          border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+          box-shadow:0 12px 26px -10px rgba(225,18,42,0.55);
+        }
 
         .ab-section{ padding:90px 6vw; }
         .ab-section-head{ margin-bottom:44px; max-width:60ch; }
