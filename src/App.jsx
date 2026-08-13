@@ -673,6 +673,8 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
   const avg = productReviews.length
     ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
     : 0;
+  const showStock = !p.has_duration_options && p.stock !== null && p.stock !== undefined;
+  const outOfStock = showStock && p.stock <= 0;
   return (
     <div className="ab-ticket">
       <div
@@ -698,9 +700,14 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
           <div className="ab-ticket-price">
             <span className="ab-price-num">{p.price}</span>
             <span className="ab-price-cur">₼</span>
-            <span className="ab-price-per">/{p.period}</span>
+            {p.show_period !== false && <span className="ab-price-per">/{p.period}</span>}
           </div>
         </div>
+        {showStock && (
+          <div className={`ab-stock-badge ${outOfStock ? "out" : ""}`}>
+            {outOfStock ? "Stokda yoxdur" : `Stokda: ${p.stock} ədəd`}
+          </div>
+        )}
       </div>
       {onOpenReviews && (
         <button className="ab-ticket-reviews" onClick={() => onOpenReviews(p)}>
@@ -714,8 +721,9 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
         <button
           className="ab-ticket-addbtn"
           onClick={() => (p.has_duration_options ? go && go("mehsul-" + p.id) : onAdd(p))}
+          disabled={outOfStock}
         >
-          <ShoppingCart size={15} /> {t("addToCart")}
+          <ShoppingCart size={15} /> {outOfStock ? "Stokda yoxdur" : t("addToCart")}
         </button>
       )}
     </div>
@@ -961,8 +969,13 @@ function ProductDetailPage({ productId, products, onAdd, t, lang, reviews, onOpe
   const hasDurations = p.has_duration_options && p.duration_options && p.duration_options.length > 0;
   const activeVariant = hasDurations ? p.duration_options.find((d) => d.months === selectedMonths) : null;
   const displayPrice = activeVariant ? activeVariant.price : p.price;
+  const variantStock = activeVariant && activeVariant.stock !== undefined && activeVariant.stock !== null ? activeVariant.stock : null;
+  const overallStock = !hasDurations && p.stock !== null && p.stock !== undefined ? p.stock : null;
+  const currentStock = hasDurations ? variantStock : overallStock;
+  const outOfStock = currentStock !== null && currentStock <= 0;
 
   function handleAdd() {
+    if (outOfStock) return;
     if (hasDurations && activeVariant) {
       onAdd({
         id: p.id,
@@ -1011,16 +1024,22 @@ function ProductDetailPage({ productId, products, onAdd, t, lang, reviews, onOpe
             <div className="ab-duration-picker">
               <div className="ab-duration-label">Neçə aylıq?</div>
               <div className="ab-duration-options">
-                {p.duration_options.map((d) => (
-                  <button
-                    key={d.months}
-                    className={`ab-duration-pill ${selectedMonths === d.months ? "active" : ""}`}
-                    onClick={() => setSelectedMonths(d.months)}
-                  >
-                    {d.months} ay
-                    <span>{d.price} ₼</span>
-                  </button>
-                ))}
+                {p.duration_options.map((d) => {
+                  const dStock = d.stock !== undefined && d.stock !== null ? d.stock : null;
+                  const dOut = dStock !== null && dStock <= 0;
+                  return (
+                    <button
+                      key={d.months}
+                      className={`ab-duration-pill ${selectedMonths === d.months ? "active" : ""} ${dOut ? "out" : ""}`}
+                      onClick={() => setSelectedMonths(d.months)}
+                      disabled={dOut}
+                    >
+                      {d.months} ay
+                      <span>{d.price} ₼</span>
+                      {dStock !== null && <em>{dOut ? "Bitib" : `${dStock} ədəd`}</em>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1028,16 +1047,21 @@ function ProductDetailPage({ productId, products, onAdd, t, lang, reviews, onOpe
           <div className="ab-detail-price">
             <span className="ab-price-num">{displayPrice}</span>
             <span className="ab-price-cur">₼</span>
-            {!hasDurations && <span className="ab-price-per">/{p.period}</span>}
+            {!hasDurations && p.show_period !== false && <span className="ab-price-per">/{p.period}</span>}
           </div>
           {p.discount_percent > 0 && (
             <div className="ab-detail-discount">
               <Zap size={14} /> Rəsmi qiymətdən <strong>{p.discount_percent}%</strong> ucuz
             </div>
           )}
+          {overallStock !== null && (
+            <div className={`ab-detail-stock ${outOfStock ? "out" : ""}`}>
+              {outOfStock ? "Stokda yoxdur" : `Stokda: ${overallStock} ədəd`}
+            </div>
+          )}
 
-          <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleAdd}>
-            <ShoppingCart size={16} /> {t("addToCart")}
+          <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleAdd} disabled={outOfStock}>
+            <ShoppingCart size={16} /> {outOfStock ? "Stokda yoxdur" : t("addToCart")}
           </button>
         </div>
       </div>
@@ -1257,11 +1281,34 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   const [promoInput, setPromoInput] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [promoApplying, setPromoApplying] = useState(false);
+  const [promoUses, setPromoUses] = useState(0);
   const [showPayment, setShowPayment] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  function localPromoKey(uid) {
+    return `skyflix_promo_uses_${uid}`;
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (data.session) {
+        let localCount = 0;
+        try {
+          localCount = parseInt(localStorage.getItem(localPromoKey(data.session.user.id)) || "0", 10) || 0;
+        } catch {}
+        supabase
+          .from("profiles")
+          .select("promo_uses")
+          .eq("id", data.session.user.id)
+          .maybeSingle()
+          .then(({ data: prof }) => {
+            const dbCount = prof?.promo_uses || 0;
+            setPromoUses(Math.max(dbCount, localCount));
+          });
+      }
+    });
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
@@ -1269,8 +1316,12 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   const total = Math.max(subtotal - discount, 0);
   const remainingForPromo = Math.max(PROMO_MIN - subtotal, 0);
 
-  function applyPromo() {
+  async function applyPromo() {
     setPromoError("");
+    if (!session) {
+      setPromoError("Promokod tətbiq etmək üçün hesabınıza daxil olun.");
+      return;
+    }
     if (promoInput.trim().toLowerCase() !== PROMO_CODE) {
       setPromoError("Promokod düzgün deyil.");
       return;
@@ -1279,6 +1330,26 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
       setPromoError(`Endirim üçün minimum ${PROMO_MIN} ₼-lıq məhsul seçməlisiniz. Daha ${remainingForPromo.toFixed(2)} ₼ qaldı!`);
       return;
     }
+    if (promoUses >= 3) {
+      setPromoError("Bu promokoddan artıq 3 dəfə istifadə etmisiniz. Daha çox istifadə edə bilməzsiniz.");
+      return;
+    }
+    setPromoApplying(true);
+    const { data: newCount, error } = await supabase.rpc("use_promo_code");
+    setPromoApplying(false);
+    if (error) {
+      setPromoError("Bu promokoddan artıq 3 dəfə istifadə etmisiniz. Daha çox istifadə edə bilməzsiniz.");
+      setPromoUses(3);
+      try {
+        localStorage.setItem(localPromoKey(session.user.id), "3");
+      } catch {}
+      return;
+    }
+    const finalCount = typeof newCount === "number" ? newCount : promoUses + 1;
+    setPromoUses(finalCount);
+    try {
+      localStorage.setItem(localPromoKey(session.user.id), String(finalCount));
+    } catch {}
     setPromoApplied(true);
   }
 
@@ -1363,11 +1434,15 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value)}
             placeholder="Promokod daxil edin"
+            disabled={promoUses >= 3}
           />
-          <button className="ab-btn ab-btn-ghost" onClick={applyPromo}>
-            Tətbiq et
+          <button className="ab-btn ab-btn-ghost" onClick={applyPromo} disabled={promoApplying || promoUses >= 3}>
+            {promoApplying ? "Yoxlanılır..." : "Tətbiq et"}
           </button>
         </div>
+      )}
+      {!promoApplied && promoUses > 0 && promoUses < 3 && (
+        <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Qalan istifadə haqqınız: {3 - promoUses} / 3</p>
       )}
       {promoError && <p className="ad-error" style={{ marginTop: 8 }}>{promoError}</p>}
 
@@ -2321,18 +2396,28 @@ function SpinWheel({ prizes, session, go, onClose }) {
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  function localSpinKey(uid) {
+    return `skyflix_wheel_spins_${uid}`;
+  }
+
   useEffect(() => {
     if (!session) {
       setLoaded(true);
       return;
     }
+    let localCount = 0;
+    try {
+      localCount = parseInt(localStorage.getItem(localSpinKey(session.user.id)) || "0", 10) || 0;
+    } catch {}
     supabase
       .from("profiles")
       .select("wheel_spins_used")
       .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        setSpinsUsed(data?.wheel_spins_used || 0);
+      .maybeSingle()
+      .then(({ data, error }) => {
+        const dbCount = data?.wheel_spins_used || 0;
+        const effective = Math.max(dbCount, localCount);
+        setSpinsUsed(effective);
         setLoaded(true);
       });
   }, [session]);
@@ -2370,9 +2455,18 @@ function SpinWheel({ prizes, session, go, onClose }) {
     setTimeout(async () => {
       setSpinning(false);
       setResult(targetPrize);
-      const newCount = spinsUsed + 1;
-      setSpinsUsed(newCount);
-      await supabase.from("profiles").update({ wheel_spins_used: newCount }).eq("id", session.user.id);
+      const optimisticCount = spinsUsed + 1;
+      setSpinsUsed(optimisticCount);
+      try {
+        localStorage.setItem(localSpinKey(session.user.id), String(optimisticCount));
+      } catch {}
+      const { data: newCount, error } = await supabase.rpc("increment_wheel_spin");
+      if (!error && typeof newCount === "number" && newCount > optimisticCount) {
+        setSpinsUsed(newCount);
+        try {
+          localStorage.setItem(localSpinKey(session.user.id), String(newCount));
+        } catch {}
+      }
     }, 4200);
   }
 
@@ -2700,6 +2794,8 @@ function AdminPage({ onDataChanged }) {
         has_duration_options: p.has_duration_options,
         duration_options: p.duration_options,
         discount_percent: p.discount_percent,
+        stock: p.stock,
+        show_period: p.show_period,
       })
       .eq("id", p.id);
     flash(error ? "Xəta baş verdi." : "Yadda saxlanıldı və tərcümə olundu ✓");
@@ -3155,6 +3251,32 @@ function AdminPage({ onDataChanged }) {
                   <span>Aylıq seçim düyməsi göstərilsin (yalnız müddətli abunəliklər üçün)</span>
                 </label>
 
+                <label className="ab-agree-row" style={{ cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={p.show_period !== false}
+                    onChange={(e) => updateField(p.id, "show_period", e.target.checked)}
+                  />
+                  <span>Qiymətin yanında "/ay" kimi müddət yazısı göstərilsin (oyun kimi birdəfəlik məhsullarda söndürün)</span>
+                </label>
+
+                {!p.has_duration_options && (
+                  <label style={{ fontSize: 13, color: "var(--muted)" }}>
+                    Stokda qalan miqdar (boş buraxsanız limitsiz sayılır)
+                    <input
+                      type="number"
+                      value={p.stock === null || p.stock === undefined ? "" : p.stock}
+                      onChange={(e) => updateField(p.id, "stock", e.target.value === "" ? null : parseInt(e.target.value) || 0)}
+                      placeholder="Məs. 25"
+                      style={{
+                        marginTop: 6, width: "100%", maxWidth: 160, padding: "9px 12px", borderRadius: 9,
+                        border: "1px solid var(--line)", fontFamily: "'Inter',sans-serif", fontSize: 13.5,
+                        background: "var(--surface)", color: "var(--text)",
+                      }}
+                    />
+                  </label>
+                )}
+
                 {p.has_duration_options && (
                   <div className="ad-duration-editor">
                     {(p.duration_options || []).map((d, i) => (
@@ -3174,7 +3296,15 @@ function AdminPage({ onDataChanged }) {
                           onChange={(e) => updateDurationRow(p.id, i, "price", e.target.value)}
                           style={{ maxWidth: 110 }}
                         />
-                        <span style={{ color: "var(--muted)", fontSize: 13 }}>₼</span>
+                        <span style={{ color: "var(--muted)", fontSize: 13 }}>₼ —</span>
+                        <input
+                          type="number"
+                          placeholder="Stok"
+                          value={d.stock === null || d.stock === undefined ? "" : d.stock}
+                          onChange={(e) => updateDurationRow(p.id, i, "stock", e.target.value)}
+                          style={{ maxWidth: 90 }}
+                        />
+                        <span style={{ color: "var(--muted)", fontSize: 13 }}>ədəd</span>
                         <button className="ad-delete" onClick={() => removeDurationRow(p.id, i)}>
                           Sil
                         </button>
@@ -4175,6 +4305,17 @@ export default function App() {
         .ab-duration-pill span{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); font-weight:400; }
         .ab-duration-pill.active{ background:var(--gold); border-color:var(--gold); color:#FFFFFF; }
         .ab-duration-pill.active span{ color:rgba(255,255,255,0.85); }
+        .ab-duration-pill em{ font-style:normal; font-size:10px; color:var(--muted); margin-top:1px; }
+        .ab-duration-pill.active em{ color:rgba(255,255,255,0.75); }
+        .ab-duration-pill.out{ opacity:0.45; cursor:not-allowed; text-decoration:line-through; }
+        .ab-duration-pill:disabled{ cursor:not-allowed; }
+
+        .ab-stock-badge{
+          font-size:11px; font-weight:600; color:var(--teal); padding:8px 20px 4px;
+        }
+        .ab-stock-badge.out{ color:var(--gold); }
+        .ab-detail-stock{ font-size:12.5px; font-weight:600; color:var(--teal); margin-top:8px; }
+        .ab-detail-stock.out{ color:var(--gold); }
 
         .ab-cross-list{ display:flex; flex-direction:column; gap:14px; max-width:560px; }
         .ab-cross-card{ border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--surface); }
