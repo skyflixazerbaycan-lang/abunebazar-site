@@ -2388,6 +2388,204 @@ function ReviewsModal({ product, reviews, session, t, onClose, onSubmitted }) {
   );
 }
 
+function RunnerGame({ onClose }) {
+  const canvasRef = useRef(null);
+  const stateRef = useRef(null);
+  const [score, setScore] = useState(0);
+  const [best, setBest] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem("skyflix_game_best") || "0", 10) || 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [gameOver, setGameOver] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  function startGame() {
+    setGameOver(false);
+    setScore(0);
+    setStarted(true);
+    stateRef.current = {
+      playerY: 0,
+      velocity: 0,
+      jumping: false,
+      obstacles: [],
+      coins: [],
+      speed: 4.2,
+      frame: 0,
+      score: 0,
+      dead: false,
+    };
+  }
+
+  function jump() {
+    const s = stateRef.current;
+    if (!s || s.dead) return;
+    if (!s.jumping) {
+      s.jumping = true;
+      s.velocity = -11;
+    }
+  }
+
+  useEffect(() => {
+    if (!started) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+    const groundY = H - 34;
+    let raf;
+
+    function loop() {
+      const s = stateRef.current;
+      if (!s) return;
+      if (!s.dead) {
+        s.frame++;
+        s.velocity += 0.6;
+        s.playerY += s.velocity;
+        if (s.playerY > 0) {
+          s.playerY = 0;
+          s.velocity = 0;
+          s.jumping = false;
+        }
+        if (s.frame % Math.max(28, 60 - Math.floor(s.speed * 3)) === 0) {
+          s.obstacles.push({ x: W, w: 16 + Math.random() * 10, h: 24 + Math.random() * 20 });
+        }
+        if (s.frame % 45 === 0 && Math.random() > 0.4) {
+          s.coins.push({ x: W, y: groundY - 60 - Math.random() * 50 });
+        }
+        s.obstacles.forEach((o) => (o.x -= s.speed));
+        s.coins.forEach((c) => (c.x -= s.speed));
+        s.obstacles = s.obstacles.filter((o) => o.x > -30);
+        s.coins = s.coins.filter((c) => c.x > -30);
+        s.speed += 0.0025;
+        s.score += 1;
+
+        const playerX = 60;
+        const playerSize = 26;
+        const playerBottom = groundY + s.playerY;
+        s.obstacles.forEach((o) => {
+          const ox = o.x;
+          if (
+            playerX + playerSize > ox &&
+            playerX < ox + o.w &&
+            playerBottom + playerSize > groundY - o.h + 2
+          ) {
+            s.dead = true;
+          }
+        });
+        s.coins = s.coins.filter((c) => {
+          const hit = Math.abs(c.x - (playerX + playerSize / 2)) < 18 && Math.abs(c.y - (playerBottom + playerSize / 2)) < 22;
+          if (hit) s.score += 25;
+          return !hit;
+        });
+
+        setScore(s.score);
+        if (s.dead) {
+          setGameOver(true);
+          setStarted(false);
+          const finalScore = s.score;
+          setBest((prevBest) => {
+            const nb = Math.max(prevBest, finalScore);
+            try {
+              localStorage.setItem("skyflix_game_best", String(nb));
+            } catch {}
+            return nb;
+          });
+        }
+      }
+
+      ctx.clearRect(0, 0, W, H);
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, "#1D0D0E");
+      grad.addColorStop(1, "#150708");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY + 26);
+      ctx.lineTo(W, groundY + 26);
+      ctx.stroke();
+
+      ctx.fillStyle = "#FFD84D";
+      s.coins.forEach((c) => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#E1122A";
+      s.obstacles.forEach((o) => {
+        ctx.fillRect(o.x, groundY - o.h + 26, o.w, o.h);
+      });
+
+      const px = 60;
+      const py = groundY + s.playerY;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(px, py, 26, 26, 6) : ctx.rect(px, py, 26, 26);
+      ctx.fill();
+
+      if (!s.dead) {
+        raf = requestAnimationFrame(loop);
+      }
+    }
+
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [started]);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        e.preventDefault();
+        jump();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-game-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="ab-modal-close" onClick={onClose} aria-label="Bağla">
+          <X size={18} />
+        </button>
+        <h3 className="ab-game-title">
+          <Gamepad2 size={18} /> SkyFlix Qaç-Tullan
+        </h3>
+        <div className="ab-game-canvas-wrap" onClick={jump} onTouchStart={(e) => { e.preventDefault(); jump(); }}>
+          <canvas ref={canvasRef} width={520} height={200} className="ab-game-canvas" />
+          {!started && !gameOver && (
+            <div className="ab-game-overlay">
+              <p>Boşluq (Space) və ya toxunub tullanın</p>
+              <button className="ab-btn ab-btn-gold" onClick={startGame}>
+                <Play size={15} /> Başla
+              </button>
+            </div>
+          )}
+          {gameOver && (
+            <div className="ab-game-overlay">
+              <p>Oyun bitdi! Xal: {score}</p>
+              <button className="ab-btn ab-btn-gold" onClick={startGame}>
+                <RotateCw size={15} /> Yenidən başla
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="ab-game-scores">
+          <span>Xal: {score}</span>
+          <span>Ən yaxşı: {best}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SpinWheel({ prizes, session, go, onClose }) {
   const [spinsUsed, setSpinsUsed] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -3626,6 +3824,7 @@ export default function App() {
   }, []);
 
   const [showWheel, setShowWheel] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   useEffect(() => {
     let seen = false;
     try {
@@ -3815,9 +4014,13 @@ export default function App() {
       <button className="ab-wheel-fab" onClick={() => setShowWheel(true)} title="Bəxtini sına">
         <Gift size={22} />
       </button>
+      <button className="ab-game-fab" onClick={() => setShowGame(true)} title="Oyun oyna">
+        <Gamepad2 size={22} />
+      </button>
       {showWheel && (
         <SpinWheel prizes={wheelPrizes} session={session} go={go} onClose={() => setShowWheel(false)} />
       )}
+      {showGame && <RunnerGame onClose={() => setShowGame(false)} />}
       {reviewsModalProduct && (
         <ReviewsModal
           product={reviewsModalProduct}
@@ -4471,6 +4674,32 @@ export default function App() {
           background:linear-gradient(135deg,#FFD84D,var(--gold)); color:#FFFFFF;
           border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
           box-shadow:0 12px 26px -10px rgba(225,18,42,0.55);
+        }
+        .ab-game-fab{
+          position:fixed; bottom:158px; left:22px; z-index:53;
+          width:52px; height:52px; border-radius:50%;
+          background:linear-gradient(135deg,var(--teal),#1D0D0E); color:#FFFFFF;
+          border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+          box-shadow:0 12px 26px -10px rgba(0,0,0,0.5);
+        }
+
+        .ab-game-modal{
+          position:relative; background:var(--bg); border-radius:22px; max-width:580px; width:100%;
+          padding:26px; text-align:center; box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+        }
+        .ab-game-title{
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          font-size:18px; margin:0 0 16px; font-family:'Space Grotesk',sans-serif; color:var(--gold);
+        }
+        .ab-game-canvas-wrap{ position:relative; border-radius:14px; overflow:hidden; cursor:pointer; touch-action:none; }
+        .ab-game-canvas{ width:100%; height:auto; display:block; }
+        .ab-game-overlay{
+          position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+          background:rgba(0,0,0,0.55); color:#FFFFFF; font-size:13.5px; text-align:center; padding:20px;
+        }
+        .ab-game-scores{
+          display:flex; justify-content:center; gap:24px; margin-top:14px;
+          font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--muted);
         }
 
         .ab-section{ padding:90px 6vw; }
