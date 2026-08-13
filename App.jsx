@@ -1257,11 +1257,34 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   const [promoInput, setPromoInput] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
+  const [promoApplying, setPromoApplying] = useState(false);
+  const [promoUses, setPromoUses] = useState(0);
   const [showPayment, setShowPayment] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  function localPromoKey(uid) {
+    return `skyflix_promo_uses_${uid}`;
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (data.session) {
+        let localCount = 0;
+        try {
+          localCount = parseInt(localStorage.getItem(localPromoKey(data.session.user.id)) || "0", 10) || 0;
+        } catch {}
+        supabase
+          .from("profiles")
+          .select("promo_uses")
+          .eq("id", data.session.user.id)
+          .maybeSingle()
+          .then(({ data: prof }) => {
+            const dbCount = prof?.promo_uses || 0;
+            setPromoUses(Math.max(dbCount, localCount));
+          });
+      }
+    });
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.qty, 0);
@@ -1269,8 +1292,12 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   const total = Math.max(subtotal - discount, 0);
   const remainingForPromo = Math.max(PROMO_MIN - subtotal, 0);
 
-  function applyPromo() {
+  async function applyPromo() {
     setPromoError("");
+    if (!session) {
+      setPromoError("Promokod tətbiq etmək üçün hesabınıza daxil olun.");
+      return;
+    }
     if (promoInput.trim().toLowerCase() !== PROMO_CODE) {
       setPromoError("Promokod düzgün deyil.");
       return;
@@ -1279,6 +1306,26 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
       setPromoError(`Endirim üçün minimum ${PROMO_MIN} ₼-lıq məhsul seçməlisiniz. Daha ${remainingForPromo.toFixed(2)} ₼ qaldı!`);
       return;
     }
+    if (promoUses >= 3) {
+      setPromoError("Bu promokoddan artıq 3 dəfə istifadə etmisiniz. Daha çox istifadə edə bilməzsiniz.");
+      return;
+    }
+    setPromoApplying(true);
+    const { data: newCount, error } = await supabase.rpc("use_promo_code");
+    setPromoApplying(false);
+    if (error) {
+      setPromoError("Bu promokoddan artıq 3 dəfə istifadə etmisiniz. Daha çox istifadə edə bilməzsiniz.");
+      setPromoUses(3);
+      try {
+        localStorage.setItem(localPromoKey(session.user.id), "3");
+      } catch {}
+      return;
+    }
+    const finalCount = typeof newCount === "number" ? newCount : promoUses + 1;
+    setPromoUses(finalCount);
+    try {
+      localStorage.setItem(localPromoKey(session.user.id), String(finalCount));
+    } catch {}
     setPromoApplied(true);
   }
 
@@ -1363,11 +1410,15 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value)}
             placeholder="Promokod daxil edin"
+            disabled={promoUses >= 3}
           />
-          <button className="ab-btn ab-btn-ghost" onClick={applyPromo}>
-            Tətbiq et
+          <button className="ab-btn ab-btn-ghost" onClick={applyPromo} disabled={promoApplying || promoUses >= 3}>
+            {promoApplying ? "Yoxlanılır..." : "Tətbiq et"}
           </button>
         </div>
+      )}
+      {!promoApplied && promoUses > 0 && promoUses < 3 && (
+        <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>Qalan istifadə haqqınız: {3 - promoUses} / 3</p>
       )}
       {promoError && <p className="ad-error" style={{ marginTop: 8 }}>{promoError}</p>}
 
@@ -2321,18 +2372,28 @@ function SpinWheel({ prizes, session, go, onClose }) {
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  function localSpinKey(uid) {
+    return `skyflix_wheel_spins_${uid}`;
+  }
+
   useEffect(() => {
     if (!session) {
       setLoaded(true);
       return;
     }
+    let localCount = 0;
+    try {
+      localCount = parseInt(localStorage.getItem(localSpinKey(session.user.id)) || "0", 10) || 0;
+    } catch {}
     supabase
       .from("profiles")
       .select("wheel_spins_used")
       .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        setSpinsUsed(data?.wheel_spins_used || 0);
+      .maybeSingle()
+      .then(({ data, error }) => {
+        const dbCount = data?.wheel_spins_used || 0;
+        const effective = Math.max(dbCount, localCount);
+        setSpinsUsed(effective);
         setLoaded(true);
       });
   }, [session]);
@@ -2370,8 +2431,18 @@ function SpinWheel({ prizes, session, go, onClose }) {
     setTimeout(async () => {
       setSpinning(false);
       setResult(targetPrize);
-      const { data: newCount } = await supabase.rpc("increment_wheel_spin");
-      setSpinsUsed(typeof newCount === "number" ? newCount : spinsUsed + 1);
+      const optimisticCount = spinsUsed + 1;
+      setSpinsUsed(optimisticCount);
+      try {
+        localStorage.setItem(localSpinKey(session.user.id), String(optimisticCount));
+      } catch {}
+      const { data: newCount, error } = await supabase.rpc("increment_wheel_spin");
+      if (!error && typeof newCount === "number" && newCount > optimisticCount) {
+        setSpinsUsed(newCount);
+        try {
+          localStorage.setItem(localSpinKey(session.user.id), String(newCount));
+        } catch {}
+      }
     }, 4200);
   }
 
