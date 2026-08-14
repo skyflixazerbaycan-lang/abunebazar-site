@@ -2757,41 +2757,49 @@ function LiveChatButton({ settings }) {
   );
 }
 
+const GREETING_TEXT =
+  "Salam, mən SkyFlix-in səsli botuyam. Birazdan sənin üçün saytda gəzib sifariş verərkən ürəyin sıxılmasın deyə, Bella Ciao mahnısını qoşacam. Mahnını istəsən dayandıra və ya davam etdirə bilərsən. Xoş alışverişlər!";
+
 function VideoWidget({ videoId }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const startedRef = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showControl, setShowControl] = useState(false);
 
   useEffect(() => {
     if (!wrapperRef.current) return;
 
-    function startPlayer() {
-      if (startedRef.current) return;
-      startedRef.current = true;
-
+    function createPlayer() {
       const target = document.createElement("div");
       wrapperRef.current.appendChild(target);
+      playerRef.current = new window.YT.Player(target, {
+        videoId,
+        playerVars: {
+          autoplay: 1,
+          mute: 0,
+          loop: 1,
+          playlist: videoId,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+        },
+        events: {
+          onReady: (e) => {
+            e.target.playVideo();
+            setIsPlaying(true);
+            setShowControl(true);
+          },
+          onStateChange: (e) => {
+            if (e.data === 1) setIsPlaying(true);
+            if (e.data === 2) setIsPlaying(false);
+          },
+        },
+      });
+    }
 
-      function createPlayer() {
-        playerRef.current = new window.YT.Player(target, {
-          videoId,
-          playerVars: {
-            autoplay: 1,
-            mute: 0,
-            loop: 1,
-            playlist: videoId,
-            controls: 0,
-            modestbranding: 1,
-            rel: 0,
-            playsinline: 1,
-          },
-          events: {
-            onReady: (e) => {
-              e.target.playVideo();
-            },
-          },
-        });
-      }
+    function loadPlayer() {
       if (window.YT && window.YT.Player) {
         createPlayer();
       } else {
@@ -2799,6 +2807,32 @@ function VideoWidget({ videoId }) {
         tag.src = "https://www.youtube.com/iframe_api";
         document.body.appendChild(tag);
         window.onYouTubeIframeAPIReady = createPlayer;
+      }
+    }
+
+    function startPlayer() {
+      if (startedRef.current) return;
+      startedRef.current = true;
+
+      try {
+        if (window.speechSynthesis) {
+          const utter = new SpeechSynthesisUtterance(GREETING_TEXT);
+          utter.lang = "az-AZ";
+          utter.rate = 1;
+          utter.onend = loadPlayer;
+          utter.onerror = loadPlayer;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+          const fallback = setTimeout(loadPlayer, 12000);
+          utter.onend = () => {
+            clearTimeout(fallback);
+            loadPlayer();
+          };
+        } else {
+          loadPlayer();
+        }
+      } catch (e) {
+        loadPlayer();
       }
     }
 
@@ -2820,7 +2854,28 @@ function VideoWidget({ videoId }) {
     };
   }, [videoId]);
 
-  return <div ref={wrapperRef} className="ab-video-widget-hidden" />;
+  function toggle() {
+    const p = playerRef.current;
+    if (!p) return;
+    if (isPlaying) {
+      p.pauseVideo();
+      setIsPlaying(false);
+    } else {
+      p.playVideo();
+      setIsPlaying(true);
+    }
+  }
+
+  return (
+    <>
+      <div ref={wrapperRef} className="ab-video-widget-hidden" />
+      {showControl && (
+        <button className="ab-music-btn" onClick={toggle} title={isPlaying ? "Mahnını dayandır" : "Mahnını davam etdir"}>
+          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+        </button>
+      )}
+    </>
+  );
 }
 
 function AdminPage({ onDataChanged }) {
@@ -4006,7 +4061,7 @@ export default function App() {
 
   return (
     <div className={`ab-root ${theme === "dark" ? "dark" : ""}`}>
-      <VideoWidget videoId="jhgJV0Pg54Y" />
+      <VideoWidget videoId="PSxCaYZpl1o" />
       <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
@@ -4513,6 +4568,13 @@ export default function App() {
         .ab-ticket-img{ width:100%; height:130px; background-size:cover; background-position:center; }
 
         .ab-video-widget-hidden{ position:fixed; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
+        .ab-music-btn{
+          position:fixed; bottom:158px; right:22px; z-index:56;
+          width:52px; height:52px; border-radius:50%;
+          background:var(--surface); color:var(--gold); border:1px solid var(--line);
+          display:flex; align-items:center; justify-content:center; cursor:pointer;
+          box-shadow:0 12px 26px -10px rgba(0,0,0,0.3);
+        }
 
         .ab-detail-grid{ display:grid; gap:36px; grid-template-columns:1fr; max-width:900px; }
         @media(min-width:800px){ .ab-detail-grid{ grid-template-columns:0.9fr 1.1fr; } }
