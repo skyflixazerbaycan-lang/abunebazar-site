@@ -2911,6 +2911,15 @@ function skyAddMonths(base, months) {
   return d.toISOString();
 }
 
+function skyAddDays(base, days) {
+  const start = Math.max(Date.now(), base ? new Date(base).getTime() : 0);
+  return new Date(start + days * 86400000).toISOString();
+}
+
+function skyAddDuration(base, months, days) {
+  return days > 0 ? skyAddDays(base, days) : skyAddMonths(base, months || 1);
+}
+
 function skyRandomPin() {
   const arr = new Uint32Array(1);
   crypto.getRandomValues(arr);
@@ -3263,7 +3272,7 @@ function SharedAccountsAdmin() {
   const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
   const [passDrafts, setPassDrafts] = useState({});
   const [noteDrafts, setNoteDrafts] = useState({});
-  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1 });
+  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "" });
   const [lastAdded, setLastAdded] = useState(null);
 
   const [phoneSearch, setPhoneSearch] = useState("");
@@ -3402,13 +3411,15 @@ function SharedAccountsAdmin() {
   async function addMember(acc) {
     const phone = skyNormPhone(memberForm.phone);
     if (phone.length < 11) return flashMsg("Nömrəni düzgün yazın.");
-    const months = Number(memberForm.months) || 1;
+    const months = Number(memberForm.months) || 0;
+    const days = parseInt(memberForm.days, 10) || 0;
+    if (!months && !days) return flashMsg("Müddət seçin: ay və ya gün.");
     const existing = members.find((m) => m.account_id === acc.id && m.phone === phone);
     let data, error;
     if (existing) {
       ({ data, error } = await supabase
         .from("account_members")
-        .update({ expires_at: skyAddMonths(existing.expires_at, months), name: memberForm.name.trim() || existing.name })
+        .update({ expires_at: skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name })
         .eq("id", existing.id)
         .select()
         .single());
@@ -3416,14 +3427,14 @@ function SharedAccountsAdmin() {
       const pin = /^\d{4}$/.test(memberForm.pin) ? memberForm.pin : pinByPhone[phone] || skyRandomPin();
       ({ data, error } = await supabase
         .from("account_members")
-        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), expires_at: skyAddMonths(null, months) })
+        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), expires_at: skyAddDuration(null, months, days) })
         .select()
         .single());
     }
     if (error) return flashMsg("Xəta: " + error.message);
     setMembers((l) => (existing ? l.map((m) => (m.id === data.id ? data : m)) : [...l, data]));
     setLastAdded(data.id);
-    setMemberForm({ name: "", phone: "", pin: "", months: 1 });
+    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" });
     flashMsg(existing ? "Müddət uzadıldı ✓" : "Müştəri əlavə edildi ✓");
   }
 
@@ -3596,6 +3607,15 @@ function SharedAccountsAdmin() {
           <button style={S.mini} onClick={() => updateMember(m, { expires_at: skyAddMonths(m.expires_at, 1) }, "+1 ay əlavə edildi ✓")}>
             <Plus size={12} /> 1 ay
           </button>
+          <button
+            style={S.mini}
+            onClick={() => {
+              const v = parseInt(window.prompt("Neçə gün əlavə edilsin?", "7") || "", 10);
+              if (v > 0) updateMember(m, { expires_at: skyAddDays(m.expires_at, v) }, `+${v} gün əlavə edildi ✓`);
+            }}
+          >
+            <Plus size={12} /> Gün
+          </button>
           <a style={S.mini} href={skyWaUrl(m.phone, inviteText(m, acc))} target="_blank" rel="noreferrer">
             <Send size={12} /> Link göndər
           </a>
@@ -3715,7 +3735,7 @@ function SharedAccountsAdmin() {
                 return (
                   <div key={acc.id} style={{ ...S.box, opacity: acc.is_active ? 1 : 0.6 }}>
                     <button
-                      onClick={() => { setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1 }); }}
+                      onClick={() => { setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" }); }}
                       style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -3799,16 +3819,26 @@ function SharedAccountsAdmin() {
                               />
                             </div>
                             <div style={S.row}>
-                              {[1, 3, 6, 12].map((mo) => (
-                                <button key={mo} style={S.chip(memberForm.months === mo)} onClick={() => setMemberForm({ ...memberForm, months: mo })}>
+                              {[1, 2, 3, 6, 12].map((mo) => (
+                                <button key={mo} style={S.chip(memberForm.months === mo && !memberForm.days)} onClick={() => setMemberForm({ ...memberForm, months: mo, days: "" })}>
                                   {mo} ay
                                 </button>
                               ))}
+                              <input
+                                style={{ ...S.input, width: 110, padding: "8px 10px", borderColor: memberForm.days ? "var(--gold)" : "var(--line)" }}
+                                inputMode="numeric"
+                                placeholder="və ya gün"
+                                value={memberForm.days}
+                                onChange={(e) => {
+                                  const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                                  setMemberForm({ ...memberForm, days: v, months: v ? 0 : 1 });
+                                }}
+                              />
                             </div>
                             <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
                               <CheckCircle2 size={15} /> Təsdiqlə
                             </button>
-                            <div style={S.small}>Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
+                            <div style={S.small}>Ay seçin və ya gün sayını yazın. Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
                           </div>
                         </div>
 
