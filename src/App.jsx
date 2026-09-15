@@ -3033,11 +3033,9 @@ function SharedAccountPage({ slug }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
   const [copied, setCopied] = useState("");
   const [whatsapp, setWhatsapp] = useState("517873090");
   const [codeCopied, setCodeCopied] = useState(false);
-  const [showRules, setShowRules] = useState(true);
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3227,22 +3225,15 @@ function SharedAccountPage({ slug }) {
             <div className="sa-field">
               <div className="sa-field-top">
                 <span>Şifrə</span>
-                <div className="sa-actions">
-                  <button className="sa-copy" onClick={() => setShowPass((s) => !s)} aria-label={showPass ? "Şifrəni gizlət" : "Şifrəni göstər"}>
-                    {showPass ? <EyeOff size={12} /> : <Eye size={12} />}
-                  </button>
-                  <button className={`sa-copy ${copied === "pass" ? "done" : ""}`} onClick={() => copy("pass", result.login_password)}>
-                    <Copy size={12} /> {copied === "pass" ? "Kopyalandı" : "Kopyala"}
-                  </button>
-                </div>
+                <button className={`sa-copy ${copied === "pass" ? "done" : ""}`} onClick={() => copy("pass", result.login_password)}>
+                  <Copy size={12} /> {copied === "pass" ? "Kopyalandı" : "Kopyala"}
+                </button>
               </div>
               <div className="sa-value sa-pass">
-                {!result.login_password ? (
-                  <span style={{ fontSize: 15, fontWeight: 500, color: "#A98D8B", fontFamily: "Inter,sans-serif" }}>Şifrə tezliklə əlavə olunacaq. Bir az sonra "Yenilə" basın.</span>
-                ) : showPass ? (
+                {result.login_password ? (
                   result.login_password
                 ) : (
-                  "•".repeat(Math.min(12, result.login_password.length))
+                  <span style={{ fontSize: 15, fontWeight: 500, color: "#A98D8B", fontFamily: "Inter,sans-serif" }}>Şifrə tezliklə əlavə olunacaq. Bir az sonra "Yenilə" basın.</span>
                 )}
               </div>
             </div>
@@ -3313,16 +3304,11 @@ function SharedAccountPage({ slug }) {
                 <Shield size={16} style={{ flexShrink: 0, marginTop: 1 }} />
                 <span>{SKY_RULES_TITLE}</span>
               </div>
-              <button className="sa-rules-toggle" onClick={() => setShowRules((v) => !v)}>
-                {showRules ? "Qaydaları gizlət" : "Qaydaları göstər"}
-              </button>
-              {showRules && (
-                <ol>
-                  {SKY_RULES.map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ol>
-              )}
+              <ol>
+                {SKY_RULES.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ol>
             </div>
 
             <button className="sa-link" onClick={logout}>Başqa nömrə ilə gir</button>
