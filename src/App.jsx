@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag, Search, KeyRound, Trash2, Eye, EyeOff, Upload } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const ICON_MAP = {
@@ -2878,6 +2878,1057 @@ function VideoWidget({ videoId }) {
   );
 }
 
+// =====================================================
+// HESAB ŞİFRƏLƏRİ SİSTEMİ (müştəri linki + admin bölməsi)
+// =====================================================
+
+const SKY_SITE_URL = "https://skyflixazerbaycan.com";
+
+function skyNormPhone(p) {
+  let d = String(p || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.length === 10 && d[0] === "0") d = "994" + d.slice(1);
+  else if (d.length === 9) d = "994" + d;
+  return d;
+}
+
+function skyFmtDate(v, withTime = true) {
+  if (!v) return "—";
+  const d = new Date(v);
+  const p = (n) => String(n).padStart(2, "0");
+  const date = `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  return withTime ? `${date} ${p(d.getHours())}:${p(d.getMinutes())}` : date;
+}
+
+function skyDaysLeft(v) {
+  return Math.ceil((new Date(v).getTime() - Date.now()) / 86400000);
+}
+
+function skyAddMonths(base, months) {
+  const start = Math.max(Date.now(), base ? new Date(base).getTime() : 0);
+  const d = new Date(start);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString();
+}
+
+function skyRandomPin() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(1000 + (arr[0] % 9000));
+}
+
+function skyMakeSlug(email) {
+  const base =
+    String(email || "hesab")
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 16) || "hesab";
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  const arr = new Uint8Array(6);
+  crypto.getRandomValues(arr);
+  return base + "-" + Array.from(arr, (b) => chars[b % chars.length]).join("");
+}
+
+function skyAccountLink(slug) {
+  return `${SKY_SITE_URL}/#h-${slug}`;
+}
+
+function skyParseDate(s) {
+  s = String(s || "").trim();
+  let m, y, mo, d;
+  if ((m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/))) {
+    y = +m[1]; mo = +m[2]; d = +m[3];
+  } else if ((m = s.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{2,4})/))) {
+    d = +m[1]; mo = +m[2]; y = +m[3];
+    if (y < 100) y += 2000;
+  } else if (/^\d{5}$/.test(s)) {
+    const dt = new Date(Date.UTC(1899, 11, 30) + Number(s) * 86400000);
+    y = dt.getUTCFullYear(); mo = dt.getUTCMonth() + 1; d = dt.getUTCDate();
+  } else return null;
+  const dt = new Date(y, mo - 1, d, 23, 59, 0);
+  if (isNaN(dt.getTime()) || dt.getMonth() !== mo - 1) return null;
+  return dt.toISOString();
+}
+
+function skyParseRows(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const sep = line.includes("\t") ? "\t" : line.includes(";") ? ";" : ",";
+      return line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+    });
+}
+
+async function skyCopy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
+function skyWaUrl(phone, text) {
+  return `https://wa.me/${skyNormPhone(phone)}?text=${encodeURIComponent(text)}`;
+}
+
+async function skyFetchAll(table, orderCol, ascending = true) {
+  let all = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order(orderCol, { ascending })
+      .range(from, from + 999);
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < 1000) break;
+  }
+  return all;
+}
+
+// -----------------------------------------------------
+// MÜŞTƏRİ SƏHİFƏSİ: skyflixazerbaycan.com/#h-<kod>
+// -----------------------------------------------------
+function SharedAccountPage({ slug }) {
+  useGoogleFonts();
+  const storageKey = "skyacc:" + slug;
+  const saved = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "null");
+    } catch {
+      return null;
+    }
+  })();
+
+  const [phone, setPhone] = useState(saved?.phone || "");
+  const [pin, setPin] = useState(saved?.pin || "");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [copied, setCopied] = useState("");
+  const [whatsapp, setWhatsapp] = useState("517873090");
+
+  useEffect(() => {
+    document.title = "Hesab məlumatları — SkyFlix";
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    supabase
+      .from("settings")
+      .select("*")
+      .eq("key", "contact_whatsapp")
+      .then(({ data }) => {
+        if (data && data[0]?.value) setWhatsapp(data[0].value);
+      });
+    if (saved?.phone && saved?.pin) check(saved.phone, saved.pin);
+    return () => document.head.removeChild(meta);
+  }, []);
+
+  async function check(ph = phone, pn = pin) {
+    setError("");
+    if (skyNormPhone(ph).length < 9) return setError("WhatsApp nömrənizi tam yazın.");
+    if (!/^\d{4}$/.test(String(pn).trim())) return setError("PIN 4 rəqəmdən ibarətdir.");
+    setLoading(true);
+    const { data, error: err } = await supabase.rpc("get_shared_account", {
+      p_slug: slug,
+      p_phone: ph,
+      p_pin: String(pn).trim(),
+    });
+    setLoading(false);
+    if (err) return setError("Bağlantı xətası. Bir az sonra yenidən yoxlayın.");
+    const st = data?.status;
+    if (st === "ok" || st === "expired") {
+      localStorage.setItem(storageKey, JSON.stringify({ phone: ph, pin: String(pn).trim() }));
+      setResult(data);
+    } else {
+      setResult(null);
+      if (st === "wrong") {
+        localStorage.removeItem(storageKey);
+        setError("Nömrə və ya PIN səhvdir. Linki sizə göndərdiyimiz mesajdakı PIN-i yazın.");
+      } else if (st === "blocked") {
+        setError("Çox səhv cəhd edildi. 15 dəqiqə sonra yenidən yoxlayın.");
+      } else {
+        setError("Bu link aktiv deyil. Yeni link üçün bizə yazın.");
+      }
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem(storageKey);
+    setResult(null);
+    setPhone("");
+    setPin("");
+  }
+
+  async function copy(label, text) {
+    if (await skyCopy(text)) {
+      setCopied(label);
+      setTimeout(() => setCopied(""), 1500);
+    }
+  }
+
+  const waDigits = skyNormPhone(whatsapp);
+  const renewText = result
+    ? `Salam! ${result.service || ""} abunəliyimi artırmaq istəyirəm. Nömrəm: +${skyNormPhone(phone)}`
+    : "Salam! Hesab linki ilə bağlı kömək lazımdır.";
+  const days = result?.expires_at ? skyDaysLeft(result.expires_at) : null;
+
+  return (
+    <div className="sa-root">
+      <style>{`
+        .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;
+          display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
+        .sa-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;
+          font-size:17px;margin-bottom:34px;color:#F5EBEA;text-decoration:none;}
+        .sa-brand img{width:28px;height:28px;border-radius:7px;}
+        .sa-card{width:100%;max-width:400px;background:#1D0D0E;border:1px solid rgba(255,255,255,0.1);
+          border-radius:20px;padding:26px 22px;}
+        .sa-title{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.2;margin:0 0 6px;}
+        .sa-sub{color:#A98D8B;font-size:14px;line-height:1.5;margin:0 0 22px;}
+        .sa-label{display:block;font-size:13px;color:#A98D8B;margin:0 0 6px;}
+        .sa-input{width:100%;background:#150708;border:1px solid rgba(255,255,255,0.14);color:#F5EBEA;
+          border-radius:12px;padding:13px 14px;font-size:16px;margin-bottom:14px;outline:none;}
+        .sa-input:focus{border-color:#FF3B4E;}
+        .sa-btn{width:100%;border:0;border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;
+          background:#E1122A;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;}
+        .sa-btn:disabled{opacity:.6;}
+        .sa-btn:focus-visible,.sa-copy:focus-visible,.sa-link:focus-visible{outline:2px solid #FF3B4E;outline-offset:2px;}
+        .sa-btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.16);color:#F5EBEA;margin-top:10px;}
+        .sa-error{background:rgba(225,18,42,0.12);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;
+          border-radius:12px;padding:11px 13px;font-size:14px;margin-bottom:14px;line-height:1.45;}
+        .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+        .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
+        .sa-value{font-family:'JetBrains Mono',monospace;font-size:17px;word-break:break-all;letter-spacing:.2px;}
+        .sa-pass{font-size:24px;font-weight:700;color:#fff;}
+        .sa-actions{display:flex;gap:6px;}
+        .sa-copy{background:rgba(255,255,255,0.07);border:0;color:#F5EBEA;border-radius:8px;padding:6px 9px;
+          font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;}
+        .sa-copy.done{background:#1f6f43;}
+        .sa-expiry{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 4px;padding-top:16px;
+          border-top:1px dashed rgba(255,255,255,0.14);font-size:14px;color:#A98D8B;}
+        .sa-days{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:#F5EBEA;}
+        .sa-days.soon{color:#FF3B4E;}
+        .sa-small{font-size:12px;color:#A98D8B;margin-top:10px;line-height:1.5;}
+        .sa-expired-icon{width:54px;height:54px;border-radius:50%;background:rgba(225,18,42,0.14);color:#FF3B4E;
+          display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+        .sa-link{background:none;border:0;color:#A98D8B;font-size:13px;text-decoration:underline;cursor:pointer;margin-top:16px;width:100%;}
+        @media (prefers-reduced-motion: no-preference){.sa-card{animation:saIn .35s ease-out;}}
+        @keyframes saIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+      `}</style>
+
+      <a className="sa-brand" href={SKY_SITE_URL}>
+        <img src="/skyflix-icon.png" alt="" />
+        SkyFlix Azerbaycan
+      </a>
+
+      <div className="sa-card" key={result ? result.status : "form"}>
+        {!result && (
+          <>
+            <h1 className="sa-title">Hesab məlumatlarınız</h1>
+            <p className="sa-sub">WhatsApp nömrənizi və sizə göndərilən 4 rəqəmli PIN-i yazın.</p>
+            {error && <div className="sa-error">{error}</div>}
+            <label className="sa-label" htmlFor="sa-phone">WhatsApp nömrəsi</label>
+            <input
+              id="sa-phone"
+              className="sa-input"
+              type="tel"
+              inputMode="tel"
+              placeholder="050 123 45 67"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <label className="sa-label" htmlFor="sa-pin">PIN</label>
+            <input
+              id="sa-pin"
+              className="sa-input"
+              type="tel"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && check()}
+            />
+            <button className="sa-btn" onClick={() => check()} disabled={loading}>
+              {loading ? "Yoxlanılır..." : "Məlumatları göstər"}
+            </button>
+            <a className="sa-btn sa-btn-ghost" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
+              <MessageCircle size={16} /> PIN-i unutmusunuz? Bizə yazın
+            </a>
+          </>
+        )}
+
+        {result?.status === "ok" && (
+          <>
+            <h1 className="sa-title">{result.service || "Hesab"}</h1>
+            <p className="sa-sub">
+              {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
+            </p>
+
+            <div className="sa-field">
+              <div className="sa-field-top">
+                <span>Email / login</span>
+                <button className={`sa-copy ${copied === "email" ? "done" : ""}`} onClick={() => copy("email", result.login_email)}>
+                  <Copy size={12} /> {copied === "email" ? "Kopyalandı" : "Kopyala"}
+                </button>
+              </div>
+              <div className="sa-value">{result.login_email}</div>
+            </div>
+
+            <div className="sa-field">
+              <div className="sa-field-top">
+                <span>Şifrə</span>
+                <div className="sa-actions">
+                  <button className="sa-copy" onClick={() => setShowPass((s) => !s)} aria-label={showPass ? "Şifrəni gizlət" : "Şifrəni göstər"}>
+                    {showPass ? <EyeOff size={12} /> : <Eye size={12} />}
+                  </button>
+                  <button className={`sa-copy ${copied === "pass" ? "done" : ""}`} onClick={() => copy("pass", result.login_password)}>
+                    <Copy size={12} /> {copied === "pass" ? "Kopyalandı" : "Kopyala"}
+                  </button>
+                </div>
+              </div>
+              <div className="sa-value sa-pass">{showPass ? result.login_password : "•".repeat(Math.min(12, result.login_password.length || 8))}</div>
+            </div>
+
+            {result.note && <p className="sa-small" style={{ marginTop: 4 }}>{result.note}</p>}
+
+            <div className="sa-expiry">
+              <span>Abunəlik bitir: {skyFmtDate(result.expires_at, false)}</span>
+              <span className={`sa-days ${days <= 3 ? "soon" : ""}`}>{days <= 0 ? "Bu gün" : `${days} gün`}</span>
+            </div>
+            <p className="sa-small">Şifrə son dəfə {skyFmtDate(result.password_updated_at)} tarixində yenilənib.</p>
+
+            <button className="sa-btn sa-btn-ghost" onClick={() => check()} disabled={loading}>
+              <RotateCw size={15} /> {loading ? "Yenilənir..." : "Yenilə"}
+            </button>
+            {days <= 3 && (
+              <a className="sa-btn" style={{ marginTop: 10 }} href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
+                <MessageCircle size={16} /> Abunəliyi artır
+              </a>
+            )}
+            <button className="sa-link" onClick={logout}>Başqa nömrə ilə gir</button>
+          </>
+        )}
+
+        {result?.status === "expired" && (
+          <>
+            <div className="sa-expired-icon"><Clock size={26} /></div>
+            <h1 className="sa-title">Abunəliyinizin vaxtı bitib</h1>
+            <p className="sa-sub">
+              {result.service ? `${result.service} abunəliyiniz` : "Abunəliyiniz"} {skyFmtDate(result.expires_at, false)} tarixində bitib.
+              Artırandan sonra bu link dərhal yenidən açılacaq.
+            </p>
+            <a className="sa-btn" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
+              <MessageCircle size={16} /> Artırmaq üçün yazın
+            </a>
+            <button className="sa-btn sa-btn-ghost" onClick={() => check()} disabled={loading}>
+              <RotateCw size={15} /> {loading ? "Yoxlanılır..." : "Artırdım, yenidən yoxla"}
+            </button>
+            <button className="sa-link" onClick={logout}>Başqa nömrə ilə gir</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------
+// ADMIN: HESAB ŞİFRƏLƏRİ BÖLMƏSİ
+// -----------------------------------------------------
+function SharedAccountsAdmin() {
+  const [open, setOpen] = useState(true);
+  const [tab, setTab] = useState("accounts");
+  const [accounts, setAccounts] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const [search, setSearch] = useState("");
+  const [showCount, setShowCount] = useState(40);
+  const [expanded, setExpanded] = useState(null);
+  const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
+  const [passDrafts, setPassDrafts] = useState({});
+  const [noteDrafts, setNoteDrafts] = useState({});
+  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1 });
+  const [lastAdded, setLastAdded] = useState(null);
+
+  const [phoneSearch, setPhoneSearch] = useState("");
+  const [expFilter, setExpFilter] = useState("soon");
+  const [bulkAccText, setBulkAccText] = useState("");
+  const [bulkMemText, setBulkMemText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkReport, setBulkReport] = useState("");
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
+  function flashMsg(t) {
+    setMsg(t);
+    setTimeout(() => setMsg(""), 2600);
+  }
+
+  async function loadAll() {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const [accs, mems] = await Promise.all([
+        skyFetchAll("shared_accounts", "created_at", false),
+        skyFetchAll("account_members", "expires_at", true),
+      ]);
+      setAccounts(accs);
+      setMembers(mems);
+    } catch (e) {
+      setLoadError("Məlumat yüklənmədi: " + (e.message || e) + " — SQL faylını Supabase-də işə salmısınız?");
+    }
+    setLoading(false);
+  }
+
+  async function loadLogs() {
+    const { data } = await supabase
+      .from("account_access_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(150);
+    setLogs(data || []);
+  }
+
+  const accById = React.useMemo(() => {
+    const m = {};
+    accounts.forEach((a) => (m[a.id] = a));
+    return m;
+  }, [accounts]);
+
+  const membersByAcc = React.useMemo(() => {
+    const m = {};
+    members.forEach((x) => {
+      (m[x.account_id] = m[x.account_id] || []).push(x);
+    });
+    return m;
+  }, [members]);
+
+  const pinByPhone = React.useMemo(() => {
+    const m = {};
+    members.forEach((x) => {
+      if (!m[x.phone]) m[x.phone] = x.pin;
+    });
+    return m;
+  }, [members]);
+
+  const now = Date.now();
+  const stats = React.useMemo(() => {
+    let active = 0, soon = 0, expired = 0;
+    members.forEach((m) => {
+      const t = new Date(m.expires_at).getTime();
+      if (t < now) expired++;
+      else {
+        active++;
+        if (t - now <= 3 * 86400000) soon++;
+      }
+    });
+    return { active, soon, expired };
+  }, [members]);
+
+  const filteredAccounts = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return accounts;
+    return accounts.filter(
+      (a) => a.login_email.toLowerCase().includes(q) || (a.service || "").toLowerCase().includes(q) || (a.note || "").toLowerCase().includes(q)
+    );
+  }, [accounts, search]);
+
+  // ---------- Hesab əməliyyatları ----------
+  async function addAccount() {
+    const service = newAcc.service.trim();
+    const email = newAcc.login_email.trim();
+    if (!email) return flashMsg("Mail yazın.");
+    const dup = accounts.find((a) => a.login_email.toLowerCase() === email.toLowerCase() && (a.service || "").toLowerCase() === service.toLowerCase());
+    if (dup) return flashMsg("Bu hesab artıq var.");
+    const { data, error } = await supabase
+      .from("shared_accounts")
+      .insert({ service, login_email: email, login_password: newAcc.login_password, note: newAcc.note.trim(), slug: skyMakeSlug(email) })
+      .select()
+      .single();
+    if (error) return flashMsg("Xəta: " + error.message);
+    setAccounts((a) => [data, ...a]);
+    setNewAcc({ service: "", login_email: "", login_password: "", note: "" });
+    setExpanded(data.id);
+    flashMsg("Hesab əlavə edildi ✓");
+  }
+
+  async function updateAccount(id, patch, okText) {
+    const { data, error } = await supabase.from("shared_accounts").update(patch).eq("id", id).select().single();
+    if (error) return flashMsg("Xəta: " + error.message);
+    setAccounts((list) => list.map((a) => (a.id === id ? data : a)));
+    if (okText) flashMsg(okText);
+  }
+
+  async function savePassword(acc) {
+    const pass = passDrafts[acc.id];
+    if (pass === undefined || pass === acc.login_password) return flashMsg("Şifrə dəyişməyib.");
+    await updateAccount(acc.id, { login_password: pass, password_updated_at: new Date().toISOString() }, "Yeni şifrə yadda saxlandı ✓");
+    setPassDrafts((d) => {
+      const n = { ...d };
+      delete n[acc.id];
+      return n;
+    });
+  }
+
+  async function deleteAccount(acc) {
+    const count = (membersByAcc[acc.id] || []).length;
+    if (!window.confirm(`${acc.login_email} hesabı və ona bağlı ${count} müştəri silinsin?`)) return;
+    const { error } = await supabase.from("shared_accounts").delete().eq("id", acc.id);
+    if (error) return flashMsg("Xəta: " + error.message);
+    setAccounts((l) => l.filter((a) => a.id !== acc.id));
+    setMembers((l) => l.filter((m) => m.account_id !== acc.id));
+    flashMsg("Hesab silindi");
+  }
+
+  // ---------- Müştəri əməliyyatları ----------
+  async function addMember(acc) {
+    const phone = skyNormPhone(memberForm.phone);
+    if (phone.length < 11) return flashMsg("Nömrəni düzgün yazın.");
+    const months = Number(memberForm.months) || 1;
+    const existing = members.find((m) => m.account_id === acc.id && m.phone === phone);
+    let data, error;
+    if (existing) {
+      ({ data, error } = await supabase
+        .from("account_members")
+        .update({ expires_at: skyAddMonths(existing.expires_at, months), name: memberForm.name.trim() || existing.name })
+        .eq("id", existing.id)
+        .select()
+        .single());
+    } else {
+      const pin = /^\d{4}$/.test(memberForm.pin) ? memberForm.pin : pinByPhone[phone] || skyRandomPin();
+      ({ data, error } = await supabase
+        .from("account_members")
+        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), expires_at: skyAddMonths(null, months) })
+        .select()
+        .single());
+    }
+    if (error) return flashMsg("Xəta: " + error.message);
+    setMembers((l) => (existing ? l.map((m) => (m.id === data.id ? data : m)) : [...l, data]));
+    setLastAdded(data.id);
+    setMemberForm({ name: "", phone: "", pin: "", months: 1 });
+    flashMsg(existing ? "Müddət uzadıldı ✓" : "Müştəri əlavə edildi ✓");
+  }
+
+  async function updateMember(m, patch, okText) {
+    const { data, error } = await supabase.from("account_members").update(patch).eq("id", m.id).select().single();
+    if (error) return flashMsg("Xəta: " + error.message);
+    setMembers((l) => l.map((x) => (x.id === m.id ? data : x)));
+    if (okText) flashMsg(okText);
+  }
+
+  async function deleteMember(m) {
+    if (!window.confirm(`+${m.phone} bu hesabdan silinsin?`)) return;
+    const { error } = await supabase.from("account_members").delete().eq("id", m.id);
+    if (error) return flashMsg("Xəta: " + error.message);
+    setMembers((l) => l.filter((x) => x.id !== m.id));
+  }
+
+  function inviteText(m, acc) {
+    return (
+      `Salam${m.name ? " " + m.name : ""}! ${acc.service || "Hesab"} məlumatlarınız bu linkdədir:\n` +
+      `${skyAccountLink(acc.slug)}\n\n` +
+      `Nömrə: +${m.phone}\nPIN: ${m.pin}\n\n` +
+      `Şifrə dəyişəndə linkdə avtomatik yenilənir. Abunəlik bitmə tarixi: ${skyFmtDate(m.expires_at, false)}`
+    );
+  }
+
+  function reminderText(m, acc) {
+    const expired = new Date(m.expires_at).getTime() < Date.now();
+    return expired
+      ? `Salam${m.name ? " " + m.name : ""}! ${acc.service || ""} abunəliyinizin vaxtı ${skyFmtDate(m.expires_at, false)} tarixində bitib. Artırmaq üçün bu mesaja cavab yazın.`
+      : `Salam${m.name ? " " + m.name : ""}! ${acc.service || ""} abunəliyinizin vaxtı ${skyFmtDate(m.expires_at, false)} tarixində bitir. Artırmaq üçün bu mesaja cavab yazın.`;
+  }
+
+  // ---------- Toplu yükləmə ----------
+  async function bulkAccounts() {
+    const rows = skyParseRows(bulkAccText).filter((r) => r[1] && r[1].includes("@"));
+    if (!rows.length) return setBulkReport("Heç bir düzgün sətir tapılmadı. Format: servis | mail | şifrə | qeyd");
+    setBulkBusy(true);
+    const keyOf = (s, e) => s.toLowerCase() + "|" + e.toLowerCase();
+    const existing = {};
+    accounts.forEach((a) => (existing[keyOf(a.service || "", a.login_email)] = a));
+    const toInsert = new Map();
+    const toUpdate = [];
+    rows.forEach(([service = "", email, password = "", note = ""]) => {
+      const k = keyOf(service, email);
+      if (existing[k]) {
+        if (password && password !== existing[k].login_password) toUpdate.push({ id: existing[k].id, password });
+      } else {
+        toInsert.set(k, { service, login_email: email, login_password: password, note, slug: skyMakeSlug(email) });
+      }
+    });
+    let errors = 0;
+    const ins = [...toInsert.values()];
+    for (let i = 0; i < ins.length; i += 200) {
+      const { error } = await supabase.from("shared_accounts").insert(ins.slice(i, i + 200));
+      if (error) errors++;
+    }
+    for (const u of toUpdate) {
+      const { error } = await supabase
+        .from("shared_accounts")
+        .update({ login_password: u.password, password_updated_at: new Date().toISOString() })
+        .eq("id", u.id);
+      if (error) errors++;
+    }
+    await loadAll();
+    setBulkBusy(false);
+    setBulkReport(`Yeni hesab: ${ins.length}. Şifrəsi yenilənən: ${toUpdate.length}.${errors ? ` Xəta: ${errors}.` : ""}`);
+    setBulkAccText("");
+  }
+
+  async function bulkMembers() {
+    const rows = skyParseRows(bulkMemText).filter((r) => r[0] && r[0].includes("@"));
+    if (!rows.length) return setBulkReport("Heç bir düzgün sətir tapılmadı. Format: mail | nömrə | bitmə tarixi | ad");
+    setBulkBusy(true);
+    const accsByEmail = {};
+    accounts.forEach((a) => {
+      const k = a.login_email.toLowerCase();
+      (accsByEmail[k] = accsByEmail[k] || []).push(a);
+    });
+    const existingByKey = {};
+    members.forEach((m) => (existingByKey[m.account_id + "|" + m.phone] = m));
+    const pins = { ...pinByPhone };
+    const out = new Map();
+    const problems = [];
+    rows.forEach((r, i) => {
+      const [email, rawPhone, rawDate, name = ""] = r;
+      const list = accsByEmail[email.toLowerCase()] || [];
+      const phone = skyNormPhone(rawPhone);
+      const exp = skyParseDate(rawDate);
+      if (!list.length) return problems.push(`${email}: hesab tapılmadı`);
+      if (list.length > 1) return problems.push(`${email}: bu mail bir neçə servisdə var`);
+      if (phone.length < 11) return problems.push(`${email}: nömrə səhvdir (${rawPhone || "boş"})`);
+      if (!exp) return problems.push(`${email}: tarix səhvdir (${rawDate || "boş"})`);
+      const key = list[0].id + "|" + phone;
+      const pin = existingByKey[key]?.pin || pins[phone] || skyRandomPin();
+      pins[phone] = pin;
+      out.set(key, { account_id: list[0].id, phone, pin, expires_at: exp, name: name || existingByKey[key]?.name || "" });
+    });
+    const rowsOut = [...out.values()];
+    let errors = 0;
+    for (let i = 0; i < rowsOut.length; i += 500) {
+      const { error } = await supabase.from("account_members").upsert(rowsOut.slice(i, i + 500), { onConflict: "account_id,phone" });
+      if (error) {
+        errors++;
+        problems.push("Yükləmə xətası: " + error.message);
+      }
+    }
+    await loadAll();
+    setBulkBusy(false);
+    setBulkReport(
+      `Yüklənən müştəri: ${rowsOut.length}.` +
+        (problems.length ? ` Problemli sətir: ${problems.length}\n` + problems.slice(0, 30).join("\n") + (problems.length > 30 ? "\n..." : "") : "")
+    );
+    if (!errors) setBulkMemText("");
+  }
+
+  function readFile(file, setter) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setter(String(reader.result || ""));
+    reader.readAsText(file);
+  }
+
+  // ---------- Kiçik komponentlər ----------
+  const S = {
+    box: { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 16, marginBottom: 12 },
+    input: { width: "100%", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", fontSize: 15 },
+    row: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+    small: { fontSize: 12, color: "var(--muted)" },
+    chip: (active) => ({
+      padding: "8px 13px", borderRadius: 999, fontSize: 13, cursor: "pointer",
+      border: "1px solid " + (active ? "var(--gold)" : "var(--line)"),
+      background: active ? "var(--gold)" : "transparent", color: active ? "#fff" : "var(--text)",
+    }),
+    mini: { padding: "7px 10px", borderRadius: 8, fontSize: 12, border: "1px solid var(--line)", background: "var(--bg)", color: "var(--text)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 },
+  };
+
+  function DaysBadge({ date }) {
+    const d = skyDaysLeft(date);
+    const expired = new Date(date).getTime() < Date.now();
+    const color = expired ? "#9a9a9a" : d <= 3 ? "var(--gold)" : "#1f9d55";
+    return (
+      <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
+        {expired ? "Bitib" : d <= 1 ? "Bu gün/sabah" : `${d} gün`}
+      </span>
+    );
+  }
+
+  function MemberRow({ m, showAccount }) {
+    const acc = accById[m.account_id];
+    if (!acc) return null;
+    const highlight = lastAdded === m.id;
+    return (
+      <div style={{ borderTop: "1px solid var(--line)", padding: "10px 0", background: highlight ? "rgba(31,157,85,0.08)" : "transparent" }}>
+        {showAccount && (
+          <div style={{ ...S.small, marginBottom: 2 }}>
+            {acc.service} — {acc.login_email}
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>
+              +{m.phone} {m.name && <span style={{ fontWeight: 400, color: "var(--muted)" }}>· {m.name}</span>}
+            </div>
+            <div style={S.small}>PIN {m.pin} · bitir {skyFmtDate(m.expires_at)}</div>
+          </div>
+          <DaysBadge date={m.expires_at} />
+        </div>
+        <div style={{ ...S.row, marginTop: 8 }}>
+          <button style={S.mini} onClick={() => updateMember(m, { expires_at: skyAddMonths(m.expires_at, 1) }, "+1 ay əlavə edildi ✓")}>
+            <Plus size={12} /> 1 ay
+          </button>
+          <a style={S.mini} href={skyWaUrl(m.phone, inviteText(m, acc))} target="_blank" rel="noreferrer">
+            <Send size={12} /> Link göndər
+          </a>
+          <a style={S.mini} href={skyWaUrl(m.phone, reminderText(m, acc))} target="_blank" rel="noreferrer">
+            <Clock size={12} /> Xatırlat
+          </a>
+          {new Date(m.expires_at).getTime() > Date.now() && (
+            <button style={S.mini} onClick={() => updateMember(m, { expires_at: new Date(Date.now() - 1000).toISOString() }, "Giriş bağlandı")}>
+              <Ban size={12} /> Bağla
+            </button>
+          )}
+          <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => deleteMember(m)}>
+            <Trash2 size={12} /> Sil
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const phoneResults = React.useMemo(() => {
+    const q = phoneSearch.replace(/\D/g, "");
+    if (q.length < 4) return [];
+    const norm = skyNormPhone(phoneSearch);
+    return members.filter((m) => m.phone.includes(q) || m.phone === norm);
+  }, [members, phoneSearch]);
+
+  const expiringList = React.useMemo(() => {
+    const t = Date.now();
+    return members
+      .filter((m) => {
+        const e = new Date(m.expires_at).getTime();
+        if (expFilter === "soon") return e >= t && e - t <= 3 * 86400000;
+        return e < t && t - e <= 7 * 86400000;
+      })
+      .sort((a, b) => new Date(a.expires_at) - new Date(b.expires_at));
+  }, [members, expFilter]);
+
+  const RESULT_LABELS = { ok: ["Baxdı", "#1f9d55"], expired: ["Vaxtı bitib", "#b7791f"], wrong: ["Səhv PIN/nömrə", "var(--gold)"], blocked: ["Bloklandı", "var(--gold)"] };
+
+  return (
+    <div style={{ marginTop: 28 }}>
+      <button
+        className="ad-section-title"
+        onClick={() => setOpen((o) => !o)}
+        style={{ background: "none", border: 0, color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: 0 }}
+      >
+        <KeyRound size={20} /> Hesab şifrələri {open ? "▾" : "▸"}
+      </button>
+
+      {open && (
+        <div>
+          {msg && <div className="ad-status">{msg}</div>}
+          {loadError && <div style={{ ...S.box, color: "var(--gold)" }}>{loadError}</div>}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8, marginBottom: 14 }}>
+            {[
+              ["Hesab", accounts.length, () => setTab("accounts")],
+              ["Aktiv müştəri", stats.active, () => setTab("accounts")],
+              ["3 günə bitən", stats.soon, () => { setTab("expiring"); setExpFilter("soon"); }],
+              ["Vaxtı bitən", stats.expired, () => { setTab("expiring"); setExpFilter("expired"); }],
+            ].map(([label, value, onClick]) => (
+              <button key={label} onClick={onClick} style={{ ...S.box, marginBottom: 0, textAlign: "left", cursor: "pointer", color: "var(--text)" }}>
+                <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700 }}>{loading ? "…" : value}</div>
+                <div style={S.small}>{label}</div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ ...S.row, marginBottom: 14 }}>
+            {[
+              ["accounts", "Hesablar"],
+              ["phone", "Nömrə ilə axtar"],
+              ["expiring", "Bitənlər"],
+              ["bulk", "Toplu yükləmə"],
+              ["logs", "Giriş tarixçəsi"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                style={S.chip(tab === key)}
+                onClick={() => {
+                  setTab(key);
+                  if (key === "logs") loadLogs();
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "accounts" && (
+            <>
+              <div style={S.box}>
+                <div style={{ fontWeight: 600, marginBottom: 10 }}>Yeni hesab</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <input style={S.input} placeholder="Servis (məs. Netflix)" value={newAcc.service} onChange={(e) => setNewAcc({ ...newAcc, service: e.target.value })} />
+                  <input style={S.input} placeholder="Mail / login" autoCapitalize="none" value={newAcc.login_email} onChange={(e) => setNewAcc({ ...newAcc, login_email: e.target.value })} />
+                  <input style={S.input} placeholder="Şifrə" autoCapitalize="none" value={newAcc.login_password} onChange={(e) => setNewAcc({ ...newAcc, login_password: e.target.value })} />
+                  <input style={S.input} placeholder="Müştəriyə qeyd (istəyə bağlı, məs. Profil 3)" value={newAcc.note} onChange={(e) => setNewAcc({ ...newAcc, note: e.target.value })} />
+                  <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={addAccount}>
+                    <Plus size={15} /> Hesab əlavə et
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "var(--muted)" }} />
+                <input style={{ ...S.input, paddingLeft: 36 }} placeholder="Mail və ya servis axtar..." value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(40); }} />
+              </div>
+
+              {loading && <p style={S.small}>Yüklənir...</p>}
+              {!loading && !filteredAccounts.length && <p style={S.small}>Hesab tapılmadı. Yuxarıdan əlavə edin və ya "Toplu yükləmə"dan istifadə edin.</p>}
+
+              {filteredAccounts.slice(0, showCount).map((acc) => {
+                const list = (membersByAcc[acc.id] || []).slice().sort((a, b) => new Date(a.expires_at) - new Date(b.expires_at));
+                const activeCount = list.filter((m) => new Date(m.expires_at).getTime() >= now).length;
+                const isOpen = expanded === acc.id;
+                return (
+                  <div key={acc.id} style={{ ...S.box, opacity: acc.is_active ? 1 : 0.6 }}>
+                    <button
+                      onClick={() => { setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1 }); }}
+                      style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{acc.login_email}</div>
+                          <div style={S.small}>{acc.service || "Servis yazılmayıb"}{!acc.is_active && " · deaktiv"}</div>
+                        </div>
+                        <div style={{ textAlign: "right", fontSize: 12, whiteSpace: "nowrap" }}>
+                          <div style={{ color: "#1f9d55", fontWeight: 600 }}>{activeCount} aktiv</div>
+                          <div style={S.small}>{list.length - activeCount} bitib</div>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isOpen && (
+                      <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                        <div>
+                          <div style={S.small}>Müştəri linki</div>
+                          <div style={{ ...S.row, marginTop: 4 }}>
+                            <code style={{ fontSize: 12, wordBreak: "break-all", flex: 1 }}>{skyAccountLink(acc.slug)}</code>
+                            <button style={S.mini} onClick={async () => (await skyCopy(skyAccountLink(acc.slug))) && flashMsg("Link kopyalandı ✓")}>
+                              <Copy size={12} /> Kopyala
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={S.small}>Şifrə (son dəyişmə: {skyFmtDate(acc.password_updated_at)})</div>
+                          <div style={{ ...S.row, marginTop: 4, flexWrap: "nowrap" }}>
+                            <input
+                              style={S.input}
+                              autoCapitalize="none"
+                              value={passDrafts[acc.id] ?? acc.login_password}
+                              onChange={(e) => setPassDrafts({ ...passDrafts, [acc.id]: e.target.value })}
+                            />
+                            <button className="ab-btn ab-btn-gold" style={{ whiteSpace: "nowrap" }} onClick={() => savePassword(acc)}>
+                              Yadda saxla
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={S.small}>Müştəriyə görünən qeyd</div>
+                          <div style={{ ...S.row, marginTop: 4, flexWrap: "nowrap" }}>
+                            <input style={S.input} value={noteDrafts[acc.id] ?? acc.note ?? ""} onChange={(e) => setNoteDrafts({ ...noteDrafts, [acc.id]: e.target.value })} />
+                            <button style={S.mini} onClick={() => updateAccount(acc.id, { note: noteDrafts[acc.id] ?? acc.note ?? "" }, "Qeyd saxlandı ✓")}>Saxla</button>
+                          </div>
+                        </div>
+
+                        <div style={S.row}>
+                          <button
+                            style={S.mini}
+                            onClick={() =>
+                              window.confirm("Köhnə link işləməyəcək. Aktiv müştərilərə yeni linki göndərməli olacaqsınız. Davam edilsin?") &&
+                              updateAccount(acc.id, { slug: skyMakeSlug(acc.login_email) }, "Yeni link yaradıldı ✓")
+                            }
+                          >
+                            <RotateCw size={12} /> Yeni link yarat
+                          </button>
+                          <button style={S.mini} onClick={() => updateAccount(acc.id, { is_active: !acc.is_active }, acc.is_active ? "Hesab deaktiv edildi" : "Hesab aktiv edildi ✓")}>
+                            <Ban size={12} /> {acc.is_active ? "Deaktiv et" : "Aktiv et"}
+                          </button>
+                          <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => deleteAccount(acc)}>
+                            <Trash2 size={12} /> Hesabı sil
+                          </button>
+                        </div>
+
+                        <div style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
+                          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Müştəri əlavə et / uzat</div>
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <input style={S.input} type="tel" placeholder="WhatsApp nömrəsi (050 123 45 67)" value={memberForm.phone} onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })} />
+                            <div style={{ ...S.row, flexWrap: "nowrap" }}>
+                              <input style={S.input} placeholder="Ad (istəyə bağlı)" value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} />
+                              <input
+                                style={{ ...S.input, maxWidth: 110 }}
+                                inputMode="numeric"
+                                maxLength={4}
+                                placeholder="PIN (avto)"
+                                value={memberForm.pin}
+                                onChange={(e) => setMemberForm({ ...memberForm, pin: e.target.value.replace(/\D/g, "") })}
+                              />
+                            </div>
+                            <div style={S.row}>
+                              {[1, 3, 6, 12].map((mo) => (
+                                <button key={mo} style={S.chip(memberForm.months === mo)} onClick={() => setMemberForm({ ...memberForm, months: mo })}>
+                                  {mo} ay
+                                </button>
+                              ))}
+                            </div>
+                            <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
+                              <CheckCircle2 size={15} /> Təsdiqlə
+                            </button>
+                            <div style={S.small}>Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>Müştərilər ({list.length})</div>
+                          {!list.length && <p style={S.small}>Hələ müştəri yoxdur.</p>}
+                          {list.map((m) => (
+                            <MemberRow key={m.id} m={m} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {filteredAccounts.length > showCount && (
+                <button className="ab-btn ab-btn-ghost" onClick={() => setShowCount((c) => c + 40)}>
+                  Daha çox göstər ({filteredAccounts.length - showCount})
+                </button>
+              )}
+            </>
+          )}
+
+          {tab === "phone" && (
+            <div style={S.box}>
+              <input style={S.input} type="tel" placeholder="Nömrə yazın (ən az 4 rəqəm)" value={phoneSearch} onChange={(e) => setPhoneSearch(e.target.value)} />
+              {phoneSearch.replace(/\D/g, "").length >= 4 && !phoneResults.length && <p style={S.small}>Bu nömrə heç bir hesabda yoxdur.</p>}
+              {phoneResults.slice(0, 50).map((m) => (
+                <MemberRow key={m.id} m={m} showAccount />
+              ))}
+            </div>
+          )}
+
+          {tab === "expiring" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, marginBottom: 8 }}>
+                <button style={S.chip(expFilter === "soon")} onClick={() => setExpFilter("soon")}>3 gün ərzində bitənlər</button>
+                <button style={S.chip(expFilter === "expired")} onClick={() => setExpFilter("expired")}>Son 7 gündə bitənlər</button>
+              </div>
+              {!expiringList.length && <p style={S.small}>Siyahı boşdur.</p>}
+              {expiringList.slice(0, 200).map((m) => (
+                <MemberRow key={m.id} m={m} showAccount />
+              ))}
+            </div>
+          )}
+
+          {tab === "bulk" && (
+            <>
+              {bulkReport && <div style={{ ...S.box, whiteSpace: "pre-wrap", fontSize: 13 }}>{bulkReport}</div>}
+              <div style={S.box}>
+                <div style={{ fontWeight: 600 }}>1. Hesabları yüklə</div>
+                <p style={S.small}>
+                  Excel-də sütunlar: <b>servis | mail | şifrə | qeyd</b>. Xanaları seçib kopyalayın və aşağıya yapışdırın (və ya CSV faylı seçin). Mövcud hesabın
+                  şifrəsi fərqlidirsə yenilənir.
+                </p>
+                <textarea style={{ ...S.input, minHeight: 110, fontFamily: "monospace", fontSize: 12 }} value={bulkAccText} onChange={(e) => setBulkAccText(e.target.value)} placeholder={"Netflix\tturgut@gmail.com\tSifre123\tProfil 2"} />
+                <div style={{ ...S.row, marginTop: 8 }}>
+                  <input type="file" accept=".csv,.txt,.tsv" onChange={(e) => readFile(e.target.files[0], setBulkAccText)} />
+                  <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkAccounts}>
+                    <Upload size={15} /> {bulkBusy ? "Yüklənir..." : "Hesabları yüklə"}
+                  </button>
+                </div>
+              </div>
+              <div style={S.box}>
+                <div style={{ fontWeight: 600 }}>2. Müştəriləri yüklə</div>
+                <p style={S.small}>
+                  Sütunlar: <b>mail | nömrə | bitmə tarixi | ad</b>. Tarix: 15.10.2026. Əvvəlcə hesablar yüklənmiş olmalıdır. Eyni nömrəyə hər hesabda eyni PIN
+                  verilir; mövcud müştərinin tarixi yenisi ilə əvəzlənir.
+                </p>
+                <textarea style={{ ...S.input, minHeight: 110, fontFamily: "monospace", fontSize: 12 }} value={bulkMemText} onChange={(e) => setBulkMemText(e.target.value)} placeholder={"turgut@gmail.com\t0501234567\t15.10.2026\tƏli"} />
+                <div style={{ ...S.row, marginTop: 8 }}>
+                  <input type="file" accept=".csv,.txt,.tsv" onChange={(e) => readFile(e.target.files[0], setBulkMemText)} />
+                  <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkMembers}>
+                    <Upload size={15} /> {bulkBusy ? "Yüklənir..." : "Müştəriləri yüklə"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === "logs" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={S.small}>Son 150 giriş cəhdi</span>
+                <div style={S.row}>
+                  <button style={S.mini} onClick={loadLogs}><RotateCw size={12} /> Yenilə</button>
+                  <button
+                    style={S.mini}
+                    onClick={async () => {
+                      await supabase.rpc("cleanup_account_logs");
+                      loadLogs();
+                      flashMsg("60 gündən köhnə qeydlər silindi");
+                    }}
+                  >
+                    <Trash2 size={12} /> Köhnəni sil
+                  </button>
+                </div>
+              </div>
+              {!logs.length && <p style={S.small}>Hələ giriş yoxdur.</p>}
+              {logs.map((l) => {
+                const [label, color] = RESULT_LABELS[l.result] || [l.result, "var(--muted)"];
+                return (
+                  <div key={l.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0", display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div>+{l.phone || "—"}</div>
+                      <div style={{ ...S.small, overflow: "hidden", textOverflow: "ellipsis" }}>{accById[l.account_id]?.login_email || "silinmiş hesab"} · {skyFmtDate(l.created_at)}</div>
+                    </div>
+                    <span style={{ color, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminPage({ onDataChanged }) {
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -3399,6 +4450,8 @@ function AdminPage({ onDataChanged }) {
         </div>
       </div>
 
+      <SharedAccountsAdmin />
+
       <h3 className="ad-section-title">Kütləvi email göndər (bütün qeydiyyatlı müştərilərə)</h3>
       <div className="ad-settings">
         <label>
@@ -3862,7 +4915,7 @@ const ProductTicker = React.memo(function ProductTicker({ products }) {
   );
 });
 
-export default function App() {
+function MainApp() {
   useGoogleFonts();
   const [page, go] = useHashRoute();
   const [navSolid, setNavSolid] = useState(false);
@@ -5200,4 +6253,21 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+// Hesab linki (#h-...) açılanda yalnız hesab səhifəsi göstərilir
+function getSharedSlug() {
+  const h = window.location.hash.replace("#", "");
+  return h.startsWith("h-") ? h.slice(2) : null;
+}
+
+export default function App() {
+  const [slug, setSlug] = useState(getSharedSlug);
+  useEffect(() => {
+    const onHash = () => setSlug(getSharedSlug());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  if (slug) return <SharedAccountPage key={slug} slug={slug} />;
+  return <MainApp />;
 }
