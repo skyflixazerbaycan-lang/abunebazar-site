@@ -3394,6 +3394,9 @@ function SharedAccountsAdmin() {
 
   const [search, setSearch] = useState("");
   const [noPassOnly, setNoPassOnly] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState({});
+  const [bulkDelText, setBulkDelText] = useState("");
   const [bulkService, setBulkService] = useState("");
   const [showCount, setShowCount] = useState(40);
   const [expanded, setExpanded] = useState(null);
@@ -3490,6 +3493,53 @@ function SharedAccountsAdmin() {
   }, [accounts, search, noPassOnly]);
 
   const noPassCount = React.useMemo(() => accounts.filter((a) => !a.login_password).length, [accounts]);
+
+  // ---------- Toplu silmə ----------
+  async function deleteAccountsByIds(ids) {
+    if (!ids.length) return 0;
+    let deleted = 0;
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200);
+      const { error } = await supabase.from("shared_accounts").delete().in("id", chunk);
+      if (error) {
+        flashMsg("Xəta: " + error.message);
+        break;
+      }
+      deleted += chunk.length;
+    }
+    const gone = new Set(ids);
+    setAccounts((l) => l.filter((a) => !gone.has(a.id)));
+    setMembers((l) => l.filter((m) => !gone.has(m.account_id)));
+    return deleted;
+  }
+
+  async function deleteSelected() {
+    const ids = Object.keys(selected).filter((k) => selected[k]);
+    if (!ids.length) return flashMsg("Heç bir hesab seçilməyib.");
+    const memberCount = members.filter((m) => selected[m.account_id]).length;
+    if (!window.confirm(`${ids.length} hesab və onlara bağlı ${memberCount} müştəri silinsin? Bu geri qaytarılmır.`)) return;
+    const n = await deleteAccountsByIds(ids);
+    setSelected({});
+    setSelectMode(false);
+    flashMsg(`${n} hesab silindi`);
+  }
+
+  async function bulkDeleteByEmails() {
+    const emails = new Set((bulkDelText.match(/[^\s,;]+@[^\s,;]+\.[^\s,;]+/g) || []).map((e) => e.toLowerCase()));
+    if (!emails.size) return setBulkReport("Silmək üçün heç bir mail tapılmadı.");
+    const svc = bulkService.trim().toLowerCase();
+    const targets = accounts.filter((a) => emails.has(a.login_email.toLowerCase()) && (!svc || (a.service || "").toLowerCase() === svc));
+    const found = new Set(targets.map((a) => a.login_email.toLowerCase()));
+    const missing = [...emails].filter((e) => !found.has(e));
+    if (!targets.length) return setBulkReport("Bu maillərdən heç biri sistemdə tapılmadı.");
+    const memberCount = members.filter((m) => targets.some((t) => t.id === m.account_id)).length;
+    if (!window.confirm(`${targets.length} hesab və onlara bağlı ${memberCount} müştəri silinsin? Bu geri qaytarılmır.`)) return;
+    setBulkBusy(true);
+    const n = await deleteAccountsByIds(targets.map((a) => a.id));
+    setBulkBusy(false);
+    setBulkDelText("");
+    setBulkReport(`Silinən hesab: ${n}.` + (missing.length ? ` Tapılmayan mail: ${missing.length}\n` + missing.slice(0, 30).join("\n") : ""));
+  }
 
   // ---------- Hesab əməliyyatları ----------
   async function addAccount() {
@@ -3862,7 +3912,36 @@ function SharedAccountsAdmin() {
               <div style={{ ...S.row, marginBottom: 12 }}>
                 <button style={S.chip(!noPassOnly)} onClick={() => setNoPassOnly(false)}>Hamısı</button>
                 <button style={S.chip(noPassOnly)} onClick={() => setNoPassOnly(true)}>Şifrəsizlər ({noPassCount})</button>
+                <button
+                  style={{ ...S.chip(selectMode), marginLeft: "auto" }}
+                  onClick={() => {
+                    setSelectMode((v) => !v);
+                    setSelected({});
+                  }}
+                >
+                  {selectMode ? "Seçimi bağla" : "Toplu sil"}
+                </button>
               </div>
+
+              {selectMode && (
+                <div style={{ ...S.box, ...S.row, position: "sticky", top: 8, zIndex: 5 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{Object.values(selected).filter(Boolean).length} seçilib</span>
+                  <button
+                    style={S.mini}
+                    onClick={() => {
+                      const all = {};
+                      filteredAccounts.forEach((a) => (all[a.id] = true));
+                      setSelected(all);
+                    }}
+                  >
+                    Görünənlərin hamısı ({filteredAccounts.length})
+                  </button>
+                  <button style={S.mini} onClick={() => setSelected({})}>Təmizlə</button>
+                  <button className="ab-btn ab-btn-gold" style={{ marginLeft: "auto" }} onClick={deleteSelected}>
+                    <Trash2 size={15} /> Seçilənləri sil
+                  </button>
+                </div>
+              )}
 
               {loading && <p style={S.small}>Yüklənir...</p>}
               {!loading && !filteredAccounts.length && <p style={S.small}>Hesab tapılmadı. Yuxarıdan əlavə edin və ya "Toplu yükləmə"dan istifadə edin.</p>}
@@ -3872,9 +3951,18 @@ function SharedAccountsAdmin() {
                 const activeCount = list.filter((m) => new Date(m.expires_at).getTime() >= now).length;
                 const isOpen = expanded === acc.id;
                 return (
-                  <div key={acc.id} style={{ ...S.box, opacity: acc.is_active ? 1 : 0.6 }}>
+                  <div key={acc.id} style={{ ...S.box, opacity: acc.is_active ? 1 : 0.6, display: selectMode ? "flex" : "block", gap: 12, alignItems: "center" }}>
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        aria-label={"Seç: " + acc.login_email}
+                        checked={!!selected[acc.id]}
+                        onChange={(e) => setSelected((sel) => ({ ...sel, [acc.id]: e.target.checked }))}
+                        style={{ width: 22, height: 22, accentColor: "var(--gold)", flexShrink: 0 }}
+                      />
+                    )}
                     <button
-                      onClick={() => { setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" }); }}
+                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" }); }}
                       style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -3893,7 +3981,7 @@ function SharedAccountsAdmin() {
                       </div>
                     </button>
 
-                    {isOpen && (
+                    {isOpen && !selectMode && (
                       <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
                         <div>
                           <div style={S.small}>Müştəri linki</div>
@@ -4046,6 +4134,16 @@ function SharedAccountsAdmin() {
                     <Upload size={15} /> {bulkBusy ? "Yüklənir..." : "Mailləri əlavə et"}
                   </button>
                 </div>
+              </div>
+              <div style={{ ...S.box, borderColor: "var(--gold)" }}>
+                <div style={{ fontWeight: 600 }}>Mailləri toplu sil</div>
+                <p style={S.small}>
+                  Silinəcək mailləri yapışdırın. Hesablarla birlikdə onlara bağlı müştərilər də silinir. Yuxarıda servis yazılıbsa, yalnız həmin servisdəki hesablar silinir.
+                </p>
+                <textarea style={{ ...S.input, minHeight: 90, fontFamily: "monospace", fontSize: 12 }} value={bulkDelText} onChange={(e) => setBulkDelText(e.target.value)} placeholder={"turgut@gmail.com\nali@gmail.com"} />
+                <button className="ab-btn ab-btn-ghost" style={{ marginTop: 8, color: "var(--gold)", borderColor: "var(--gold)" }} disabled={bulkBusy} onClick={bulkDeleteByEmails}>
+                  <Trash2 size={15} /> {bulkBusy ? "Silinir..." : "Mailləri sil"}
+                </button>
               </div>
               <div style={S.box}>
                 <div style={{ fontWeight: 600 }}>2. Müştəriləri yüklə</div>
