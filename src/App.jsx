@@ -3027,6 +3027,7 @@ function SharedAccountPage({ slug }) {
   const [showPass, setShowPass] = useState(false);
   const [copied, setCopied] = useState("");
   const [whatsapp, setWhatsapp] = useState("517873090");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3044,6 +3045,13 @@ function SharedAccountPage({ slug }) {
     if (saved?.phone && saved?.pin) check(saved.phone, saved.pin);
     return () => document.head.removeChild(meta);
   }, []);
+
+  // Giriş edilibsə, hər 20 saniyədə yeni kodu yoxla
+  useEffect(() => {
+    if (result?.status !== "ok") return;
+    const id = setInterval(() => check(phone, pin), 20000);
+    return () => clearInterval(id);
+  }, [result?.status, phone, pin]);
 
   async function check(ph = phone, pn = pin) {
     setError("");
@@ -3133,7 +3141,11 @@ function SharedAccountPage({ slug }) {
         .sa-expired-icon{width:54px;height:54px;border-radius:50%;background:rgba(225,18,42,0.14);color:#FF3B4E;
           display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
         .sa-link{background:none;border:0;color:#A98D8B;font-size:13px;text-decoration:underline;cursor:pointer;margin-top:16px;width:100%;}
-        @media (prefers-reduced-motion: no-preference){.sa-card{animation:saIn .35s ease-out;}}
+        .sa-code{background:linear-gradient(135deg,#E1122A,#8C1620);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+        .sa-code-label{font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:4px;display:flex;justify-content:space-between;}
+        .sa-code-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:#fff;letter-spacing:4px;}
+        .sa-code-btn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#fff;color:#8C1620;border:0;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;}
+        @media (prefers-reduced-motion: no-preference){.sa-card{animation:saIn .35s ease-out;}.sa-code{animation:saIn .3s ease-out;}}
         @keyframes saIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
       `}</style>
 
@@ -3219,7 +3231,52 @@ function SharedAccountPage({ slug }) {
               </div>
             </div>
 
+            {(result.room_name || result.room_password) && (
+              <>
+                {result.room_name && (
+                  <div className="sa-field">
+                    <div className="sa-field-top"><span>Otağınız (profil)</span></div>
+                    <div className="sa-value">{result.room_name}</div>
+                  </div>
+                )}
+                {result.room_password && (
+                  <div className="sa-field">
+                    <div className="sa-field-top">
+                      <span>Otaq şifrəsi</span>
+                      <button className={`sa-copy ${copied === "room" ? "done" : ""}`} onClick={() => copy("room", result.room_password)}>
+                        <Copy size={12} /> {copied === "room" ? "Kopyalandı" : "Kopyala"}
+                      </button>
+                    </div>
+                    <div className="sa-value sa-pass">{result.room_password}</div>
+                  </div>
+                )}
+              </>
+            )}
+
             {result.note && <p className="sa-small" style={{ marginTop: 4 }}>{result.note}</p>}
+
+            {result.last_code && (result.last_code.code || result.last_code.link) && (
+              <div className="sa-code">
+                <div className="sa-code-label">
+                  <span>Netflix təsdiq {result.last_code.code ? "kodu" : "linki"}</span>
+                  <span>yeni · {skyFmtDate(result.last_code.received_at).split(" ")[1]}</span>
+                </div>
+                {result.last_code.code && <div className="sa-code-val">{result.last_code.code}</div>}
+                {result.last_code.code && (
+                  <button className="sa-code-btn" onClick={async () => { if (await skyCopy(result.last_code.code)) { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); } }}>
+                    <Copy size={13} /> {codeCopied ? "Kopyalandı" : "Kodu kopyala"}
+                  </button>
+                )}
+                {result.last_code.link && (
+                  <a className="sa-code-btn" href={result.last_code.link} target="_blank" rel="noreferrer">
+                    <CheckCircle2 size={13} /> Təsdiq linkini aç
+                  </a>
+                )}
+              </div>
+            )}
+            <p className="sa-small" style={{ marginTop: 0, marginBottom: 4 }}>
+              Cihaz təsdiqi lazımdırsa, Netflix-ə kod istəyi göndərin, kod bir neçə saniyəyə burada görünəcək. Səhifə avtomatik yenilənir.
+            </p>
 
             <div className="sa-expiry">
               <span>Abunəlik bitir: {skyFmtDate(result.expires_at, false)}</span>
@@ -3388,6 +3445,7 @@ function SharedAccountsAdmin() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [msg, setMsg] = useState("");
@@ -3403,7 +3461,7 @@ function SharedAccountsAdmin() {
   const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
   const [passDrafts, setPassDrafts] = useState({});
   const [noteDrafts, setNoteDrafts] = useState({});
-  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "" });
+  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
   const [lastAdded, setLastAdded] = useState(null);
 
   const [phoneSearch, setPhoneSearch] = useState("");
@@ -3436,6 +3494,15 @@ function SharedAccountsAdmin() {
       setLoadError("Məlumat yüklənmədi: " + (e.message || e) + " — SQL faylını Supabase-də işə salmısınız?");
     }
     setLoading(false);
+  }
+
+  async function loadCodes() {
+    const { data } = await supabase
+      .from("account_codes")
+      .select("*")
+      .order("received_at", { ascending: false })
+      .limit(100);
+    setCodes(data || []);
   }
 
   async function loadLogs() {
@@ -3600,7 +3667,7 @@ function SharedAccountsAdmin() {
     if (existing) {
       ({ data, error } = await supabase
         .from("account_members")
-        .update({ expires_at: skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name })
+        .update({ expires_at: skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name, room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim() })
         .eq("id", existing.id)
         .select()
         .single());
@@ -3608,14 +3675,14 @@ function SharedAccountsAdmin() {
       const pin = /^\d{4}$/.test(memberForm.pin) ? memberForm.pin : pinByPhone[phone] || skyRandomPin();
       ({ data, error } = await supabase
         .from("account_members")
-        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), expires_at: skyAddDuration(null, months, days) })
+        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim(), expires_at: skyAddDuration(null, months, days) })
         .select()
         .single());
     }
     if (error) return flashMsg("Xəta: " + error.message);
     setMembers((l) => (existing ? l.map((m) => (m.id === data.id ? data : m)) : [...l, data]));
     setLastAdded(data.id);
-    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" });
+    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
     flashMsg(existing ? "Müddət uzadıldı ✓" : "Müştəri əlavə edildi ✓");
   }
 
@@ -3790,6 +3857,9 @@ function SharedAccountsAdmin() {
               +{m.phone} {m.name && <span style={{ fontWeight: 400, color: "var(--muted)" }}>· {m.name}</span>}
             </div>
             <div style={S.small}>PIN {m.pin} · bitir {skyFmtDate(m.expires_at)}</div>
+            {(m.room_name || m.room_password) && (
+              <div style={S.small}>Otaq: {m.room_name || "—"}{m.room_password ? " · şifrə " + m.room_password : ""}</div>
+            )}
           </div>
           <DaysBadge date={m.expires_at} />
         </div>
@@ -3817,6 +3887,18 @@ function SharedAccountsAdmin() {
               <Ban size={12} /> Bağla
             </button>
           )}
+          <button
+            style={S.mini}
+            onClick={() => {
+              const rn = window.prompt("Otaq / profil adı:", m.room_name || "");
+              if (rn === null) return;
+              const rp = window.prompt("Otaq şifrəsi (yoxdursa boş buraxın):", m.room_password || "");
+              if (rp === null) return;
+              updateMember(m, { room_name: rn.trim(), room_password: rp.trim() }, "Otaq məlumatı yeniləndi ✓");
+            }}
+          >
+            <KeyRound size={12} /> Otaq
+          </button>
           <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => deleteMember(m)}>
             <Trash2 size={12} /> Sil
           </button>
@@ -3874,6 +3956,7 @@ function SharedAccountsAdmin() {
               ["phone", "Nömrə ilə axtar"],
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
+              ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
               <button
@@ -3882,6 +3965,7 @@ function SharedAccountsAdmin() {
                 onClick={() => {
                   setTab(key);
                   if (key === "logs") loadLogs();
+                  if (key === "codes") loadCodes();
                 }}
               >
                 {label}
@@ -3962,7 +4046,7 @@ function SharedAccountsAdmin() {
                       />
                     )}
                     <button
-                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "" }); }}
+                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" }); }}
                       style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -4048,6 +4132,10 @@ function SharedAccountsAdmin() {
                                 value={memberForm.pin}
                                 onChange={(e) => setMemberForm({ ...memberForm, pin: e.target.value.replace(/\D/g, "") })}
                               />
+                            </div>
+                            <div style={{ ...S.row, flexWrap: "nowrap" }}>
+                              <input style={S.input} placeholder="Otaq / profil adı (məs. Otaq 1)" value={memberForm.room_name} onChange={(e) => setMemberForm({ ...memberForm, room_name: e.target.value })} />
+                              <input style={{ ...S.input, maxWidth: 130 }} placeholder="Otaq şifrəsi" value={memberForm.room_password} onChange={(e) => setMemberForm({ ...memberForm, room_password: e.target.value })} />
                             </div>
                             <div style={S.row}>
                               {[1, 2, 3, 6, 12].map((mo) => (
@@ -4160,6 +4248,36 @@ function SharedAccountsAdmin() {
                 </div>
               </div>
             </>
+          )}
+
+          {tab === "codes" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={S.small}>Son 100 gələn kod (hər hesabda son 10 saxlanılır)</span>
+                <button style={S.mini} onClick={loadCodes}><RotateCw size={12} /> Yenilə</button>
+              </div>
+              {!codes.length && <p style={S.small}>Hələ kod gəlməyib. Yönləndirmə və script qurulandan sonra buraya düşəcək.</p>}
+              {codes.map((c) => {
+                const acc = accById[c.account_id];
+                const fresh = Date.now() - new Date(c.received_at).getTime() < 15 * 60000;
+                return (
+                  <div key={c.id} style={{ borderTop: "1px solid var(--line)", padding: "9px 0", display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", fontSize: 16 }}>
+                        {c.code || (c.link ? "🔗 təsdiq linki" : "—")}
+                      </div>
+                      <div style={{ ...S.small, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {c.to_email}{!c.account_id && <span style={{ color: "var(--gold)" }}> · tanınmayan mail</span>} · {skyFmtDate(c.received_at)}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: fresh ? "#1f9d55" : "var(--muted)", whiteSpace: "nowrap" }}>{fresh ? "aktiv" : "köhnə"}</span>
+                      {c.code && <button style={S.mini} onClick={async () => (await skyCopy(c.code)) && flashMsg("Kod kopyalandı ✓")}><Copy size={12} /></button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {tab === "logs" && (
