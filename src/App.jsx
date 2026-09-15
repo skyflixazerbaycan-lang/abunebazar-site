@@ -2884,6 +2884,15 @@ function VideoWidget({ videoId }) {
 
 const SKY_SITE_URL = "https://skyflixazerbaycan.com";
 
+const SKY_RULES_TITLE = "Hesabdan xaric olunub, pulunuzun geri qaytarılmaması baş verməməsi üçün aşağıdakı qaydalara əməl edin";
+const SKY_RULES = [
+  "Sizə verilən və hesabda sizdən başqa otaqların adını, şifrəsini, şəkillərini dəyişmək qadağandır.",
+  "Aldığınız hesab 1 nəfərlik olduğunu unutmayın. Yəni ikinci bir şəxsə (ailə üzvünüzə, dostunuza və s.) vermək qadağandır. \"Mən baxım, başqa vaxtı dostum və ya ailə üzvüm baxacaq\" söhbəti yoxdur. Sistemdən izlənilir, təsbit edildiyi an hesabdan xaric olunacaqsınız.",
+  "Özünüzə aid cihazlardan eyni anda baxmamaq şərtilə izləyə bilərsiniz. Yəni TV-də Netflix-də film açılıbsa, telefondan girib filmə baxmaq qadağandır. Eyni anda yalnız 1 cihaz işləməlidir.",
+  "Otağın menyu dili yalnız Türk dilində olmalıdır. Menyu dilini Rus, İngilis və ya başqa dilə çevirmək qadağandır.",
+  "Otağın menyu dilini dəyişmədən səsləndirmə və altyazıya rus və digər dilləri əlavə etmək sərbəstdir. Onsuz da bütün hesablarımızda avtomatik əlavə olunur. Filmi başlatdıqdan sonra alt hissədən səsləndirmə yerindən filmin dilini rus və ya ingilis dilinə dəyişə bilərsiniz.",
+];
+
 function skyNormPhone(p) {
   let d = String(p || "").replace(/\D/g, "");
   if (d.startsWith("00")) d = d.slice(2);
@@ -3028,6 +3037,7 @@ function SharedAccountPage({ slug }) {
   const [copied, setCopied] = useState("");
   const [whatsapp, setWhatsapp] = useState("517873090");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [showRules, setShowRules] = useState(true);
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3141,6 +3151,12 @@ function SharedAccountPage({ slug }) {
         .sa-expired-icon{width:54px;height:54px;border-radius:50%;background:rgba(225,18,42,0.14);color:#FF3B4E;
           display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
         .sa-link{background:none;border:0;color:#A98D8B;font-size:13px;text-decoration:underline;cursor:pointer;margin-top:16px;width:100%;}
+        .sa-rules{margin-top:16px;border-top:1px dashed rgba(255,255,255,0.14);padding-top:14px;}
+        .sa-rules-head{display:flex;gap:8px;align-items:flex-start;color:#FFB3BA;font-size:13px;font-weight:600;line-height:1.45;margin-bottom:10px;}
+        .sa-rules-toggle{background:none;border:0;color:#A98D8B;font-size:13px;cursor:pointer;padding:0;text-decoration:underline;}
+        .sa-rules ol{margin:6px 0 0;padding-left:20px;}
+        .sa-rules li{font-size:13px;color:#C9BAB8;line-height:1.5;margin-bottom:9px;}
+        .sa-rules li::marker{color:#FF3B4E;font-weight:700;}
         .sa-code{background:linear-gradient(135deg,#E1122A,#8C1620);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
         .sa-code-label{font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:4px;display:flex;justify-content:space-between;}
         .sa-code-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:#fff;letter-spacing:4px;}
@@ -3292,6 +3308,23 @@ function SharedAccountPage({ slug }) {
                 <MessageCircle size={16} /> Abunəliyi artır
               </a>
             )}
+            <div className="sa-rules">
+              <div className="sa-rules-head">
+                <Shield size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{SKY_RULES_TITLE}</span>
+              </div>
+              <button className="sa-rules-toggle" onClick={() => setShowRules((v) => !v)}>
+                {showRules ? "Qaydaları gizlət" : "Qaydaları göstər"}
+              </button>
+              {showRules && (
+                <ol>
+                  {SKY_RULES.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
             <button className="sa-link" onClick={logout}>Başqa nömrə ilə gir</button>
           </>
         )}
