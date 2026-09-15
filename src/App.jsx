@@ -3747,7 +3747,7 @@ function SharedAccountsAdmin() {
       `Salam${m.name ? " " + m.name : ""}! ${acc.service || "Hesab"} məlumatlarınız bu linkdədir:\n` +
       `${skyAccountLink(acc.slug)}\n\n` +
       `Nömrə: +${m.phone}\nPIN: ${m.pin}\n\n` +
-      `Əgər Netflix şifrəsi dəyişərsə artıq bizə yazmadan burdakı linkdən yeni şifrənizi əldə edə bilərsiniz. Avtomatik şəkildə burada qeyd olunacaq. ✌🏽\n\n` +
+      `Əgər Netflix şifrəsi dəyişərsə artıq bizə yazmadan burdakı linkdən yeni şifrənizi əldə edə bilərsiniz. Avtomatik şəkildə burada qeyd olunacaq.\n\n` +
       `Abunəlik bitmə tarixi: ${skyFmtDate(m.expires_at, false)}`
     );
   }
