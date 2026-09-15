@@ -3208,7 +3208,15 @@ function SharedAccountPage({ slug }) {
                   </button>
                 </div>
               </div>
-              <div className="sa-value sa-pass">{showPass ? result.login_password : "•".repeat(Math.min(12, result.login_password.length || 8))}</div>
+              <div className="sa-value sa-pass">
+                {!result.login_password ? (
+                  <span style={{ fontSize: 15, fontWeight: 500, color: "#A98D8B", fontFamily: "Inter,sans-serif" }}>Şifrə tezliklə əlavə olunacaq. Bir az sonra "Yenilə" basın.</span>
+                ) : showPass ? (
+                  result.login_password
+                ) : (
+                  "•".repeat(Math.min(12, result.login_password.length))
+                )}
+              </div>
             </div>
 
             {result.note && <p className="sa-small" style={{ marginTop: 4 }}>{result.note}</p>}
@@ -3254,6 +3262,124 @@ function SharedAccountPage({ slug }) {
 }
 
 // -----------------------------------------------------
+// AYRICA İDARƏ SƏHİFƏSİ: skyflixazerbaycan.com/#abunelikidare
+// -----------------------------------------------------
+function SubscriptionManagerPage() {
+  useGoogleFonts();
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("sai-theme") || "dark";
+    } catch {
+      return "dark";
+    }
+  });
+
+  useEffect(() => {
+    document.title = "Abunəlik idarəsi — SkyFlix";
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setChecking(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, sess) => setSession(sess));
+    return () => {
+      listener.subscription.unsubscribe();
+      document.head.removeChild(meta);
+    };
+  }, []);
+
+  async function login(e) {
+    e.preventDefault();
+    setError("");
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    if (err) setError("Mail və ya şifrə səhvdir.");
+  }
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      localStorage.setItem("sai-theme", next);
+    } catch {}
+  }
+
+  return (
+    <div className={`sai-root ${theme}`}>
+      <style>{`
+        .sai-root{--bg:#FFFFFF;--surface:#FDF7F7;--surface2:#F7E8E9;--gold:#E1122A;--text:#1A1210;--muted:#7A6C6A;--line:rgba(26,18,16,0.12);
+          min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;}
+        .sai-root.dark{--bg:#150708;--surface:#1D0D0E;--surface2:#2A1315;--gold:#FF3B4E;--text:#F5EBEA;--muted:#A98D8B;--line:rgba(255,255,255,0.1);}
+        .sai-root *{box-sizing:border-box;}
+        .sai-wrap{max-width:760px;margin:0 auto;padding:18px 16px 60px;}
+        .sai-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:22px;}
+        .sai-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;}
+        .sai-brand img{width:28px;height:28px;border-radius:7px;}
+        .sai-root .ab-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:10px 15px;font-size:14px;
+          font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;}
+        .sai-root .ab-btn:disabled{opacity:.6;}
+        .sai-root .ab-btn-gold{background:var(--gold);color:#fff;}
+        .sai-root .ab-btn-ghost{background:transparent;color:var(--text);border-color:var(--line);}
+        .sai-root .ad-status{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;background:#1f6f43;color:#fff;
+          padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:90vw;}
+        .sai-root button:focus-visible,.sai-root a:focus-visible,.sai-root input:focus-visible,.sai-root textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+        .sai-login{max-width:380px;margin:60px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 20px;}
+        .sai-login h1{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 16px;}
+        .sai-login input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;margin-bottom:10px;}
+        .sai-title{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 16px;}
+      `}</style>
+      <div className="sai-wrap">
+        <div className="sai-top">
+          <div className="sai-brand">
+            <img src="/skyflix-icon.png" alt="" /> Abunəlik idarəsi
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="ab-btn ab-btn-ghost" onClick={toggleTheme} aria-label="Tema dəyiş">
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            {session && (
+              <button className="ab-btn ab-btn-ghost" onClick={() => supabase.auth.signOut()}>
+                Çıxış
+              </button>
+            )}
+          </div>
+        </div>
+
+        {checking && <p style={{ color: "var(--muted)" }}>Yüklənir...</p>}
+
+        {!checking && !session && (
+          <form className="sai-login" onSubmit={login}>
+            <h1>Giriş</h1>
+            {error && <p style={{ color: "var(--gold)", fontSize: 14, marginTop: 0 }}>{error}</p>}
+            <input type="email" placeholder="Admin mail" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input type="password" placeholder="Şifrə" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button className="ab-btn ab-btn-gold" style={{ width: "100%" }} type="submit">
+              Daxil ol
+            </button>
+          </form>
+        )}
+
+        {!checking && session && session.user.email !== ADMIN_EMAIL && (
+          <div className="sai-login">
+            <h1>İcazə yoxdur</h1>
+            <p style={{ color: "var(--muted)" }}>Bu səhifəyə yalnız admin hesabı ilə girmək olar.</p>
+          </div>
+        )}
+
+        {!checking && session && session.user.email === ADMIN_EMAIL && <SharedAccountsAdmin />}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------
 // ADMIN: HESAB ŞİFRƏLƏRİ BÖLMƏSİ
 // -----------------------------------------------------
 function SharedAccountsAdmin() {
@@ -3267,6 +3393,8 @@ function SharedAccountsAdmin() {
   const [msg, setMsg] = useState("");
 
   const [search, setSearch] = useState("");
+  const [noPassOnly, setNoPassOnly] = useState(false);
+  const [bulkService, setBulkService] = useState("");
   const [showCount, setShowCount] = useState(40);
   const [expanded, setExpanded] = useState(null);
   const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
@@ -3354,11 +3482,14 @@ function SharedAccountsAdmin() {
 
   const filteredAccounts = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return accounts;
-    return accounts.filter(
+    const base = noPassOnly ? accounts.filter((a) => !a.login_password) : accounts;
+    if (!q) return base;
+    return base.filter(
       (a) => a.login_email.toLowerCase().includes(q) || (a.service || "").toLowerCase().includes(q) || (a.note || "").toLowerCase().includes(q)
     );
-  }, [accounts, search]);
+  }, [accounts, search, noPassOnly]);
+
+  const noPassCount = React.useMemo(() => accounts.filter((a) => !a.login_password).length, [accounts]);
 
   // ---------- Hesab əməliyyatları ----------
   async function addAccount() {
@@ -3470,8 +3601,17 @@ function SharedAccountsAdmin() {
 
   // ---------- Toplu yükləmə ----------
   async function bulkAccounts() {
-    const rows = skyParseRows(bulkAccText).filter((r) => r[1] && r[1].includes("@"));
-    if (!rows.length) return setBulkReport("Heç bir düzgün sətir tapılmadı. Format: servis | mail | şifrə | qeyd");
+    const rows = [];
+    skyParseRows(bulkAccText).forEach((cells) => {
+      const idx = cells.findIndex((c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c));
+      if (idx === -1) {
+        (cells.join(" ").match(/[^\s,;]+@[^\s,;]+\.[^\s,;]+/g) || []).forEach((em) => rows.push([bulkService.trim(), em, "", ""]));
+        return;
+      }
+      const service = idx > 0 ? cells[idx - 1] : bulkService.trim();
+      rows.push([service || bulkService.trim(), cells[idx], cells[idx + 1] || "", cells[idx + 2] || ""]);
+    });
+    if (!rows.length) return setBulkReport("Heç bir mail tapılmadı. Hər sətirə bir mail yazın.");
     setBulkBusy(true);
     const keyOf = (s, e) => s.toLowerCase() + "|" + e.toLowerCase();
     const existing = {};
@@ -3657,13 +3797,6 @@ function SharedAccountsAdmin() {
 
   return (
     <div style={{ marginTop: 28 }}>
-      <button
-        className="ad-section-title"
-        onClick={() => setOpen((o) => !o)}
-        style={{ background: "none", border: 0, color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: 0 }}
-      >
-        <KeyRound size={20} /> Hesab şifrələri {open ? "▾" : "▸"}
-      </button>
 
       {open && (
         <div>
@@ -3672,7 +3805,8 @@ function SharedAccountsAdmin() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8, marginBottom: 14 }}>
             {[
-              ["Hesab", accounts.length, () => setTab("accounts")],
+              ["Hesab", accounts.length, () => { setTab("accounts"); setNoPassOnly(false); }],
+              ["Şifrəsiz hesab", noPassCount, () => { setTab("accounts"); setNoPassOnly(true); }],
               ["Aktiv müştəri", stats.active, () => setTab("accounts")],
               ["3 günə bitən", stats.soon, () => { setTab("expiring"); setExpFilter("soon"); }],
               ["Vaxtı bitən", stats.expired, () => { setTab("expiring"); setExpFilter("expired"); }],
@@ -3712,7 +3846,7 @@ function SharedAccountsAdmin() {
                 <div style={{ display: "grid", gap: 8 }}>
                   <input style={S.input} placeholder="Servis (məs. Netflix)" value={newAcc.service} onChange={(e) => setNewAcc({ ...newAcc, service: e.target.value })} />
                   <input style={S.input} placeholder="Mail / login" autoCapitalize="none" value={newAcc.login_email} onChange={(e) => setNewAcc({ ...newAcc, login_email: e.target.value })} />
-                  <input style={S.input} placeholder="Şifrə" autoCapitalize="none" value={newAcc.login_password} onChange={(e) => setNewAcc({ ...newAcc, login_password: e.target.value })} />
+                  <input style={S.input} placeholder="Şifrə (sonra da yazmaq olar)" autoCapitalize="none" value={newAcc.login_password} onChange={(e) => setNewAcc({ ...newAcc, login_password: e.target.value })} />
                   <input style={S.input} placeholder="Müştəriyə qeyd (istəyə bağlı, məs. Profil 3)" value={newAcc.note} onChange={(e) => setNewAcc({ ...newAcc, note: e.target.value })} />
                   <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={addAccount}>
                     <Plus size={15} /> Hesab əlavə et
@@ -3723,6 +3857,11 @@ function SharedAccountsAdmin() {
               <div style={{ position: "relative", marginBottom: 12 }}>
                 <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "var(--muted)" }} />
                 <input style={{ ...S.input, paddingLeft: 36 }} placeholder="Mail və ya servis axtar..." value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(40); }} />
+              </div>
+
+              <div style={{ ...S.row, marginBottom: 12 }}>
+                <button style={S.chip(!noPassOnly)} onClick={() => setNoPassOnly(false)}>Hamısı</button>
+                <button style={S.chip(noPassOnly)} onClick={() => setNoPassOnly(true)}>Şifrəsizlər ({noPassCount})</button>
               </div>
 
               {loading && <p style={S.small}>Yüklənir...</p>}
@@ -3741,7 +3880,11 @@ function SharedAccountsAdmin() {
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{acc.login_email}</div>
-                          <div style={S.small}>{acc.service || "Servis yazılmayıb"}{!acc.is_active && " · deaktiv"}</div>
+                          <div style={S.small}>
+                            {acc.service || "Servis yazılmayıb"}
+                            {!acc.is_active && " · deaktiv"}
+                            {!acc.login_password && <span style={{ color: "var(--gold)", fontWeight: 600 }}> · şifrə yoxdur</span>}
+                          </div>
                         </div>
                         <div style={{ textAlign: "right", fontSize: 12, whiteSpace: "nowrap" }}>
                           <div style={{ color: "#1f9d55", fontWeight: 600 }}>{activeCount} aktiv</div>
@@ -3890,16 +4033,17 @@ function SharedAccountsAdmin() {
             <>
               {bulkReport && <div style={{ ...S.box, whiteSpace: "pre-wrap", fontSize: 13 }}>{bulkReport}</div>}
               <div style={S.box}>
-                <div style={{ fontWeight: 600 }}>1. Hesabları yüklə</div>
+                <div style={{ fontWeight: 600 }}>1. Mailləri toplu əlavə et</div>
                 <p style={S.small}>
-                  Excel-də sütunlar: <b>servis | mail | şifrə | qeyd</b>. Xanaları seçib kopyalayın və aşağıya yapışdırın (və ya CSV faylı seçin). Mövcud hesabın
-                  şifrəsi fərqlidirsə yenilənir.
+                  Hər sətirə bir mail yazın və ya siyahını yapışdırın. Şifrəni sonra "Hesablar" bölməsindən əlavə edərsiniz. İstəsəniz Excel-dən{" "}
+                  <b>servis | mail | şifrə</b> sütunlarını da yapışdıra bilərsiniz.
                 </p>
-                <textarea style={{ ...S.input, minHeight: 110, fontFamily: "monospace", fontSize: 12 }} value={bulkAccText} onChange={(e) => setBulkAccText(e.target.value)} placeholder={"Netflix\tturgut@gmail.com\tSifre123\tProfil 2"} />
+                <input style={{ ...S.input, marginBottom: 8 }} placeholder="Servis (hamısı üçün, məs. Netflix) — istəyə bağlı" value={bulkService} onChange={(e) => setBulkService(e.target.value)} />
+                <textarea style={{ ...S.input, minHeight: 110, fontFamily: "monospace", fontSize: 12 }} value={bulkAccText} onChange={(e) => setBulkAccText(e.target.value)} placeholder={"turgut@gmail.com\nali@gmail.com\nnigar@gmail.com"} />
                 <div style={{ ...S.row, marginTop: 8 }}>
                   <input type="file" accept=".csv,.txt,.tsv" onChange={(e) => readFile(e.target.files[0], setBulkAccText)} />
                   <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkAccounts}>
-                    <Upload size={15} /> {bulkBusy ? "Yüklənir..." : "Hesabları yüklə"}
+                    <Upload size={15} /> {bulkBusy ? "Yüklənir..." : "Mailləri əlavə et"}
                   </button>
                 </div>
               </div>
@@ -4479,8 +4623,6 @@ function AdminPage({ onDataChanged }) {
           <div className="ad-stat-label">Saytı ziyarət edən unikal IP sayı</div>
         </div>
       </div>
-
-      <SharedAccountsAdmin />
 
       <h3 className="ad-section-title">Kütləvi email göndər (bütün qeydiyyatlı müştərilərə)</h3>
       <div className="ad-settings">
@@ -6288,6 +6430,7 @@ function MainApp() {
 // Hesab linki (#h-...) açılanda yalnız hesab səhifəsi göstərilir
 function getSharedSlug() {
   const h = window.location.hash.replace("#", "");
+  if (h === "abunelikidare" || window.location.pathname.replace(/\/+$/, "") === "/abunelikidare") return "__manager__";
   return h.startsWith("h-") ? h.slice(2) : null;
 }
 
@@ -6298,6 +6441,7 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  if (slug === "__manager__") return <SubscriptionManagerPage />;
   if (slug) return <SharedAccountPage key={slug} slug={slug} />;
   return <MainApp />;
 }
