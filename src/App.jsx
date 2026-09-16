@@ -4217,7 +4217,7 @@ function SharedAccountsAdmin() {
                               <input
                                 style={{ ...S.input, width: 110, padding: "8px 10px", borderColor: memberForm.days ? "var(--gold)" : "var(--line)" }}
                                 inputMode="numeric"
-                                placeholder="və ya gün"
+                                placeholder="gün"
                                 value={memberForm.days}
                                 onChange={(e) => {
                                   const v = e.target.value.replace(/\D/g, "").slice(0, 4);
@@ -4225,6 +4225,11 @@ function SharedAccountsAdmin() {
                                 }}
                               />
                             </div>
+                            {(memberForm.months || memberForm.days) && (
+                              <div style={{ ...S.small, color: "var(--gold)", fontWeight: 600 }}>
+                                Əlavə olunacaq: {[memberForm.months ? memberForm.months + " ay" : "", (parseInt(memberForm.days, 10) || 0) ? (parseInt(memberForm.days, 10) + " gün") : ""].filter(Boolean).join(" ") || "—"}
+                              </div>
+                            )}
                             <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
                               <CheckCircle2 size={15} /> Təsdiqlə
                             </button>
