@@ -2931,36 +2931,7 @@ function skyAddDays(base, days) {
 }
 
 function skyAddDuration(base, months, days) {
-  const start = Math.max(Date.now(), base ? new Date(base).getTime() : 0);
-  const d = new Date(start);
-  if (months) d.setMonth(d.getMonth() + months);
-  if (days) d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
-
-function skyRemaining(dateStr) {
-  const end = new Date(dateStr).getTime();
-  const now = Date.now();
-  if (end <= now) return { expired: true, months: 0, days: 0, totalDays: 0 };
-  let months = 0;
-  let t = new Date(now);
-  while (true) {
-    const nt = new Date(t);
-    nt.setMonth(nt.getMonth() + 1);
-    if (nt.getTime() <= end) { months++; t = nt; } else break;
-  }
-  const days = Math.round((end - t.getTime()) / 86400000);
-  return { expired: false, months, days, totalDays: Math.ceil((end - now) / 86400000) };
-}
-
-function skyFmtRemaining(dateStr) {
-  const r = skyRemaining(dateStr);
-  if (r.expired) return "Bitib";
-  const parts = [];
-  if (r.months) parts.push(r.months + " ay");
-  if (r.days) parts.push(r.days + " gün");
-  if (!parts.length) return "Bu gün";
-  return parts.join(" ");
+  return days > 0 ? skyAddDays(base, days) : skyAddMonths(base, months || 1);
 }
 
 function skyRandomPin() {
@@ -3532,7 +3503,7 @@ function SharedAccountsAdmin() {
   const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
   const [passDrafts, setPassDrafts] = useState({});
   const [noteDrafts, setNoteDrafts] = useState({});
-  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" });
+  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
   const [lastAdded, setLastAdded] = useState(null);
 
   const [phoneSearch, setPhoneSearch] = useState("");
@@ -3732,14 +3703,13 @@ function SharedAccountsAdmin() {
     if (phone.length < 11) return flashMsg("Nömrəni düzgün yazın.");
     const months = Number(memberForm.months) || 0;
     const days = parseInt(memberForm.days, 10) || 0;
-    const exact = memberForm.exact_date ? new Date(memberForm.exact_date + "T23:59:00") : null;
-    if (!months && !days && !exact) return flashMsg("Müddət seçin: ay/gün və ya dəqiq tarix.");
+    if (!months && !days) return flashMsg("Müddət seçin: ay və ya gün.");
     const existing = members.find((m) => m.account_id === acc.id && m.phone === phone);
     let data, error;
     if (existing) {
       ({ data, error } = await supabase
         .from("account_members")
-        .update({ expires_at: exact ? exact.toISOString() : skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name, room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim() })
+        .update({ expires_at: skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name, room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim() })
         .eq("id", existing.id)
         .select()
         .single());
@@ -3747,14 +3717,14 @@ function SharedAccountsAdmin() {
       const pin = /^\d{4}$/.test(memberForm.pin) ? memberForm.pin : pinByPhone[phone] || skyRandomPin();
       ({ data, error } = await supabase
         .from("account_members")
-        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim(), expires_at: exact ? exact.toISOString() : skyAddDuration(null, months, days) })
+        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim(), expires_at: skyAddDuration(null, months, days) })
         .select()
         .single());
     }
     if (error) return flashMsg("Xəta: " + error.message);
     setMembers((l) => (existing ? l.map((m) => (m.id === data.id ? data : m)) : [...l, data]));
     setLastAdded(data.id);
-    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" });
+    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
     flashMsg(existing ? "Müddət uzadıldı ✓" : "Müştəri əlavə edildi ✓");
   }
 
@@ -3903,11 +3873,12 @@ function SharedAccountsAdmin() {
   };
 
   function DaysBadge({ date }) {
-    const r = skyRemaining(date);
-    const color = r.expired ? "#9a9a9a" : r.totalDays <= 3 ? "var(--gold)" : "#1f9d55";
+    const d = skyDaysLeft(date);
+    const expired = new Date(date).getTime() < Date.now();
+    const color = expired ? "#9a9a9a" : d <= 3 ? "var(--gold)" : "#1f9d55";
     return (
       <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
-        {skyFmtRemaining(date)}
+        {expired ? "Bitib" : d <= 1 ? "Bu gün/sabah" : `${d} gün`}
       </span>
     );
   }
@@ -4118,7 +4089,7 @@ function SharedAccountsAdmin() {
                       />
                     )}
                     <button
-                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" }); }}
+                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" }); }}
                       style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -4211,45 +4182,25 @@ function SharedAccountsAdmin() {
                             </div>
                             <div style={S.row}>
                               {[1, 2, 3, 6, 12].map((mo) => (
-                                <button key={mo} style={S.chip(memberForm.months === mo)} onClick={() => setMemberForm({ ...memberForm, months: memberForm.months === mo ? 0 : mo })}>
+                                <button key={mo} style={S.chip(memberForm.months === mo && !memberForm.days)} onClick={() => setMemberForm({ ...memberForm, months: mo, days: "" })}>
                                   {mo} ay
                                 </button>
                               ))}
                               <input
                                 style={{ ...S.input, width: 110, padding: "8px 10px", borderColor: memberForm.days ? "var(--gold)" : "var(--line)" }}
                                 inputMode="numeric"
-                                placeholder="gün"
+                                placeholder="və ya gün"
                                 value={memberForm.days}
                                 onChange={(e) => {
                                   const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                                  setMemberForm({ ...memberForm, days: v });
+                                  setMemberForm({ ...memberForm, days: v, months: v ? 0 : 1 });
                                 }}
                               />
-                            </div>
-                            {(memberForm.months || memberForm.days) && !memberForm.exact_date && (
-                              <div style={{ ...S.small, color: "var(--gold)", fontWeight: 600 }}>
-                                Əlavə olunacaq: {[memberForm.months ? memberForm.months + " ay" : "", (parseInt(memberForm.days, 10) || 0) ? (parseInt(memberForm.days, 10) + " gün") : ""].filter(Boolean).join(" ") || "—"}
-                              </div>
-                            )}
-                            <div style={{ borderTop: "1px dashed var(--line)", marginTop: 4, paddingTop: 8 }}>
-                              <div style={S.small}>...və ya birbaşa bitmə tarixi seç (gün.ay.il)</div>
-                              <input
-                                type="date"
-                                style={{ ...S.input, marginTop: 4, borderColor: memberForm.exact_date ? "var(--gold)" : "var(--line)" }}
-                                value={memberForm.exact_date || ""}
-                                onChange={(e) => setMemberForm({ ...memberForm, exact_date: e.target.value })}
-                              />
-                              {memberForm.exact_date && (
-                                <div style={{ ...S.small, color: "var(--gold)", fontWeight: 600, marginTop: 4 }}>
-                                  Bitmə tarixi: {skyFmtDate(memberForm.exact_date + "T23:59:00", false)} (ay/gün nəzərə alınmır)
-                                  <button style={{ ...S.mini, marginLeft: 8 }} onClick={() => setMemberForm({ ...memberForm, exact_date: "" })}>Ləğv et</button>
-                                </div>
-                              )}
                             </div>
                             <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
                               <CheckCircle2 size={15} /> Təsdiqlə
                             </button>
-                            <div style={S.small}>Ay və gün birlikdə seçilə bilər (məs. 1 ay + 3 gün) VƏ YA aşağıdan dəqiq bitmə tarixi seç. Nömrə bu hesabda artıq varsa: ay/gün üstünə gəlir, dəqiq tarix isə birbaşa təyin olunur. PIN boş qalsa avtomatik yaranır.</div>
+                            <div style={S.small}>Ay seçin və ya gün sayını yazın. Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
                           </div>
                         </div>
 
