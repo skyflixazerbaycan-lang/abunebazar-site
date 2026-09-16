@@ -3305,7 +3305,7 @@ function SharedAccountPage({ slug }) {
               </div>
             </div>
             <p className="sa-small" style={{ marginTop: 0, marginBottom: 4 }}>
-              Cihaz təsdiqi lazımdırsa, yuxarıdakı qayda ilə şifrə ilə giriş edin. İstəsəniz Netflix-ə kod göndərin, kod bir neçə saniyəyə burada görünəcək (səhifə avtomatik yenilənir).
+              Cihaz təsdiqi (Netflix Household) tələb olunarsa, təsdiq kodu bir neçə saniyəyə avtomatik burada görünəcək — səhifə özü yenilənir. Adi giriş üçün yuxarıdakı qayda ilə şifrə ilə daxil olun.
             </p>
 
             <div className="sa-expiry">
@@ -4310,7 +4310,10 @@ function SharedAccountsAdmin() {
                         {c.code || (c.link ? "🔗 təsdiq linki" : "—")}
                       </div>
                       <div style={{ ...S.small, overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {c.to_email}{!c.account_id && <span style={{ color: "var(--gold)" }}> · tanınmayan mail</span>} · {skyFmtDate(c.received_at)}
+                        {c.kind === "signin"
+                          ? <span style={{ color: "var(--muted)" }}>giriş kodu (müştəriyə göstərilmir)</span>
+                          : <span style={{ color: "#1f9d55" }}>cihaz təsdiqi</span>}
+                        {" · "}{c.to_email}{!c.account_id && <span style={{ color: "var(--gold)" }}> · tanınmayan mail</span>} · {skyFmtDate(c.received_at)}
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
