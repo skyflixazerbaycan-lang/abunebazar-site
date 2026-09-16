@@ -2931,7 +2931,36 @@ function skyAddDays(base, days) {
 }
 
 function skyAddDuration(base, months, days) {
-  return days > 0 ? skyAddDays(base, days) : skyAddMonths(base, months || 1);
+  const start = Math.max(Date.now(), base ? new Date(base).getTime() : 0);
+  const d = new Date(start);
+  if (months) d.setMonth(d.getMonth() + months);
+  if (days) d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function skyRemaining(dateStr) {
+  const end = new Date(dateStr).getTime();
+  const now = Date.now();
+  if (end <= now) return { expired: true, months: 0, days: 0, totalDays: 0 };
+  let months = 0;
+  let t = new Date(now);
+  while (true) {
+    const nt = new Date(t);
+    nt.setMonth(nt.getMonth() + 1);
+    if (nt.getTime() <= end) { months++; t = nt; } else break;
+  }
+  const days = Math.round((end - t.getTime()) / 86400000);
+  return { expired: false, months, days, totalDays: Math.ceil((end - now) / 86400000) };
+}
+
+function skyFmtRemaining(dateStr) {
+  const r = skyRemaining(dateStr);
+  if (r.expired) return "Bitib";
+  const parts = [];
+  if (r.months) parts.push(r.months + " ay");
+  if (r.days) parts.push(r.days + " gün");
+  if (!parts.length) return "Bu gün";
+  return parts.join(" ");
 }
 
 function skyRandomPin() {
@@ -3040,7 +3069,8 @@ function SharedAccountPage({ slug }) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState("");
   const [whatsapp, setWhatsapp] = useState("517873090");
-  const [codeCopied, setCodeCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(-1);
+  const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3059,12 +3089,19 @@ function SharedAccountPage({ slug }) {
     return () => document.head.removeChild(meta);
   }, []);
 
-  // Giriş edilibsə, hər 20 saniyədə yeni kodu yoxla
+  // Giriş edilibsə, hər 15 saniyədə yeni kodları yoxla
   useEffect(() => {
     if (result?.status !== "ok") return;
-    const id = setInterval(() => check(phone, pin), 20000);
+    const id = setInterval(() => check(phone, pin), 15000);
     return () => clearInterval(id);
   }, [result?.status, phone, pin]);
+
+  // Sayğac üçün hər saniyə saatı yenilə
+  useEffect(() => {
+    if (result?.status !== "ok") return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [result?.status]);
 
   async function check(ph = phone, pn = pin) {
     setError("");
@@ -3169,6 +3206,7 @@ function SharedAccountPage({ slug }) {
         .sa-code{background:linear-gradient(135deg,#E1122A,#8C1620);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
         .sa-code-label{font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:4px;display:flex;justify-content:space-between;}
         .sa-code-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:#fff;letter-spacing:4px;}
+        .sa-codes-head{font-size:13px;color:#A98D8B;margin:14px 0 8px;font-weight:600;}
         .sa-code-btn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#fff;color:#8C1620;border:0;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;}
         @media (prefers-reduced-motion: no-preference){.sa-card{animation:saIn .35s ease-out;}.sa-code{animation:saIn .3s ease-out;}}
         @keyframes saIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -3273,24 +3311,50 @@ function SharedAccountPage({ slug }) {
 
             {result.note && <p className="sa-small" style={{ marginTop: 4 }}>{result.note}</p>}
 
-            {result.last_code && (result.last_code.code || result.last_code.link) && (
-              <div className="sa-code">
-                <div className="sa-code-label">
-                  <span>Netflix təsdiq {result.last_code.code ? "kodu" : "linki"}</span>
-                  <span>yeni · {skyFmtDate(result.last_code.received_at).split(" ")[1]}</span>
+            {Array.isArray(result.last_codes) && result.last_codes.length > 0 && (
+              <>
+                <div className="sa-codes-head">
+                  Son gələn təsdiqlər ({result.last_codes.length}) — kodunuzu/linkinizi seçin
                 </div>
-                {result.last_code.code && <div className="sa-code-val">{result.last_code.code}</div>}
-                {result.last_code.code && (
-                  <button className="sa-code-btn" onClick={async () => { if (await skyCopy(result.last_code.code)) { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); } }}>
-                    <Copy size={13} /> {codeCopied ? "Kopyalandı" : "Kodu kopyala"}
-                  </button>
-                )}
-                {result.last_code.link && (
-                  <a className="sa-code-btn" href={result.last_code.link} target="_blank" rel="noreferrer">
-                    <CheckCircle2 size={13} /> Təsdiq linkini aç
-                  </a>
-                )}
-              </div>
+                {result.last_codes.map((c, i) => {
+                  const secsLeft = Math.max(0, Math.round((new Date(c.received_at).getTime() + 15 * 60000 - nowTick) / 1000));
+                  const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+                  const ss = String(secsLeft % 60).padStart(2, "0");
+                  if (secsLeft <= 0) return null;
+                  if (c.kind === "confirmed") {
+                    return (
+                      <div key={i} className="sa-code" style={{ background: "linear-gradient(135deg,#1f9d55,#146c3a)" }}>
+                        <div className="sa-code-label"><span>Cihaz təsdiqi</span><span>{mm}:{ss}</span></div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>✓ Cihaz avtomatik təsdiqləndi. Netflix-də yenidən yoxlayın.</div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className="sa-code">
+                      <div className="sa-code-label">
+                        <span>{c.code ? "Təsdiq kodu" : "Təsdiq linki"} #{result.last_codes.length - i}</span>
+                        <span>⏳ {mm}:{ss}</span>
+                      </div>
+                      {c.code && <div className="sa-code-val">{c.code}</div>}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {c.code && (
+                          <button className="sa-code-btn" onClick={async () => { if (await skyCopy(c.code)) { setCodeCopied(i); setTimeout(() => setCodeCopied(-1), 1500); } }}>
+                            <Copy size={13} /> {codeCopied === i ? "Kopyalandı" : "Kopyala"}
+                          </button>
+                        )}
+                        {c.link && (
+                          <a className="sa-code-btn" href={c.link} target="_blank" rel="noreferrer">
+                            <CheckCircle2 size={13} /> Təsdiq linkini aç
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="sa-small" style={{ marginTop: 2 }}>
+                  Eyni anda bir neçə nəfər kod istəyibsə, hamısı burada görünür. Öz cihazınıza uyğun olanı seçin. Hər biri 15 dəqiqə keçərlidir.
+                </p>
+              </>
             )}
             <div className="sa-guide">
               <div className="sa-guide-title">HESABA GİRİŞ QAYDASI</div>
@@ -3503,7 +3567,7 @@ function SharedAccountsAdmin() {
   const [newAcc, setNewAcc] = useState({ service: "", login_email: "", login_password: "", note: "" });
   const [passDrafts, setPassDrafts] = useState({});
   const [noteDrafts, setNoteDrafts] = useState({});
-  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
+  const [memberForm, setMemberForm] = useState({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" });
   const [lastAdded, setLastAdded] = useState(null);
 
   const [phoneSearch, setPhoneSearch] = useState("");
@@ -3703,13 +3767,14 @@ function SharedAccountsAdmin() {
     if (phone.length < 11) return flashMsg("Nömrəni düzgün yazın.");
     const months = Number(memberForm.months) || 0;
     const days = parseInt(memberForm.days, 10) || 0;
-    if (!months && !days) return flashMsg("Müddət seçin: ay və ya gün.");
+    const exact = memberForm.exact_date ? new Date(memberForm.exact_date + "T23:59:00") : null;
+    if (!months && !days && !exact) return flashMsg("Müddət seçin: ay/gün və ya dəqiq tarix.");
     const existing = members.find((m) => m.account_id === acc.id && m.phone === phone);
     let data, error;
     if (existing) {
       ({ data, error } = await supabase
         .from("account_members")
-        .update({ expires_at: skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name, room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim() })
+        .update({ expires_at: exact ? exact.toISOString() : skyAddDuration(existing.expires_at, months, days), name: memberForm.name.trim() || existing.name, room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim() })
         .eq("id", existing.id)
         .select()
         .single());
@@ -3717,14 +3782,14 @@ function SharedAccountsAdmin() {
       const pin = /^\d{4}$/.test(memberForm.pin) ? memberForm.pin : pinByPhone[phone] || skyRandomPin();
       ({ data, error } = await supabase
         .from("account_members")
-        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim(), expires_at: skyAddDuration(null, months, days) })
+        .insert({ account_id: acc.id, phone, pin, name: memberForm.name.trim(), room_name: memberForm.room_name.trim(), room_password: memberForm.room_password.trim(), expires_at: exact ? exact.toISOString() : skyAddDuration(null, months, days) })
         .select()
         .single());
     }
     if (error) return flashMsg("Xəta: " + error.message);
     setMembers((l) => (existing ? l.map((m) => (m.id === data.id ? data : m)) : [...l, data]));
     setLastAdded(data.id);
-    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" });
+    setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" });
     flashMsg(existing ? "Müddət uzadıldı ✓" : "Müştəri əlavə edildi ✓");
   }
 
@@ -3873,12 +3938,11 @@ function SharedAccountsAdmin() {
   };
 
   function DaysBadge({ date }) {
-    const d = skyDaysLeft(date);
-    const expired = new Date(date).getTime() < Date.now();
-    const color = expired ? "#9a9a9a" : d <= 3 ? "var(--gold)" : "#1f9d55";
+    const r = skyRemaining(date);
+    const color = r.expired ? "#9a9a9a" : r.totalDays <= 3 ? "var(--gold)" : "#1f9d55";
     return (
       <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
-        {expired ? "Bitib" : d <= 1 ? "Bu gün/sabah" : `${d} gün`}
+        {skyFmtRemaining(date)}
       </span>
     );
   }
@@ -4089,7 +4153,7 @@ function SharedAccountsAdmin() {
                       />
                     )}
                     <button
-                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "" }); }}
+                      onClick={() => { if (selectMode) return setSelected((sel) => ({ ...sel, [acc.id]: !sel[acc.id] })); setExpanded(isOpen ? null : acc.id); setLastAdded(null); setMemberForm({ name: "", phone: "", pin: "", months: 1, days: "", room_name: "", room_password: "", exact_date: "" }); }}
                       style={{ background: "none", border: 0, color: "var(--text)", width: "100%", textAlign: "left", cursor: "pointer", padding: 0 }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -4182,25 +4246,45 @@ function SharedAccountsAdmin() {
                             </div>
                             <div style={S.row}>
                               {[1, 2, 3, 6, 12].map((mo) => (
-                                <button key={mo} style={S.chip(memberForm.months === mo && !memberForm.days)} onClick={() => setMemberForm({ ...memberForm, months: mo, days: "" })}>
+                                <button key={mo} style={S.chip(memberForm.months === mo)} onClick={() => setMemberForm({ ...memberForm, months: memberForm.months === mo ? 0 : mo })}>
                                   {mo} ay
                                 </button>
                               ))}
                               <input
                                 style={{ ...S.input, width: 110, padding: "8px 10px", borderColor: memberForm.days ? "var(--gold)" : "var(--line)" }}
                                 inputMode="numeric"
-                                placeholder="və ya gün"
+                                placeholder="gün"
                                 value={memberForm.days}
                                 onChange={(e) => {
                                   const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                                  setMemberForm({ ...memberForm, days: v, months: v ? 0 : 1 });
+                                  setMemberForm({ ...memberForm, days: v });
                                 }}
                               />
+                            </div>
+                            {(memberForm.months || memberForm.days) && !memberForm.exact_date && (
+                              <div style={{ ...S.small, color: "var(--gold)", fontWeight: 600 }}>
+                                Əlavə olunacaq: {[memberForm.months ? memberForm.months + " ay" : "", (parseInt(memberForm.days, 10) || 0) ? (parseInt(memberForm.days, 10) + " gün") : ""].filter(Boolean).join(" ") || "—"}
+                              </div>
+                            )}
+                            <div style={{ borderTop: "1px dashed var(--line)", marginTop: 4, paddingTop: 8 }}>
+                              <div style={S.small}>...və ya birbaşa bitmə tarixi seç (gün.ay.il)</div>
+                              <input
+                                type="date"
+                                style={{ ...S.input, marginTop: 4, borderColor: memberForm.exact_date ? "var(--gold)" : "var(--line)" }}
+                                value={memberForm.exact_date || ""}
+                                onChange={(e) => setMemberForm({ ...memberForm, exact_date: e.target.value })}
+                              />
+                              {memberForm.exact_date && (
+                                <div style={{ ...S.small, color: "var(--gold)", fontWeight: 600, marginTop: 4 }}>
+                                  Bitmə tarixi: {skyFmtDate(memberForm.exact_date + "T23:59:00", false)} (ay/gün nəzərə alınmır)
+                                  <button style={{ ...S.mini, marginLeft: 8 }} onClick={() => setMemberForm({ ...memberForm, exact_date: "" })}>Ləğv et</button>
+                                </div>
+                              )}
                             </div>
                             <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
                               <CheckCircle2 size={15} /> Təsdiqlə
                             </button>
-                            <div style={S.small}>Ay seçin və ya gün sayını yazın. Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
+                            <div style={S.small}>Ay və gün birlikdə seçilə bilər (məs. 1 ay + 3 gün) VƏ YA aşağıdan dəqiq bitmə tarixi seç. Nömrə bu hesabda artıq varsa: ay/gün üstünə gəlir, dəqiq tarix isə birbaşa təyin olunur. PIN boş qalsa avtomatik yaranır.</div>
                           </div>
                         </div>
 
@@ -4312,6 +4396,8 @@ function SharedAccountsAdmin() {
                       <div style={{ ...S.small, overflow: "hidden", textOverflow: "ellipsis" }}>
                         {c.kind === "signin"
                           ? <span style={{ color: "var(--muted)" }}>giriş kodu (müştəriyə göstərilmir)</span>
+                          : c.kind === "confirmed"
+                          ? <span style={{ color: "#1f9d55", fontWeight: 700 }}>✓ avtomatik təsdiqləndi</span>
                           : <span style={{ color: "#1f9d55" }}>cihaz təsdiqi</span>}
                         {" · "}{c.to_email}{!c.account_id && <span style={{ color: "var(--gold)" }}> · tanınmayan mail</span>} · {skyFmtDate(c.received_at)}
                       </div>
