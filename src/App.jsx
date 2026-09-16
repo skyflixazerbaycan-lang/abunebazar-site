@@ -2931,7 +2931,36 @@ function skyAddDays(base, days) {
 }
 
 function skyAddDuration(base, months, days) {
-  return days > 0 ? skyAddDays(base, days) : skyAddMonths(base, months || 1);
+  const start = Math.max(Date.now(), base ? new Date(base).getTime() : 0);
+  const d = new Date(start);
+  if (months) d.setMonth(d.getMonth() + months);
+  if (days) d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function skyRemaining(dateStr) {
+  const end = new Date(dateStr).getTime();
+  const now = Date.now();
+  if (end <= now) return { expired: true, months: 0, days: 0, totalDays: 0 };
+  let months = 0;
+  let t = new Date(now);
+  while (true) {
+    const nt = new Date(t);
+    nt.setMonth(nt.getMonth() + 1);
+    if (nt.getTime() <= end) { months++; t = nt; } else break;
+  }
+  const days = Math.round((end - t.getTime()) / 86400000);
+  return { expired: false, months, days, totalDays: Math.ceil((end - now) / 86400000) };
+}
+
+function skyFmtRemaining(dateStr) {
+  const r = skyRemaining(dateStr);
+  if (r.expired) return "Bitib";
+  const parts = [];
+  if (r.months) parts.push(r.months + " ay");
+  if (r.days) parts.push(r.days + " gün");
+  if (!parts.length) return "Bu gün";
+  return parts.join(" ");
 }
 
 function skyRandomPin() {
@@ -3873,12 +3902,11 @@ function SharedAccountsAdmin() {
   };
 
   function DaysBadge({ date }) {
-    const d = skyDaysLeft(date);
-    const expired = new Date(date).getTime() < Date.now();
-    const color = expired ? "#9a9a9a" : d <= 3 ? "var(--gold)" : "#1f9d55";
+    const r = skyRemaining(date);
+    const color = r.expired ? "#9a9a9a" : r.totalDays <= 3 ? "var(--gold)" : "#1f9d55";
     return (
       <span style={{ fontSize: 12, fontWeight: 600, color, whiteSpace: "nowrap" }}>
-        {expired ? "Bitib" : d <= 1 ? "Bu gün/sabah" : `${d} gün`}
+        {skyFmtRemaining(date)}
       </span>
     );
   }
@@ -4182,7 +4210,7 @@ function SharedAccountsAdmin() {
                             </div>
                             <div style={S.row}>
                               {[1, 2, 3, 6, 12].map((mo) => (
-                                <button key={mo} style={S.chip(memberForm.months === mo && !memberForm.days)} onClick={() => setMemberForm({ ...memberForm, months: mo, days: "" })}>
+                                <button key={mo} style={S.chip(memberForm.months === mo)} onClick={() => setMemberForm({ ...memberForm, months: memberForm.months === mo ? 0 : mo })}>
                                   {mo} ay
                                 </button>
                               ))}
@@ -4193,14 +4221,14 @@ function SharedAccountsAdmin() {
                                 value={memberForm.days}
                                 onChange={(e) => {
                                   const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                                  setMemberForm({ ...memberForm, days: v, months: v ? 0 : 1 });
+                                  setMemberForm({ ...memberForm, days: v });
                                 }}
                               />
                             </div>
                             <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={() => addMember(acc)}>
                               <CheckCircle2 size={15} /> Təsdiqlə
                             </button>
-                            <div style={S.small}>Ay seçin və ya gün sayını yazın. Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
+                            <div style={S.small}>Ay və gün birlikdə seçilə bilər (məs. 1 ay + 3 gün). Nömrə bu hesabda artıq varsa, müddət üstünə gəlir. PIN boş qalsa avtomatik yaranır.</div>
                           </div>
                         </div>
 
