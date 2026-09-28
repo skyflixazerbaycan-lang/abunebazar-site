@@ -2090,6 +2090,7 @@ function CustomerAuthPage({ t, lang, settings }) {
   const [otpSending, setOtpSending] = useState(false);
   const [profile, setProfile] = useState(null);
   const [showTopUp, setShowTopUp] = useState(false);
+  const [myReqs, setMyReqs] = useState([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -2115,6 +2116,13 @@ function CustomerAuthPage({ t, lang, settings }) {
       .then(({ data }) => {
         if (data) setProfile(data);
       });
+    supabase
+      .from("balance_requests")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => setMyReqs(data || []));
   }, [session]);
 
   async function handleLogin(e) {
@@ -2286,6 +2294,24 @@ function CustomerAuthPage({ t, lang, settings }) {
               onClose={() => setShowTopUp(false)}
               onDone={() => {}}
             />
+          )}
+
+          {myReqs.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>Ödəniş tarixçəsi</div>
+              {myReqs.map((r) => {
+                const st = r.status === "approved" ? { t: "Təsdiqləndi ✓", c: "#1f9d55" } : r.status === "rejected" ? { t: "Geri çevrildi", c: "var(--gold)" } : { t: "Gözləyir…", c: "var(--muted)" };
+                return (
+                  <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid var(--line)" }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{Number(r.amount).toFixed(2)} ₼ {r.cashback > 0 && <span style={{ color: "var(--gold)", fontSize: 12 }}>(+{r.cashback} cashback)</span>}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{new Date(r.created_at).toLocaleString()}</div>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: st.c, whiteSpace: "nowrap" }}>{st.t}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
@@ -3845,9 +3871,12 @@ function SharedAccountsAdmin() {
   }
 
   async function approvePay(r) {
-    const { data } = await supabase.rpc("approve_balance_request", { p_id: r.id });
+    const { data, error } = await supabase.rpc("approve_balance_request", { p_id: r.id });
+    if (error) { flashMsg("Xəta: " + error.message); return; }
     if (data?.status === "ok") { flashMsg("Təsdiqləndi: " + r.amount + " ₼" + (r.cashback ? " (+" + r.cashback + " cashback)" : "")); loadPayReqs(); }
-    else flashMsg("Xəta və ya artıq işlənib.");
+    else if (data?.status === "forbidden") { flashMsg("İcazə yoxdur — admin hesabı ilə girməlisiniz."); }
+    else if (data?.status === "notfound") { flashMsg("Sorğu tapılmadı və ya artıq işlənib."); }
+    else { flashMsg("Naməlum nəticə: " + JSON.stringify(data)); }
   }
   async function rejectPay(r) {
     if (!window.confirm(r.amount + " ₼ sorğusu rədd edilsin?")) return;
@@ -5729,11 +5758,20 @@ function MainApp() {
   const { products, settings, reviews, categories, wheelPrizes, reload, loaded } = useAppData();
 
   const [session, setSession] = useState(null);
+  const [navBalance, setNavBalance] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (!session) { setNavBalance(null); return; }
+    let stop = false;
+    const load = () => supabase.from("profiles").select("balance").eq("id", session.user.id).single().then(({ data }) => { if (!stop && data) setNavBalance(Number(data.balance || 0)); });
+    load();
+    const id = setInterval(load, 15000); // balans dəyişsə (təsdiq olunsa) 15 san-a yenilənir
+    return () => { stop = true; clearInterval(id); };
+  }, [session]);
 
   const [showWheel, setShowWheel] = useState(false);
   const [showGame, setShowGame] = useState(false);
@@ -6119,6 +6157,9 @@ function MainApp() {
           border:2px solid #1A0607;
         }
         .ab-cartbtn{ position:relative; }
+        .ab-navbalance{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gold); background:linear-gradient(120deg, rgba(225,18,42,0.12), transparent); color:var(--text); border-radius:999px; padding:7px 12px; cursor:pointer; font-weight:700; font-size:13.5px; font-family:'Inter',sans-serif; }
+        .ab-navbalance:hover{ box-shadow:0 6px 14px -8px rgba(225,18,42,0.5); }
+        .ab-navbalance-plus{ background:var(--gold); color:#fff; width:18px; height:18px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; line-height:1; }
         .ab-cart-badge{
           position:absolute; top:-6px; right:-6px;
           background:var(--gold); color:#FFFFFF; font-size:10.5px; font-weight:700;
@@ -6968,6 +7009,13 @@ function MainApp() {
             <ShoppingCart size={18} />
             {cartCount > 0 && <span className="ab-cart-badge">{cartCount}</span>}
           </button>
+          {session && (
+            <button className="ab-navbalance" onClick={() => navigate("hesab")} title="Balansım">
+              <Wallet size={15} />
+              <span>{navBalance == null ? "…" : navBalance.toFixed(2) + " ₼"}</span>
+              <span className="ab-navbalance-plus">+</span>
+            </button>
+          )}
           <button className="ab-accountbtn" onClick={() => navigate("hesab")} aria-label={t("myAccount")} title={t("myAccount")}>
             <User size={18} />
           </button>
