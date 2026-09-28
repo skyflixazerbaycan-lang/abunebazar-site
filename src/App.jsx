@@ -1272,6 +1272,137 @@ const PAY_CARD_NAME = "Elbrus Allahverdiyev";
 const PAY_CARD_BANK = "Kapital Bank";
 const PAY_CARD_NUMBER = "4169742323992731";
 
+// Balans artırma cashback pillələri
+const CASHBACK_TIERS = [
+  { amount: 10, cashback: 1 },
+  { amount: 15, cashback: 2 },
+  { amount: 20, cashback: 3 },
+  { amount: 40, cashback: 5 },
+  { amount: 50, cashback: 7 },
+];
+function cashbackFor(amount) {
+  let cb = 0;
+  for (const t of CASHBACK_TIERS) if (amount >= t.amount) cb = t.cashback;
+  return cb;
+}
+
+function BalanceTopUp({ user, profile, whatsapp, onClose, onDone }) {
+  const [amount, setAmount] = useState("");
+  const [file, setFile] = useState(null);
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [showRules, setShowRules] = useState(false);
+
+  const amt = Math.max(0, parseFloat(String(amount).replace(",", ".")) || 0);
+  const cb = cashbackFor(amt);
+  const waDigits = String(whatsapp || "517873090").replace(/[^0-9]/g, "");
+
+  async function copyCard() {
+    try { await navigator.clipboard.writeText(PAY_CARD_NUMBER); setMsg("Kart nömrəsi kopyalandı ✓"); setTimeout(() => setMsg(""), 1500); } catch {}
+  }
+
+  async function submit() {
+    setMsg("");
+    if (amt < 1) return setMsg("Minimum balans artırma 1 ₼-dır.");
+    if (!file) return setMsg("Ödəniş qəbzini (şəkil) yükləyin.");
+    if (!agree) return setMsg("Ödəniş şərtlərini qəbul edin.");
+    setBusy(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = user.id + "/" + Date.now() + "." + ext;
+      const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
+      if (up.error) throw up.error;
+      const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
+      const { error } = await supabase.from("balance_requests").insert({
+        user_id: user.id,
+        email: user.email || "",
+        full_name: user.user_metadata?.full_name || "",
+        amount: amt,
+        cashback: cb,
+        receipt_url: pub.publicUrl,
+        method: "card",
+        status: "pending",
+      });
+      if (error) throw error;
+      // WhatsApp-a bildiriş
+      const txt = `Salam! Balans artırma sorğusu göndərdim.\nAd: ${user.user_metadata?.full_name || "-"}\nMail: ${user.email}\nMəbləğ: ${amt.toFixed(2)} ₼${cb ? " (+" + cb + " ₼ cashback)" : ""}\nQəbzi yüklədim. Təsdiqləyəndə balansıma köçürün.`;
+      window.open(`https://wa.me/${waDigits}?text=${encodeURIComponent(txt)}`, "_blank");
+      onDone && onDone();
+      setMsg("Sorğu göndərildi ✓ İş saatları (12:00–23:59) daxilində operator təsdiqləyəcək.");
+      setAmount(""); setFile(null); setAgree(false);
+    } catch (e) {
+      setMsg("Xəta: " + (e.message || e));
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="ab-topup">
+      {msg && <div className="ab-topup-msg">{msg}</div>}
+
+      <label className="ab-topup-field">
+        <span>Balans məbləği (₼) — minimum 1 ₼</span>
+        <input type="number" min="1" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="məs. 10" />
+      </label>
+
+      <div className="ab-topup-tiers">
+        {CASHBACK_TIERS.map((t) => (
+          <button key={t.amount} className={"ab-tier" + (amt === t.amount ? " active" : "")} onClick={() => setAmount(String(t.amount))}>
+            <b>{t.amount} ₼ artır</b>
+            <span>+{t.cashback} ₼ cashback</span>
+          </button>
+        ))}
+      </div>
+      {amt >= 1 && (
+        <div className="ab-topup-sum">
+          Ödəniləcək: <b>{amt.toFixed(2)} ₼</b>{cb > 0 && <> · Cashback: <b style={{ color: "var(--gold)" }}>+{cb} ₼</b></>}
+        </div>
+      )}
+
+      <div className="ab-topup-card">
+        <div className="ab-topup-card-row"><span>Ad</span><strong>{PAY_CARD_NAME}</strong></div>
+        <div className="ab-topup-card-row"><span>Bank</span><strong>{PAY_CARD_BANK}</strong></div>
+        <div className="ab-topup-card-row">
+          <span>Kart</span>
+          <strong style={{ letterSpacing: 1 }}>{formatCardNumber(PAY_CARD_NUMBER)}</strong>
+        </div>
+        <button className="ab-btn ab-btn-ghost" style={{ marginTop: 8 }} onClick={copyCard}><Copy size={14} /> Kartı kopyala</button>
+      </div>
+
+      <label className="ab-topup-file">
+        <Upload size={16} /> {file ? file.name : "Ödəniş qəbzini yüklə (şəkil)"}
+        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFile(e.target.files[0])} />
+      </label>
+
+      <button className="ab-topup-ruleslink" onClick={() => setShowRules((v) => !v)}>
+        {showRules ? "Ödəniş şərtlərini gizlət" : "Ödəniş şərtlərini oxu"}
+      </button>
+      {showRules && (
+        <div className="ab-topup-rules">
+          <p>• Balans artırma işləmi iş saatları (12:00–23:59) daxilində operator tərəfindən yoxlanılıb təsdiqləndikdən sonra balansınıza köçürülür, daha sonra istifadə edə biləcəksiniz.</p>
+          <p>• Yalnız göstərilən karta ({PAY_CARD_NAME}, {PAY_CARD_BANK}) ödəniş edin. Fərqli hesaba edilən ödənişlər qəbul olunmur.</p>
+          <p>• Cashback minimum 10 ₼ toplandıqdan sonra balansa köçürülə bilər və yalnız sayt daxilində seçilmiş məhsullardan istifadə edilə bilər.</p>
+          <p>• Qəbzi düzgün və oxunaqlı yükləyin. Saxta qəbz göndərilməsi hesabın bloklanmasına səbəb olur.</p>
+        </div>
+      )}
+
+      <label className="ab-topup-agree">
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        <span>Ödəniş ilə bağlı şərtləri qəbul edirəm</span>
+      </label>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="ab-btn ab-btn-gold" disabled={busy} onClick={submit} style={{ flex: 1 }}>
+          {busy ? "Göndərilir..." : "Ödədim, qəbzi göndər"}
+        </button>
+        <button className="ab-btn ab-btn-ghost" onClick={onClose}>Bağla</button>
+      </div>
+    </div>
+  );
+}
+
+
 function formatCardNumber(num) {
   return num.replace(/(.{4})/g, "$1 ").trim();
 }
@@ -1285,6 +1416,11 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
   const [promoUses, setPromoUses] = useState(0);
   const [showPayment, setShowPayment] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [payAgree, setPayAgree] = useState(false);
+  const [payMethod, setPayMethod] = useState("");
+  const [payMsg, setPayMsg] = useState("");
+  const [payBusy, setPayBusy] = useState(false);
 
   function localPromoKey(uid) {
     return `skyflix_promo_uses_${uid}`;
@@ -1294,6 +1430,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       if (data.session) {
+        supabase.from("profiles").select("balance").eq("id", data.session.user.id).single().then(({ data: pr }) => { if (pr) setBalance(Number(pr.balance || 0)); });
         let localCount = 0;
         try {
           localCount = parseInt(localStorage.getItem(localPromoKey(data.session.user.id)) || "0", 10) || 0;
@@ -1368,6 +1505,30 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
 
   function logOrder() {
     supabase.from("orders").insert({ user_id: session?.user?.id || null, customer_email: session?.user?.email || null, items: cart, total: total }).then(() => {});
+  }
+
+  const balancePaidMessage = `Salam! Balansımla ödəniş etdim.\nAd: ${session?.user?.user_metadata?.full_name || "-"}\nMail: ${session?.user?.email || "-"}\nSifariş:\n${orderSummary}\n\nBalansdan ${total.toFixed(2)} ₼ çıxıldı. Sifarişimi hazırlayın.`;
+  const balanceWaLink = `https://wa.me/${digits}?text=${encodeURIComponent(balancePaidMessage)}`;
+
+  async function payWithBalance() {
+    setPayMsg("");
+    if (!session) return setPayMsg("Ödəniş üçün hesabınıza daxil olun.");
+    if (balance < total) return setPayMsg("Balansınız kifayət etmir. Balansı artırın və ya kartdan karta ödəyin.");
+    setPayBusy(true);
+    try {
+      // balansdan təhlükəsiz çıx (server RPC)
+      const { data, error } = await supabase.rpc("pay_with_balance", { p_amount: total });
+      if (error) throw error;
+      if (data?.status === "insufficient") { setPayBusy(false); return setPayMsg("Balansınız kifayət etmir."); }
+      if (data?.status !== "ok") { setPayBusy(false); return setPayMsg("Ödəniş alınmadı. Yenidən yoxlayın."); }
+      logOrder();
+      setBalance(Number(data.new_balance));
+      window.open(balanceWaLink, "_blank");
+      setPayMsg("Ödəniş edildi ✓ Sifarişiniz WhatsApp-a göndərildi.");
+    } catch (e) {
+      setPayMsg("Xəta: " + (e.message || e));
+    }
+    setPayBusy(false);
   }
 
   function copyCard() {
@@ -1466,6 +1627,47 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
           <button className="ab-btn ab-btn-gold" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={() => setShowPayment(true)}>
             <CreditCard size={16} /> Ödəniş et
           </button>
+        ) : !payAgree ? (
+          <div className="ab-pay-card">
+            <div className="ab-pay-card-head"><Shield size={18} /> Sayt daxili qaydalar</div>
+            <div className="ab-topup-rules" style={{ marginTop: 6 }}>
+              <p>• Sifariş təsdiqləndikdən sonra hesablar hazırlanıb WhatsApp üzərindən göndərilir.</p>
+              <p>• Balansla ödənişdə məbləğ dərhal balansdan çıxılır və sifariş operatora düşür.</p>
+              <p>• Kartdan karta ödənişdə göstərilən karta ({PAY_CARD_NAME}) ödəyib qəbzi göndərməlisiniz.</p>
+              <p>• Rəqəmsal məhsul olduğu üçün təhvil verildikdən sonra geri qaytarılma yoxdur.</p>
+            </div>
+            {payMsg && <p className="ad-error" style={{ marginTop: 8 }}>{payMsg}</p>}
+            <label className="ab-topup-agree" style={{ marginTop: 10 }}>
+              <input type="checkbox" checked={payAgree} onChange={(e) => setPayAgree(e.target.checked)} />
+              <span>Sayt daxili qaydaları qəbul edirəm</span>
+            </label>
+          </div>
+        ) : !payMethod ? (
+          <div className="ab-pay-card">
+            <div className="ab-pay-card-head"><CreditCard size={18} /> Ödəniş üsulu</div>
+            {payMsg && <p className="ad-error" style={{ marginTop: 8 }}>{payMsg}</p>}
+            <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+              <button className="ab-btn ab-btn-gold" style={{ justifyContent: "space-between" }} onClick={() => { if (!session) { setPayMsg("Balansla ödəmək üçün hesabınıza daxil olun."); return; } setPayMethod("balance"); }}>
+                <span><Wallet size={16} style={{ verticalAlign: "middle", marginRight: 6 }} /> Balansla ödə</span>
+                <span>Balans: {balance.toFixed(2)} ₼</span>
+              </button>
+              <button className="ab-btn ab-btn-ghost" style={{ justifyContent: "center" }} onClick={() => setPayMethod("card")}>
+                <CreditCard size={16} /> Kartdan karta ödə
+              </button>
+            </div>
+          </div>
+        ) : payMethod === "balance" ? (
+          <div className="ab-pay-card">
+            <div className="ab-pay-card-head"><Wallet size={18} /> Balansla ödəniş</div>
+            <div className="ab-pay-card-row"><span>Balansınız</span><strong>{balance.toFixed(2)} ₼</strong></div>
+            <div className="ab-pay-card-row ab-pay-card-total"><span>Ödəniləcək</span><strong>{total.toFixed(2)} ₼</strong></div>
+            {balance < total && <p className="ad-error" style={{ marginTop: 6 }}>Balansınız kifayət etmir. Balansı artırın və ya kartdan karta ödəyin.</p>}
+            {payMsg && <p style={{ marginTop: 8, color: "var(--gold)", fontSize: 13.5 }}>{payMsg}</p>}
+            <button className="ab-btn ab-btn-gold" disabled={payBusy || balance < total} style={{ width: "100%", justifyContent: "center", marginTop: 10 }} onClick={payWithBalance}>
+              {payBusy ? "Ödənilir..." : "Balansla ödə və qəbzi göndər"}
+            </button>
+            <button className="ab-btn ab-btn-ghost" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => setPayMethod("")}>Geri</button>
+          </div>
         ) : (
           <div className="ab-pay-card">
             <div className="ab-pay-card-head">
@@ -1505,6 +1707,7 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
             >
               <MessageCircle size={16} /> Ödədim, qəbzi göndər
             </a>
+            <button className="ab-btn ab-btn-ghost" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => setPayMethod("")}>Geri</button>
           </div>
         )}
       </div>
@@ -1906,7 +2109,7 @@ function CustomerAuthPage({ t, lang, settings }) {
     }
     supabase
       .from("profiles")
-      .select("balance, banned")
+      .select("balance, banned, cashback")
       .eq("id", session.user.id)
       .single()
       .then(({ data }) => {
@@ -2053,19 +2256,36 @@ function CustomerAuthPage({ t, lang, settings }) {
             <div>
               <div className="ab-balance-label">{t("balanceLabel")}</div>
               <div className="ab-balance-amount">{Number(profile?.balance || 0).toFixed(2)} ₼</div>
+              {Number(profile?.cashback || 0) > 0 && (
+                <div className="ab-cashback-label">Cashback: <b>{Number(profile.cashback).toFixed(2)} ₼</b></div>
+              )}
             </div>
             <button className="ab-btn ab-btn-gold" onClick={() => setShowTopUp((v) => !v)}>
               <Wallet size={16} /> {t("balanceTopUp")}
             </button>
           </div>
+          {Number(profile?.cashback || 0) >= 10 && (
+            <button className="ab-btn ab-btn-ghost" style={{ marginBottom: 12 }} onClick={async () => {
+              const { data } = await supabase.rpc("convert_cashback");
+              if (data?.status === "ok") {
+                const { data: pr } = await supabase.from("profiles").select("balance, banned, cashback").eq("id", u.id).single();
+                if (pr) setProfile(pr);
+                alert(data.moved + " ₼ cashback balansa köçürüldü ✓");
+              } else {
+                alert("Cashback köçürmək üçün minimum 10 ₼ olmalıdır.");
+              }
+            }}>
+              Cashback-i balansa köçür ({Number(profile.cashback).toFixed(2)} ₼)
+            </button>
+          )}
           {showTopUp && (
-            <div className="ab-topup-note">
-              <p>{t("balanceMaintenance")}</p>
-              <p>{t("balanceWhatsappNote")}</p>
-              <a href={waLink} target="_blank" rel="noopener noreferrer" className="ab-btn ab-btn-ghost" style={{ marginTop: 10 }}>
-                <MessageCircle size={16} /> {t("balanceWhatsappBtn")}
-              </a>
-            </div>
+            <BalanceTopUp
+              user={u}
+              profile={profile}
+              whatsapp={settings?.contact_whatsapp}
+              onClose={() => setShowTopUp(false)}
+              onDone={() => {}}
+            />
           )}
 
           <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
@@ -3552,6 +3772,8 @@ function SharedAccountsAdmin() {
   const [members, setMembers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [codes, setCodes] = useState([]);
+  const [payReqs, setPayReqs] = useState([]);
+  const [pendingPayCount, setPendingPayCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [msg, setMsg] = useState("");
@@ -3579,6 +3801,7 @@ function SharedAccountsAdmin() {
 
   useEffect(() => {
     loadAll();
+    loadPayReqs();
   }, []);
 
   function flashMsg(t) {
@@ -3609,6 +3832,27 @@ function SharedAccountsAdmin() {
       .order("received_at", { ascending: false })
       .limit(100);
     setCodes(data || []);
+  }
+
+  async function loadPayReqs() {
+    const { data } = await supabase
+      .from("balance_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setPayReqs(data || []);
+    setPendingPayCount((data || []).filter((r) => r.status === "pending").length);
+  }
+
+  async function approvePay(r) {
+    const { data } = await supabase.rpc("approve_balance_request", { p_id: r.id });
+    if (data?.status === "ok") { flashMsg("Təsdiqləndi: " + r.amount + " ₼" + (r.cashback ? " (+" + r.cashback + " cashback)" : "")); loadPayReqs(); }
+    else flashMsg("Xəta və ya artıq işlənib.");
+  }
+  async function rejectPay(r) {
+    if (!window.confirm(r.amount + " ₼ sorğusu rədd edilsin?")) return;
+    const { data } = await supabase.rpc("reject_balance_request", { p_id: r.id });
+    if (data?.status === "ok") { flashMsg("Rədd edildi"); loadPayReqs(); }
   }
 
   async function loadLogs() {
@@ -4063,19 +4307,24 @@ function SharedAccountsAdmin() {
               ["phone", "Nömrə ilə axtar"],
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
+              ["payments", "Ödənişlər"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
               <button
                 key={key}
-                style={S.chip(tab === key)}
+                style={{ ...S.chip(tab === key), position: "relative" }}
                 onClick={() => {
                   setTab(key);
                   if (key === "logs") loadLogs();
                   if (key === "codes") loadCodes();
+                  if (key === "payments") loadPayReqs();
                 }}
               >
                 {label}
+                {key === "payments" && pendingPayCount > 0 && (
+                  <span style={{ marginLeft: 6, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{pendingPayCount}</span>
+                )}
               </button>
             ))}
           </div>
@@ -4374,6 +4623,41 @@ function SharedAccountsAdmin() {
                   </button>
                 </div>
               </div>
+            </>
+          )}
+
+          {tab === "payments" && (
+            <>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>
+                  Balans ödəniş sorğuları
+                  {pendingPayCount > 0 && <span style={{ marginLeft: 8, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "2px 10px", fontSize: 13 }}>{pendingPayCount} yeni</span>}
+                </span>
+                <button style={S.mini} onClick={loadPayReqs}><RotateCw size={12} /> Yenilə</button>
+              </div>
+              {!payReqs.length && <p style={S.small}>Hələ ödəniş sorğusu yoxdur.</p>}
+              {payReqs.map((r) => (
+                <div key={r.id} style={{ ...S.box, borderColor: r.status === "pending" ? "#E1122A" : "var(--line)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 18 }}>{Number(r.amount).toFixed(2)} ₼ {r.cashback > 0 && <span style={{ color: "var(--gold)", fontSize: 13 }}>(+{r.cashback} cashback)</span>}</div>
+                      <div style={S.small}>{r.full_name || "—"} · {r.email}</div>
+                      <div style={S.small}>{skyFmtDate(r.created_at)} · {r.status === "pending" ? "gözləyir" : r.status === "approved" ? "təsdiqlənib ✓" : "rədd edilib"}</div>
+                    </div>
+                  </div>
+                  {r.receipt_url && (
+                    <a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8 }}>
+                      <img src={r.receipt_url} alt="qəbz" style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 10, border: "1px solid var(--line)" }} />
+                    </a>
+                  )}
+                  {r.status === "pending" && (
+                    <div style={{ ...S.row, marginTop: 10 }}>
+                      <button className="ab-btn ab-btn-gold" onClick={() => approvePay(r)}><CheckCircle2 size={15} /> Təsdiqlə (balansa yaz)</button>
+                      <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => rejectPay(r)}><Ban size={12} /> Rədd et</button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </>
           )}
 
@@ -6577,6 +6861,26 @@ function MainApp() {
           font-size:13.5px; color:var(--muted); line-height:1.6;
         }
         .ab-topup-note p{ margin:0 0 6px; }
+        .ab-cashback-label{ font-size:12.5px; color:var(--muted); margin-top:4px; }
+        .ab-topup{ border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:12px; display:grid; gap:12px; background:var(--surface); }
+        .ab-topup-msg{ background:rgba(31,157,85,0.12); border:1px solid rgba(31,157,85,0.35); color:#1f9d55; border-radius:10px; padding:10px 12px; font-size:13.5px; }
+        .ab-topup-field{ display:grid; gap:5px; font-size:13px; color:var(--muted); }
+        .ab-topup-field input{ background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:11px 13px; font-size:16px; }
+        .ab-topup-tiers{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
+        .ab-tier{ display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; cursor:pointer; border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:12px; padding:10px 12px; font-family:'Inter',sans-serif; }
+        .ab-tier b{ font-size:13.5px; }
+        .ab-tier span{ font-size:12px; color:var(--gold); }
+        .ab-tier.active{ border-color:var(--gold); background:linear-gradient(120deg, rgba(225,18,42,0.10), transparent); }
+        .ab-topup-sum{ font-size:14px; }
+        .ab-topup-card{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:var(--bg); }
+        .ab-topup-card-row{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:3px 0; }
+        .ab-topup-card-row span{ color:var(--muted); }
+        .ab-topup-file{ display:flex; align-items:center; gap:8px; cursor:pointer; border:1px dashed var(--line); border-radius:12px; padding:14px; font-size:13.5px; color:var(--muted); justify-content:center; }
+        .ab-topup-ruleslink{ background:none; border:none; padding:0; color:var(--gold); font-weight:600; cursor:pointer; text-decoration:underline; font-size:13px; font-family:'Inter',sans-serif; justify-self:start; }
+        .ab-topup-rules{ font-size:12.5px; color:var(--muted); line-height:1.6; border-left:2px solid var(--gold); padding-left:12px; }
+        .ab-topup-rules p{ margin:0 0 6px; }
+        .ab-topup-agree{ display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text); }
+        .ab-topup-agree input{ margin-top:2px; accent-color:var(--gold); width:16px; height:16px; flex-shrink:0; }
         .ab-agree-row input{ margin-top:3px; accent-color:var(--gold); width:15px; height:15px; flex-shrink:0; }
         .ab-rules-link{
           background:none; border:none; padding:0; color:var(--gold); font-weight:600; cursor:pointer;
