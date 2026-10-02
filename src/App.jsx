@@ -1528,8 +1528,18 @@ function SebetPage({ cart, updateQty, removeFromCart, settings, t, products, onA
       if (data?.status !== "ok") { setPayBusy(false); return setPayMsg("Ödəniş alınmadı. Yenidən yoxlayın."); }
       logOrder();
       setBalance(Number(data.new_balance));
+      // Faktura emaili (uğursuz olsa ödənişi pozmaz)
+      try {
+        await supabase.functions.invoke("send-receipt", { body: {
+          customerName: session.user.user_metadata?.full_name || "",
+          customerEmail: session.user.email,
+          items: cart.map((i) => ({ name: i.name + (i.variantMonths ? " — " + i.variantMonths + " ay" : ""), qty: i.qty, price: i.price })),
+          total: total,
+          method: "Balans (nağdsız)",
+        }});
+      } catch (e) {}
       window.open(balanceWaLink, "_blank");
-      setPayMsg("Ödəniş edildi ✓ Sifarişiniz WhatsApp-a göndərildi.");
+      setPayMsg("Ödəniş edildi ✓ Qəbz email ünvanınıza göndərildi. Sifarişiniz WhatsApp-a göndərildi.");
     } catch (e) {
       setPayMsg("Xəta: " + (e.message || e));
     }
@@ -2082,6 +2092,8 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
   const [resetSent, setResetSent] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false); // email → kod ekranı
+  const [resetCode, setResetCode] = useState("");
   const [recovery, setRecovery] = useState(false); // email linkindən gələndə yeni şifrə rejimi
   const [newPass1, setNewPass1] = useState("");
   const [newPass2, setNewPass2] = useState("");
@@ -2162,11 +2174,26 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
   async function handleForgotPassword() {
     setError(""); setPwMsg("");
     if (!email || !email.includes("@")) { setError("Əvvəlcə email ünvanınızı yazın."); return; }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://skyflixazerbaycan.com/#hesab",
-    });
+    // Link YOX — 6 rəqəmli kod göndər (recovery OTP). shouldCreateUser:false = yeni hesab yaratma.
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) setError(error.message);
-    else setResetSent(true);
+    else { setResetSent(true); setForgotMode(true); }
+  }
+
+  async function handleResetWithCode(e) {
+    e.preventDefault();
+    setPwMsg("");
+    if (!/^\d{6}$/.test(resetCode.trim())) { setPwMsg("Email-ə gələn 6 rəqəmli kodu yazın."); return; }
+    if (newPass1.length < 6) { setPwMsg("Yeni şifrə ən az 6 simvol olmalıdır."); return; }
+    if (newPass1 !== newPass2) { setPwMsg("Şifrələr eyni deyil."); return; }
+    // kodu yoxla (giriş et)
+    const { error: vErr } = await supabase.auth.verifyOtp({ email, token: resetCode.trim(), type: "email" });
+    if (vErr) { setPwMsg("Kod səhv və ya vaxtı bitib. Yenidən cəhd edin."); return; }
+    // indi daxil olduq — yeni şifrəni təyin et
+    const { error: uErr } = await supabase.auth.updateUser({ password: newPass1 });
+    if (uErr) { setPwMsg("Xəta: " + uErr.message); return; }
+    setPwMsg("Şifrəniz dəyişdirildi ✓ Daxil oldunuz.");
+    setForgotMode(false); setResetSent(false); setResetCode(""); setNewPass1(""); setNewPass2("");
   }
 
   async function handleSetNewPassword(e) {
@@ -2468,7 +2495,24 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
           </button>
         </div>
 
-        {mode === "login" ? (
+        {forgotMode ? (
+          <form onSubmit={handleResetWithCode} className="ad-login">
+            <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 4px" }}>
+              <b>{email}</b> ünvanına 6 rəqəmli kod göndərdik. Kodu və yeni şifrənizi yazın.
+            </p>
+            <input type="tel" inputMode="numeric" maxLength={6} placeholder="6 rəqəmli kod" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))} required />
+            <input type="password" placeholder="Yeni şifrə (ən az 6 simvol)" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
+            <input type="password" placeholder="Yeni şifrə (təkrar)" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
+            {pwMsg && <p style={{ color: pwMsg.includes("✓") ? "#1f9d55" : "var(--gold)", fontSize: 13.5 }}>{pwMsg}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>Şifrəni dəyiş və daxil ol</button>
+            <button type="button" onClick={() => { setForgotMode(false); setResetSent(false); setPwMsg(""); }} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, textDecoration: "underline", cursor: "pointer", marginTop: 4 }}>
+              Geri
+            </button>
+            <button type="button" onClick={handleForgotPassword} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12.5, cursor: "pointer" }}>
+              Kod gəlmədi? Yenidən göndər
+            </button>
+          </form>
+        ) : mode === "login" ? (
           <form onSubmit={handleLogin} className="ad-login">
             <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input
@@ -2479,7 +2523,6 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
               required
             />
             {error && <p className="ad-error">{error}</p>}
-            {resetSent && <p style={{ color: "#1f9d55", fontSize: 13.5 }}>Şifrə sıfırlama linki email ünvanınıza göndərildi. Pochtanızı yoxlayın (spam da daxil).</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
               {t("login")}
             </button>
@@ -4009,7 +4052,19 @@ function SharedAccountsAdmin() {
   async function approvePay(r) {
     const { data, error } = await supabase.rpc("approve_balance_request", { p_id: r.id });
     if (error) { flashMsg("Xəta: " + error.message); return; }
-    if (data?.status === "ok") { flashMsg("Təsdiqləndi: " + r.amount + " ₼" + (r.cashback ? " (+" + r.cashback + " cashback)" : "")); loadPayReqs(); }
+    if (data?.status === "ok") {
+      flashMsg("Təsdiqləndi: " + r.amount + " ₼" + (r.cashback ? " (+" + r.cashback + " cashback)" : ""));
+      try {
+        await supabase.functions.invoke("send-receipt", { body: {
+          customerName: r.full_name || "",
+          customerEmail: r.email,
+          items: [{ name: "Balans artırma" + (r.cashback ? " (+" + r.cashback + " ₼ cashback)" : ""), qty: 1, price: r.amount }],
+          total: r.amount,
+          method: "Kartdan karta",
+        }});
+      } catch (e) {}
+      loadPayReqs();
+    }
     else if (data?.status === "forbidden") { flashMsg("İcazə yoxdur — admin hesabı ilə girməlisiniz."); }
     else if (data?.status === "notfound") { flashMsg("Sorğu tapılmadı və ya artıq işlənib."); }
     else { flashMsg("Naməlum nəticə: " + JSON.stringify(data)); }
@@ -5917,16 +5972,6 @@ function MainApp() {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
-  }, []);
-  // Şifrə sıfırlama linki açılanda avtomatik hesab (şifrə) səhifəsinə yönləndir
-  useEffect(() => {
-    const h = window.location.hash || "";
-    const isRecovery = h.includes("type=recovery");
-    const onRec = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") { go("hesab"); }
-    });
-    if (isRecovery) { go("hesab"); }
-    return () => onRec.data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
     if (!session) { setNavBalance(null); return; }
