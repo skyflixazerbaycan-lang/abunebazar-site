@@ -5918,6 +5918,16 @@ function MainApp() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
   }, []);
+  // Şifrə sıfırlama linki açılanda avtomatik hesab (şifrə) səhifəsinə yönləndir
+  useEffect(() => {
+    const h = window.location.hash || "";
+    const isRecovery = h.includes("type=recovery");
+    const onRec = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") { go("hesab"); }
+    });
+    if (isRecovery) { go("hesab"); }
+    return () => onRec.data.subscription.unsubscribe();
+  }, []);
   useEffect(() => {
     if (!session) { setNavBalance(null); return; }
     let stop = false;
