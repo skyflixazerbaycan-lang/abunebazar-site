@@ -2183,7 +2183,7 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
   async function handleResetWithCode(e) {
     e.preventDefault();
     setPwMsg("");
-    if (!/^\d{6}$/.test(resetCode.trim())) { setPwMsg("Email-ə gələn 6 rəqəmli kodu yazın."); return; }
+    if (!/^\d{4,8}$/.test(resetCode.trim())) { setPwMsg("Email-ə gələn kodu tam yazın."); return; }
     if (newPass1.length < 6) { setPwMsg("Yeni şifrə ən az 6 simvol olmalıdır."); return; }
     if (newPass1 !== newPass2) { setPwMsg("Şifrələr eyni deyil."); return; }
     // kodu yoxla (giriş et)
@@ -2498,9 +2498,9 @@ function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go })
         {forgotMode ? (
           <form onSubmit={handleResetWithCode} className="ad-login">
             <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 4px" }}>
-              <b>{email}</b> ünvanına 6 rəqəmli kod göndərdik. Kodu və yeni şifrənizi yazın.
+              <b>{email}</b> ünvanına təsdiq kodu göndərdik. Kodu və yeni şifrənizi yazın.
             </p>
-            <input type="tel" inputMode="numeric" maxLength={6} placeholder="6 rəqəmli kod" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))} required />
+            <input type="tel" inputMode="numeric" maxLength={8} placeholder="Təsdiq kodu" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))} required />
             <input type="password" placeholder="Yeni şifrə (ən az 6 simvol)" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
             <input type="password" placeholder="Yeni şifrə (təkrar)" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
             {pwMsg && <p style={{ color: pwMsg.includes("✓") ? "#1f9d55" : "var(--gold)", fontSize: 13.5 }}>{pwMsg}</p>}
