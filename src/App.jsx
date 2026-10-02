@@ -668,7 +668,7 @@ function Notch({ side }) {
   return <span className={`ab-notch ${side}`} aria-hidden="true" />;
 }
 
-function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
+function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go, fav, onFav }) {
   const productReviews = (reviews || []).filter((r) => r.product_id === p.id);
   const avg = productReviews.length
     ? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length
@@ -684,6 +684,11 @@ function TicketCard({ p, onAdd, t, reviews, onOpenReviews, go }) {
       >
         {p.image_url && <div className="ab-ticket-img" style={{ backgroundImage: `url(${p.image_url})` }} />}
         {p.discount_percent > 0 && <div className="ab-discount-badge">-{p.discount_percent}%</div>}
+        {onFav && (
+          <button className="ab-fav-btn" onClick={(e) => { e.stopPropagation(); onFav(p.id); }} aria-label="Favori" title="Favorilərə əlavə et">
+            <Star size={18} fill={fav ? "#E1122A" : "none"} color={fav ? "#E1122A" : "#fff"} strokeWidth={2} />
+          </button>
+        )}
         <div className="ab-ticket-top">
           <div>
             <div className="ab-ticket-eyebrow">ABUNƏLİK</div>
@@ -797,7 +802,7 @@ function HeroSlideshow({ products }) {
   );
 }
 
-function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
+function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews, favorites, onFav }) {
   return (
     <>
       <div className="ab-screen">
@@ -899,7 +904,7 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews }) {
         <div className="ab-grid">
           {products.slice(0, 3).map((p, i) => (
             <Reveal key={p.id} delay={i * 70}>
-              <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} />
+              <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} fav={(favorites||[]).includes(p.id)} onFav={onFav} />
             </Reveal>
           ))}
         </div>
@@ -1069,7 +1074,7 @@ function ProductDetailPage({ productId, products, onAdd, t, lang, reviews, onOpe
   );
 }
 
-function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews, categories, go }) {
+function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews, categories, go, favorites, onFav }) {
   const [cat, setCat] = useState("all");
   const filtered = cat === "all" ? products : products.filter((p) => p.category === cat);
 
@@ -1098,7 +1103,7 @@ function PaketlerPage({ products, onAdd, t, reviews, onOpenReviews, categories, 
       <div className="ab-grid">
         {filtered.map((p, i) => (
           <Reveal key={p.id} delay={i * 60}>
-            <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} />
+            <TicketCard p={p} onAdd={onAdd} t={t} reviews={reviews} onOpenReviews={onOpenReviews} go={go} fav={(favorites||[]).includes(p.id)} onFav={onFav} />
           </Reveal>
         ))}
         {filtered.length === 0 && <p style={{ color: "var(--muted)" }}>{t("noProductsInCategory")}</p>}
@@ -2072,10 +2077,16 @@ function RulesModal({ onClose, t, lang }) {
   );
 }
 
-function CustomerAuthPage({ t, lang, settings }) {
+function CustomerAuthPage({ t, lang, settings, products, favorites, onFav, go }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [mode, setMode] = useState("login");
+  const [resetSent, setResetSent] = useState(false);
+  const [recovery, setRecovery] = useState(false); // email linkindən gələndə yeni şifrə rejimi
+  const [newPass1, setNewPass1] = useState("");
+  const [newPass2, setNewPass2] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+  const [showChangePw, setShowChangePw] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2091,6 +2102,9 @@ function CustomerAuthPage({ t, lang, settings }) {
   const [profile, setProfile] = useState(null);
   const [showTopUp, setShowTopUp] = useState(false);
   const [myReqs, setMyReqs] = useState([]);
+  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [profileMsg, setProfileMsg] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -2110,11 +2124,15 @@ function CustomerAuthPage({ t, lang, settings }) {
     }
     supabase
       .from("profiles")
-      .select("balance, banned, cashback")
+      .select("balance, banned, cashback, phone, full_name")
       .eq("id", session.user.id)
       .single()
       .then(({ data }) => {
-        if (data) setProfile(data);
+        if (data) {
+          setProfile(data);
+          setPhone(data.phone || "");
+          setFullName(data.full_name || session.user.user_metadata?.full_name || "");
+        }
       });
     supabase
       .from("balance_requests")
@@ -2125,11 +2143,42 @@ function CustomerAuthPage({ t, lang, settings }) {
       .then(({ data }) => setMyReqs(data || []));
   }, [session]);
 
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+    });
+    // səhifə hash-ında recovery varsa da aç
+    if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) setRecovery(true);
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setError(t("loginErrorMsg"));
+  }
+
+  async function handleForgotPassword() {
+    setError(""); setPwMsg("");
+    if (!email || !email.includes("@")) { setError("Əvvəlcə email ünvanınızı yazın."); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://skyflixazerbaycan.com/#hesab",
+    });
+    if (error) setError(error.message);
+    else setResetSent(true);
+  }
+
+  async function handleSetNewPassword(e) {
+    e.preventDefault();
+    setPwMsg("");
+    if (newPass1.length < 6) { setPwMsg("Şifrə ən az 6 simvol olmalıdır."); return; }
+    if (newPass1 !== newPass2) { setPwMsg("Şifrələr eyni deyil."); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPass1 });
+    if (error) { setPwMsg("Xəta: " + error.message); return; }
+    setPwMsg("Şifrəniz dəyişdirildi ✓");
+    setNewPass1(""); setNewPass2("");
+    setTimeout(() => { setRecovery(false); setShowChangePw(false); try { window.location.hash = "#hesab"; } catch {} }, 1500);
   }
 
   async function handleRegister(e) {
@@ -2185,6 +2234,13 @@ function CustomerAuthPage({ t, lang, settings }) {
     setOtpSending(false);
   }
 
+  async function saveProfile() {
+    setProfileMsg("");
+    const { error } = await supabase.from("profiles").update({ phone: phone.trim(), full_name: fullName.trim() }).eq("id", session.user.id);
+    if (error) setProfileMsg("Xəta: " + error.message);
+    else setProfileMsg("Profil yadda saxlanıldı ✓");
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
   }
@@ -2226,6 +2282,22 @@ function CustomerAuthPage({ t, lang, settings }) {
     );
   }
 
+  if (recovery) {
+    return (
+      <section className="ab-section ab-page-pad">
+        <div className="ad-login-wrap">
+          <PageHead kicker="ŞİFRƏ" title="Yeni şifrə təyin edin" sub="Email linki ilə daxil oldunuz. İndi yeni şifrənizi yazın." />
+          <form onSubmit={handleSetNewPassword} className="ad-login">
+            <input type="password" placeholder="Yeni şifrə (ən az 6 simvol)" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
+            <input type="password" placeholder="Yeni şifrə (təkrar)" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
+            {pwMsg && <p style={{ color: pwMsg.includes("✓") ? "#1f9d55" : "var(--gold)", fontSize: 13.5 }}>{pwMsg}</p>}
+            <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>Şifrəni dəyiş</button>
+          </form>
+        </div>
+      </section>
+    );
+  }
+
   if (session) {
     const u = session.user;
     if (profile?.banned) {
@@ -2252,12 +2324,16 @@ function CustomerAuthPage({ t, lang, settings }) {
               {t("email")}
               <input value={u.email} disabled />
             </label>
-            {u.user_metadata?.full_name && (
-              <label>
-                {t("fullName")}
-                <input value={u.user_metadata.full_name} disabled />
-              </label>
-            )}
+            <label>
+              Ad Soyad
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Adınızı yazın" />
+            </label>
+            <label>
+              Telefon (WhatsApp)
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="050 123 45 67" type="tel" />
+            </label>
+            {profileMsg && <p style={{ color: profileMsg.includes("✓") ? "#1f9d55" : "var(--gold)", fontSize: 13.5, margin: 0 }}>{profileMsg}</p>}
+            <button className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }} onClick={saveProfile}>Profili yadda saxla</button>
           </div>
 
           <div className="ab-balance-card">
@@ -2314,6 +2390,48 @@ function CustomerAuthPage({ t, lang, settings }) {
             </div>
           )}
 
+          {(() => {
+            const favProducts = (products || []).filter((p) => (favorites || []).includes(p.id));
+            if (!favProducts.length) return null;
+            return (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>Favorilərim ({favProducts.length})</div>
+                {favProducts.map((p) => (
+                  <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid var(--line)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      {p.image_url && <div style={{ width: 42, height: 42, borderRadius: 8, backgroundImage: `url(${p.image_url})`, backgroundSize: "cover", backgroundPosition: "center", flexShrink: 0 }} />}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                        <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 700 }}>{p.price} ₼</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button className="ab-btn ab-btn-ghost" style={{ padding: "7px 12px" }} onClick={() => go && go("mehsul-" + p.id)}>Bax</button>
+                      <button className="ab-btn ab-btn-ghost" style={{ padding: "7px 10px" }} onClick={() => onFav && onFav(p.id)} title="Favoridən çıxar">
+                        <Star size={15} fill="#E1122A" color="#E1122A" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div style={{ marginTop: 24, borderTop: "1px solid var(--line)", paddingTop: 18 }}>
+            <button className="ab-btn ab-btn-ghost" onClick={() => { setShowChangePw((v) => !v); setPwMsg(""); }} style={{ justifyContent: "center" }}>
+              Şifrəni dəyiş
+            </button>
+            {showChangePw && (
+              <form onSubmit={handleSetNewPassword} className="ad-login" style={{ marginTop: 12 }}>
+                <input type="password" placeholder="Yeni şifrə (ən az 6 simvol)" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
+                <input type="password" placeholder="Yeni şifrə (təkrar)" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
+                {pwMsg && <p style={{ color: pwMsg.includes("✓") ? "#1f9d55" : "var(--gold)", fontSize: 13.5 }}>{pwMsg}</p>}
+                <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>Təsdiqlə</button>
+                <p style={{ fontSize: 12, color: "var(--muted)" }}>Köhnə şifrəni bilməyə ehtiyac yoxdur — hesabınıza daxil olmusunuz.</p>
+              </form>
+            )}
+          </div>
+
           <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 18 }}>{t("ordersNote")}</p>
           <button className="ab-btn ab-btn-ghost" onClick={handleLogout} style={{ marginTop: 18 }}>
             {t("logout")}
@@ -2361,8 +2479,12 @@ function CustomerAuthPage({ t, lang, settings }) {
               required
             />
             {error && <p className="ad-error">{error}</p>}
+            {resetSent && <p style={{ color: "#1f9d55", fontSize: 13.5 }}>Şifrə sıfırlama linki email ünvanınıza göndərildi. Pochtanızı yoxlayın (spam da daxil).</p>}
             <button type="submit" className="ab-btn ab-btn-gold" style={{ justifyContent: "center" }}>
               {t("login")}
+            </button>
+            <button type="button" onClick={handleForgotPassword} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, textDecoration: "underline", cursor: "pointer", marginTop: 4 }}>
+              Şifrəni unutdum?
             </button>
           </form>
         ) : (
@@ -3800,6 +3922,7 @@ function SharedAccountsAdmin() {
   const [codes, setCodes] = useState([]);
   const [payReqs, setPayReqs] = useState([]);
   const [pendingPayCount, setPendingPayCount] = useState(0);
+  const [notifForm, setNotifForm] = useState({ title: "", body: "", link: "" });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [msg, setMsg] = useState("");
@@ -3858,6 +3981,19 @@ function SharedAccountsAdmin() {
       .order("received_at", { ascending: false })
       .limit(100);
     setCodes(data || []);
+  }
+
+  async function sendNotification() {
+    if (!notifForm.title.trim()) return flashMsg("Başlıq yazın.");
+    const { error } = await supabase.from("notifications").insert({
+      user_id: null, // hamıya
+      title: notifForm.title.trim(),
+      body: notifForm.body.trim(),
+      link: notifForm.link.trim(),
+    });
+    if (error) return flashMsg("Xəta: " + error.message);
+    setNotifForm({ title: "", body: "", link: "" });
+    flashMsg("Bildiriş bütün müştərilərə göndərildi ✓");
   }
 
   async function loadPayReqs() {
@@ -4337,6 +4473,7 @@ function SharedAccountsAdmin() {
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
               ["payments", "Ödənişlər"],
+              ["notify", "Bildiriş göndər"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
@@ -4653,6 +4790,19 @@ function SharedAccountsAdmin() {
                 </div>
               </div>
             </>
+          )}
+
+          {tab === "notify" && (
+            <div style={S.box}>
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>Bütün müştərilərə bildiriş göndər</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <input style={S.input} placeholder="Başlıq (məs. Yeni endirim!)" value={notifForm.title} onChange={(e) => setNotifForm({ ...notifForm, title: e.target.value })} />
+                <textarea style={{ ...S.input, minHeight: 80 }} placeholder="Mətn" value={notifForm.body} onChange={(e) => setNotifForm({ ...notifForm, body: e.target.value })} />
+                <input style={S.input} placeholder="Link (istəyə bağlı)" value={notifForm.link} onChange={(e) => setNotifForm({ ...notifForm, link: e.target.value })} />
+                <button className="ab-btn ab-btn-gold" style={{ alignSelf: "flex-start" }} onClick={sendNotification}><Send size={15} /> Göndər</button>
+                <div style={S.small}>Bildiriş hər müştərinin saytdakı zəng ikonunda görünəcək.</div>
+              </div>
+            </div>
           )}
 
           {tab === "payments" && (
@@ -5759,6 +5909,10 @@ function MainApp() {
 
   const [session, setSession] = useState(null);
   const [navBalance, setNavBalance] = useState(null);
+  const [favorites, setFavorites] = useState([]); // product_id massivi
+  const [notifs, setNotifs] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifReadAt, setNotifReadAt] = useState(() => { try { return Number(localStorage.getItem("skyflix_notif_read") || 0); } catch { return 0; } });
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
@@ -5772,6 +5926,45 @@ function MainApp() {
     const id = setInterval(load, 15000); // balans dəyişsə (təsdiq olunsa) 15 san-a yenilənir
     return () => { stop = true; clearInterval(id); };
   }, [session]);
+
+  // Favorilər
+  useEffect(() => {
+    if (!session) { setFavorites([]); return; }
+    supabase.from("favorites").select("product_id").eq("user_id", session.user.id)
+      .then(({ data }) => setFavorites((data || []).map((f) => f.product_id)));
+  }, [session]);
+
+  async function toggleFavorite(productId) {
+    if (!session) { window.alert("Favorilərə əlavə etmək üçün hesabınıza daxil olun."); go("hesab"); return; }
+    const isFav = favorites.includes(productId);
+    if (isFav) {
+      setFavorites((f) => f.filter((x) => x !== productId));
+      await supabase.from("favorites").delete().eq("user_id", session.user.id).eq("product_id", productId);
+    } else {
+      setFavorites((f) => [...f, productId]);
+      await supabase.from("favorites").insert({ user_id: session.user.id, product_id: productId });
+    }
+  }
+
+  // Bildirişlər (özünə + hamıya)
+  useEffect(() => {
+    if (!session) { setNotifs([]); return; }
+    const load = () => supabase.from("notifications").select("*")
+      .or("user_id.is.null,user_id.eq." + session.user.id)
+      .order("created_at", { ascending: false }).limit(30)
+      .then(({ data }) => setNotifs(data || []));
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
+  }, [session]);
+
+  const unreadNotifs = notifs.filter((n) => new Date(n.created_at).getTime() > notifReadAt).length;
+  function openNotifs() {
+    setNotifOpen((v) => !v);
+    const now = Date.now();
+    setNotifReadAt(now);
+    try { localStorage.setItem("skyflix_notif_read", String(now)); } catch {}
+  }
 
   const [showWheel, setShowWheel] = useState(false);
   const [showGame, setShowGame] = useState(false);
@@ -6157,6 +6350,16 @@ function MainApp() {
           border:2px solid #1A0607;
         }
         .ab-cartbtn{ position:relative; }
+        .ab-fav-btn{ position:absolute; top:10px; right:10px; z-index:3; width:34px; height:34px; border-radius:50%; border:none; background:rgba(0,0,0,0.45); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+        .ab-fav-btn:hover{ background:rgba(0,0,0,0.65); }
+        .ab-notif-dot{ position:absolute; top:-4px; right:-4px; background:#E1122A; color:#fff; border-radius:999px; min-width:17px; height:17px; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+        .ab-notif-panel{ position:absolute; top:46px; right:0; width:300px; max-height:380px; overflow-y:auto; background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:0 12px 30px -10px rgba(0,0,0,0.4); z-index:50; }
+        .ab-notif-head{ font-weight:700; padding:12px 14px; border-bottom:1px solid var(--line); }
+        .ab-notif-empty{ padding:16px 14px; color:var(--muted); font-size:13.5px; }
+        .ab-notif-item{ padding:11px 14px; border-bottom:1px solid var(--line); }
+        .ab-notif-title{ font-weight:600; font-size:14px; }
+        .ab-notif-body{ font-size:13px; color:var(--muted); margin-top:2px; line-height:1.5; }
+        .ab-notif-date{ font-size:11px; color:var(--muted); margin-top:4px; }
         .ab-navbalance{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gold); background:linear-gradient(120deg, rgba(225,18,42,0.12), transparent); color:var(--text); border-radius:999px; padding:7px 12px; cursor:pointer; font-weight:700; font-size:13.5px; font-family:'Inter',sans-serif; }
         .ab-navbalance:hover{ box-shadow:0 6px 14px -8px rgba(225,18,42,0.5); }
         .ab-navbalance-plus{ background:var(--gold); color:#fff; width:18px; height:18px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; line-height:1; }
@@ -7010,6 +7213,27 @@ function MainApp() {
             {cartCount > 0 && <span className="ab-cart-badge">{cartCount}</span>}
           </button>
           {session && (
+            <div style={{ position: "relative" }}>
+              <button className="ab-accountbtn" onClick={openNotifs} title="Bildirişlər" style={{ position: "relative" }}>
+                <MessageCircle size={18} />
+                {unreadNotifs > 0 && <span className="ab-notif-dot">{unreadNotifs}</span>}
+              </button>
+              {notifOpen && (
+                <div className="ab-notif-panel">
+                  <div className="ab-notif-head">Bildirişlər</div>
+                  {notifs.length === 0 && <div className="ab-notif-empty">Bildiriş yoxdur.</div>}
+                  {notifs.map((n) => (
+                    <div key={n.id} className="ab-notif-item">
+                      <div className="ab-notif-title">{n.title}</div>
+                      {n.body && <div className="ab-notif-body">{n.body}</div>}
+                      <div className="ab-notif-date">{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {session && (
             <button className="ab-navbalance" onClick={() => navigate("hesab")} title="Balansım">
               <Wallet size={15} />
               <span>{navBalance == null ? "…" : navBalance.toFixed(2) + " ₼"}</span>
@@ -7081,8 +7305,8 @@ function MainApp() {
       )}
 
       <main className="ab-page" key={page}>
-        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} />}
-        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} categories={categories} go={go} />}
+        {page === "home" && <HomePage go={go} products={products} onAdd={addToCart} lang={lang} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} favorites={favorites} onFav={toggleFavorite} />}
+        {page === "paketler" && <PaketlerPage products={products} onAdd={addToCart} t={t} reviews={reviews} onOpenReviews={setReviewsModalProduct} categories={categories} go={go} favorites={favorites} onFav={toggleFavorite} />}
         {page.startsWith("mehsul-") && (
           <ProductDetailPage
             productId={page.replace("mehsul-", "")}
@@ -7101,7 +7325,7 @@ function MainApp() {
         {page === "reylerall" && <ReviewsPage reviews={reviews} products={products} t={t} />}
         {page === "elaqe" && <ElaqePage settings={settings} t={t} />}
         {page === "admin" && <AdminPage onDataChanged={reload} />}
-        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} settings={settings} />}
+        {page === "hesab" && <CustomerAuthPage t={t} lang={lang} settings={settings} products={products} favorites={favorites} onFav={toggleFavorite} go={go} />}
         {page === "sebet" && (
           <SebetPage cart={cart} updateQty={updateQty} removeFromCart={removeFromCart} settings={settings} t={t} products={products} onAdd={addToCart} go={go} />
         )}
