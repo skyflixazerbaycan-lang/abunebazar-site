@@ -3836,6 +3836,345 @@ function SharedAccountPage({ slug }) {
 }
 
 // -----------------------------------------------------
+// -----------------------------------------------------
+// AYRICA SİSTEM: skyflixazerbaycan.com/#siyahi — Netflix müştəri siyahısı (yalnız admin)
+// -----------------------------------------------------
+function NetflixListPage() {
+  useGoogleFonts();
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [msg, setMsg] = useState("");
+  const [search, setSearch] = useState("");
+  const [showCount, setShowCount] = useState(60);
+  const [tab, setTab] = useState("list"); // list | add | bulk
+  const [sortBy, setSortBy] = useState("exp"); // exp | none
+  const [form, setForm] = useState({ phone: "", room_name: "", room_pass: "", account_email: "", note: "", expires_at: "" });
+  const [edit, setEdit] = useState(null); // redaktə olunan sətir
+  const [bulkText, setBulkText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkReport, setBulkReport] = useState("");
+
+  useEffect(() => {
+    document.title = "Netflix siyahı — SkyFlix";
+    const meta = document.createElement("meta");
+    meta.name = "robots"; meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, sess) => setSession(sess));
+    return () => { listener.subscription.unsubscribe(); document.head.removeChild(meta); };
+  }, []);
+
+  useEffect(() => {
+    if (session && session.user.email === ADMIN_EMAIL) loadAll();
+  }, [session]);
+
+  function flash(t) { setMsg(t); setTimeout(() => setMsg(""), 2600); }
+
+  async function login(e) {
+    e.preventDefault(); setError("");
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    if (err) setError("Mail və ya şifrə səhvdir.");
+  }
+
+  async function loadAll() {
+    setLoading(true); setLoadError("");
+    try {
+      let all = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from("netflix_list").select("*").order("expires_at", { ascending: true, nullsFirst: false }).range(from, from + 999);
+        if (error) throw error;
+        all = all.concat(data || []);
+        if (!data || data.length < 1000) break;
+      }
+      setRows(all);
+    } catch (e) {
+      setLoadError("Yüklənmədi: " + (e.message || e) + " — SQL faylını işə salmısınız?");
+    }
+    setLoading(false);
+  }
+
+  function daysLeft(d) {
+    if (!d) return null;
+    return Math.ceil((new Date(d + "T23:59:59").getTime() - Date.now()) / 86400000);
+  }
+  function fmtDate(d) {
+    if (!d) return "—";
+    const x = new Date(d); const p = (n) => String(n).padStart(2, "0");
+    return p(x.getDate()) + "." + p(x.getMonth() + 1) + "." + x.getFullYear();
+  }
+  function addMonthsToDate(baseISO, months) {
+    const base = baseISO ? new Date(baseISO + "T00:00:00") : new Date();
+    const start = base.getTime() > Date.now() ? base : new Date();
+    const d = new Date(start); d.setMonth(d.getMonth() + months);
+    return d.toISOString().slice(0, 10);
+  }
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = rows;
+    if (q) list = rows.filter((r) =>
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.account_email || "").toLowerCase().includes(q) ||
+      (r.room_name || "").toLowerCase().includes(q) ||
+      (r.note || "").toLowerCase().includes(q));
+    return list;
+  }, [rows, search]);
+
+  const stats = React.useMemo(() => {
+    const now = Date.now();
+    let active = 0, soon = 0, expired = 0;
+    rows.forEach((r) => {
+      const dl = daysLeft(r.expires_at);
+      if (dl === null) return;
+      if (dl < 0) expired++; else { active++; if (dl <= 3) soon++; }
+    });
+    return { total: rows.length, active, soon, expired };
+  }, [rows]);
+
+  async function saveNew() {
+    if (!form.phone.trim() && !form.account_email.trim()) return flash("Nömrə və ya mail yazın.");
+    const { data, error } = await supabase.from("netflix_list").insert({
+      phone: skyNormPhone(form.phone), room_name: form.room_name.trim(), room_pass: form.room_pass.trim(),
+      account_email: form.account_email.trim(), note: form.note.trim(), expires_at: form.expires_at || null,
+    }).select().single();
+    if (error) return flash("Xəta: " + error.message);
+    setRows((l) => [data, ...l]);
+    setForm({ phone: "", room_name: "", room_pass: "", account_email: "", note: "", expires_at: "" });
+    flash("Əlavə edildi ✓");
+  }
+
+  async function saveEdit() {
+    const r = edit;
+    const { data, error } = await supabase.from("netflix_list").update({
+      phone: skyNormPhone(r.phone), room_name: r.room_name, room_pass: r.room_pass,
+      account_email: r.account_email, note: r.note, expires_at: r.expires_at || null,
+    }).eq("id", r.id).select().single();
+    if (error) return flash("Xəta: " + error.message);
+    setRows((l) => l.map((x) => (x.id === r.id ? data : x)));
+    setEdit(null); flash("Yadda saxlanıldı ✓");
+  }
+
+  async function extend(r, months) {
+    const newExp = addMonthsToDate(r.expires_at, months);
+    const { data, error } = await supabase.from("netflix_list").update({ expires_at: newExp }).eq("id", r.id).select().single();
+    if (error) return flash("Xəta: " + error.message);
+    setRows((l) => l.map((x) => (x.id === r.id ? data : x)));
+    flash("+" + months + " ay → " + fmtDate(newExp));
+  }
+
+  async function removeRow(r) {
+    if (!window.confirm("Bu sətir silinsin?\n" + (r.account_email || r.phone))) return;
+    const { error } = await supabase.from("netflix_list").delete().eq("id", r.id);
+    if (error) return flash("Xəta: " + error.message);
+    setRows((l) => l.filter((x) => x.id !== r.id));
+    flash("Silindi");
+  }
+
+  // Toplu yükləmə: CSV sütunları phone,room_name,room_pass,account_email,note,expires_at
+  async function bulkUpload() {
+    const lines = skyParseRows(bulkText);
+    if (!lines.length) return setBulkReport("Məlumat tapılmadı.");
+    // başlıq sətrini keç
+    let start = 0;
+    const head = lines[0].map((c) => c.toLowerCase().trim());
+    if (head.includes("phone") || head.includes("account_email")) start = 1;
+    const toInsert = [];
+    for (let i = start; i < lines.length; i++) {
+      const c = lines[i];
+      const [phone = "", room_name = "", room_pass = "", account_email = "", note = "", expires_at = ""] = c;
+      if (!phone && !account_email) continue;
+      let exp = expires_at.trim();
+      if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) exp = ""; // yalnız YYYY-MM-DD
+      toInsert.push({
+        phone: skyNormPhone(phone), room_name: room_name.trim(), room_pass: room_pass.trim(),
+        account_email: account_email.trim(), note: note.trim(), expires_at: exp || null,
+      });
+    }
+    if (!toInsert.length) return setBulkReport("Düzgün sətir tapılmadı.");
+    setBulkBusy(true);
+    let ok = 0, err = 0;
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const { error } = await supabase.from("netflix_list").insert(toInsert.slice(i, i + 500));
+      if (error) err++; else ok += toInsert.slice(i, i + 500).length;
+    }
+    await loadAll();
+    setBulkBusy(false);
+    setBulkReport("Yükləndi: " + ok + " sətir." + (err ? " Xəta: " + err + " partiya." : ""));
+    setBulkText("");
+  }
+
+  function readFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setBulkText(String(reader.result || ""));
+    reader.readAsText(file);
+  }
+
+  const S = {
+    box: { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 14, marginBottom: 10 },
+    input: { width: "100%", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 11px", fontSize: 14, marginBottom: 6 },
+    row: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+    small: { fontSize: 12, color: "var(--muted)" },
+    chip: (a) => ({ padding: "7px 12px", borderRadius: 999, fontSize: 13, cursor: "pointer", border: "1px solid " + (a ? "var(--gold)" : "var(--line)"), background: a ? "var(--gold)" : "transparent", color: a ? "#fff" : "var(--text)" }),
+    mini: { padding: "6px 9px", borderRadius: 8, fontSize: 12, border: "1px solid var(--line)", background: "var(--bg)", color: "var(--text)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 },
+  };
+
+  return (
+    <div className="sai-root dark">
+      <style>{`
+        .sai-root{--bg:#150708;--surface:#1D0D0E;--surface2:#2A1315;--gold:#FF3B4E;--text:#F5EBEA;--muted:#A98D8B;--line:rgba(255,255,255,0.1);
+          min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;}
+        .sai-root *{box-sizing:border-box;}
+        .sai-wrap{max-width:1000px;margin:0 auto;padding:18px 16px 60px;}
+        .sai-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px;}
+        .sai-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;}
+        .sai-brand img{width:28px;height:28px;border-radius:7px;}
+        .sai-root .ab-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;}
+        .sai-root .ab-btn-gold{background:var(--gold);color:#fff;}
+        .sai-root .ab-btn-ghost{background:transparent;color:var(--text);border-color:var(--line);}
+        .sai-root .ad-status{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;background:#1f6f43;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3);}
+        .sai-login{max-width:380px;margin:60px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 20px;}
+        .sai-login h1{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 16px;}
+        .sai-login input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;margin-bottom:10px;}
+        .nl-rowcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;}
+        .nl-rowcard.soon{border-color:var(--gold);}
+        .nl-rowcard.expired{opacity:.6;}
+        .nl-badge{font-size:12px;font-weight:700;white-space:nowrap;}
+      `}</style>
+      <div className="sai-wrap">
+        <div className="sai-top">
+          <div className="sai-brand"><img src="/skyflix-icon.png" alt="" /> Netflix siyahı</div>
+          {session && <button className="ab-btn ab-btn-ghost" onClick={() => supabase.auth.signOut()}>Çıxış</button>}
+        </div>
+        {msg && <div className="ad-status">{msg}</div>}
+
+        {checking && <p style={{ color: "var(--muted)" }}>Yüklənir...</p>}
+
+        {!checking && !session && (
+          <form className="sai-login" onSubmit={login}>
+            <h1>Giriş</h1>
+            {error && <p style={{ color: "var(--gold)", fontSize: 14, marginTop: 0 }}>{error}</p>}
+            <input type="email" placeholder="Admin mail" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input type="password" placeholder="Şifrə" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button className="ab-btn ab-btn-gold" style={{ width: "100%" }} type="submit">Daxil ol</button>
+          </form>
+        )}
+
+        {!checking && session && session.user.email !== ADMIN_EMAIL && (
+          <div className="sai-login"><h1>İcazə yoxdur</h1><p style={{ color: "var(--muted)" }}>Yalnız admin hesabı ilə girmək olar.</p></div>
+        )}
+
+        {!checking && session && session.user.email === ADMIN_EMAIL && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 14 }}>
+              {[["Hamısı", stats.total], ["Aktiv", stats.active], ["3 günə bitən", stats.soon], ["Vaxtı bitən", stats.expired]].map(([l, v]) => (
+                <div key={l} style={S.box}><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700 }}>{loading ? "…" : v}</div><div style={S.small}>{l}</div></div>
+              ))}
+            </div>
+
+            <div style={{ ...S.row, marginBottom: 12 }}>
+              {[["list", "Siyahı"], ["add", "Əlavə et"], ["bulk", "Toplu yüklə"]].map(([k, l]) => (
+                <button key={k} style={S.chip(tab === k)} onClick={() => setTab(k)}>{l}</button>
+              ))}
+            </div>
+
+            {loadError && <div style={{ ...S.box, color: "var(--gold)" }}>{loadError}</div>}
+
+            {tab === "add" && (
+              <div style={S.box}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Yeni sətir</div>
+                <input style={S.input} placeholder="Nömrə" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <div style={S.row}>
+                  <input style={{ ...S.input, flex: 1 }} placeholder="Otaq adı" value={form.room_name} onChange={(e) => setForm({ ...form, room_name: e.target.value })} />
+                  <input style={{ ...S.input, width: 120 }} placeholder="Otaq şifrəsi" value={form.room_pass} onChange={(e) => setForm({ ...form, room_pass: e.target.value })} />
+                </div>
+                <input style={S.input} placeholder="Netflix mail" autoCapitalize="none" value={form.account_email} onChange={(e) => setForm({ ...form, account_email: e.target.value })} />
+                <div style={S.row}>
+                  <input style={{ ...S.input, flex: 1 }} placeholder="Qeyd (məs. ortaq)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                  <input style={{ ...S.input, width: 170 }} type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+                </div>
+                <button className="ab-btn ab-btn-gold" onClick={saveNew}>Əlavə et</button>
+              </div>
+            )}
+
+            {tab === "bulk" && (
+              <div style={S.box}>
+                <div style={{ fontWeight: 600 }}>Toplu yüklə (CSV)</div>
+                <p style={S.small}>Sütunlar: <b>phone, room_name, room_pass, account_email, note, expires_at</b> (tarix: YYYY-MM-DD). Hazır CSV faylını seçin və ya mətni yapışdırın.</p>
+                <div style={{ ...S.row, margin: "6px 0" }}><input type="file" accept=".csv,.txt" onChange={(e) => readFile(e.target.files[0])} /></div>
+                <textarea style={{ ...S.input, minHeight: 120, fontFamily: "monospace", fontSize: 12 }} value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="phone,room_name,room_pass,account_email,note,expires_at" />
+                <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkUpload}>{bulkBusy ? "Yüklənir..." : "Yüklə"}</button>
+                {bulkReport && <p style={{ ...S.small, marginTop: 8 }}>{bulkReport}</p>}
+              </div>
+            )}
+
+            {tab === "list" && (
+              <>
+                <input style={{ ...S.input, marginBottom: 12 }} placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
+                {loading && <p style={S.small}>Yüklənir...</p>}
+                {!loading && !filtered.length && <p style={S.small}>Nəticə yoxdur.</p>}
+                <p style={S.small}>{filtered.length} nəticə</p>
+                {filtered.slice(0, showCount).map((r) => {
+                  const dl = daysLeft(r.expires_at);
+                  const cls = dl === null ? "" : dl < 0 ? "expired" : dl <= 3 ? "soon" : "";
+                  const color = dl === null ? "var(--muted)" : dl < 0 ? "#9a9a9a" : dl <= 3 ? "var(--gold)" : "#1f9d55";
+                  const isEdit = edit && edit.id === r.id;
+                  if (isEdit) return (
+                    <div key={r.id} className="nl-rowcard">
+                      <input style={S.input} value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} placeholder="Nömrə" />
+                      <div style={S.row}>
+                        <input style={{ ...S.input, flex: 1 }} value={edit.room_name} onChange={(e) => setEdit({ ...edit, room_name: e.target.value })} placeholder="Otaq adı" />
+                        <input style={{ ...S.input, width: 110 }} value={edit.room_pass} onChange={(e) => setEdit({ ...edit, room_pass: e.target.value })} placeholder="Şifrə" />
+                      </div>
+                      <input style={S.input} value={edit.account_email} onChange={(e) => setEdit({ ...edit, account_email: e.target.value })} placeholder="Mail" autoCapitalize="none" />
+                      <div style={S.row}>
+                        <input style={{ ...S.input, flex: 1 }} value={edit.note || ""} onChange={(e) => setEdit({ ...edit, note: e.target.value })} placeholder="Qeyd" />
+                        <input style={{ ...S.input, width: 160 }} type="date" value={edit.expires_at || ""} onChange={(e) => setEdit({ ...edit, expires_at: e.target.value })} />
+                      </div>
+                      <div style={S.row}>
+                        <button className="ab-btn ab-btn-gold" onClick={saveEdit}>Yadda saxla</button>
+                        <button style={S.mini} onClick={() => setEdit(null)}>Ləğv</button>
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <div key={r.id} className={"nl-rowcard " + cls}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700 }}>+{r.phone || "—"} {r.note && <span style={{ ...S.small, fontWeight: 400 }}>· {r.note}</span>}</div>
+                          <div style={S.small}>{r.account_email || "mail yoxdur"}</div>
+                          <div style={S.small}>Otaq: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="nl-badge" style={{ color }}>{dl === null ? "tarixsiz" : dl < 0 ? "Bitib" : dl + " gün"}</div>
+                          <div style={S.small}>{fmtDate(r.expires_at)}</div>
+                        </div>
+                      </div>
+                      <div style={{ ...S.row, marginTop: 8 }}>
+                        <button style={S.mini} onClick={() => extend(r, 1)}>+1 ay</button>
+                        <button style={S.mini} onClick={() => { const n = parseInt(window.prompt("Neçə ay?", "1") || "", 10); if (n > 0) extend(r, n); }}>+ ay…</button>
+                        <button style={S.mini} onClick={() => setEdit({ ...r, expires_at: r.expires_at || "" })}>Redaktə</button>
+                        <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => removeRow(r)}>Sil</button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filtered.length > showCount && <button className="ab-btn ab-btn-ghost" onClick={() => setShowCount((c) => c + 60)}>Daha çox ({filtered.length - showCount})</button>}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // AYRICA İDARƏ SƏHİFƏSİ: skyflixazerbaycan.com/#abunelikidare
 // -----------------------------------------------------
 function SubscriptionManagerPage() {
@@ -7410,6 +7749,7 @@ function MainApp() {
 function getSharedSlug() {
   const h = window.location.hash.replace("#", "");
   if (h === "abunelikidare" || window.location.pathname.replace(/\/+$/, "") === "/abunelikidare") return "__manager__";
+  if (h === "siyahi" || window.location.pathname.replace(/\/+$/, "") === "/siyahi") return "__netflixlist__";
   return h.startsWith("h-") ? h.slice(2) : null;
 }
 
@@ -7421,6 +7761,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   if (slug === "__manager__") return <SubscriptionManagerPage />;
+  if (slug === "__netflixlist__") return <NetflixListPage />;
   if (slug) return <SharedAccountPage key={slug} slug={slug} />;
   return <MainApp />;
 }
