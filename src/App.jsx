@@ -3837,6 +3837,93 @@ function SharedAccountPage({ slug }) {
 
 // -----------------------------------------------------
 // -----------------------------------------------------
+// MÜŞTƏRİ: skyflixazerbaycan.com/#artir — nömrə + kod ilə vaxt uzatma
+// -----------------------------------------------------
+function ListExtendPage() {
+  useGoogleFonts();
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    document.title = "Abunəliyi uzat — SkyFlix";
+    const meta = document.createElement("meta");
+    meta.name = "robots"; meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    return () => document.head.removeChild(meta);
+  }, []);
+
+  function fmt(d) {
+    if (!d) return "";
+    const x = new Date(d); const p = (n) => String(n).padStart(2, "0");
+    return p(x.getDate()) + "." + p(x.getMonth() + 1) + "." + x.getFullYear();
+  }
+
+  async function submit() {
+    setError("");
+    if (skyNormPhone(phone).length < 9) return setError("WhatsApp nömrənizi tam yazın.");
+    if (code.trim().length < 4) return setError("Kodu yazın.");
+    setBusy(true);
+    const { data, error: err } = await supabase.rpc("redeem_list_code", { p_phone: phone, p_code: code });
+    setBusy(false);
+    if (err) return setError("Bağlantı xətası. Yenidən yoxlayın.");
+    const st = data?.status;
+    if (st === "ok") { setResult(data); return; }
+    const map = {
+      badcode: "Kod səhvdir.",
+      used: "Bu kod artıq istifadə olunub.",
+      expired: "Kodun vaxtı bitib. Yeni kod üçün bizə yazın.",
+      wrongphone: "Bu kod bu nömrə üçün deyil. Düzgün nömrəni yazın.",
+      notfound: "Hesab tapılmadı. Bizə yazın.",
+    };
+    setError(map[st] || "Uzatma alınmadı. Yenidən cəhd edin.");
+  }
+
+  return (
+    <div className="sa-root">
+      <style>{`
+        .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
+        .sa-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;margin-bottom:34px;color:#F5EBEA;text-decoration:none;}
+        .sa-brand img{width:28px;height:28px;border-radius:7px;}
+        .sa-card{width:100%;max-width:400px;background:#1D0D0E;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:26px 22px;}
+        .sa-title{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.2;margin:0 0 6px;}
+        .sa-sub{color:#A98D8B;font-size:14px;line-height:1.5;margin:0 0 22px;}
+        .sa-label{display:block;font-size:13px;color:#A98D8B;margin:0 0 6px;}
+        .sa-input{width:100%;background:#150708;border:1px solid rgba(255,255,255,0.14);color:#F5EBEA;border-radius:12px;padding:13px 14px;font-size:16px;margin-bottom:14px;outline:none;}
+        .sa-input:focus{border-color:#FF3B4E;}
+        .sa-btn{width:100%;border:0;border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;background:#E1122A;color:#fff;}
+        .sa-btn:disabled{opacity:.6;}
+        .sa-error{background:rgba(225,18,42,0.12);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:12px;padding:11px 13px;font-size:14px;margin-bottom:14px;line-height:1.45;}
+        .sa-ok-icon{width:54px;height:54px;border-radius:50%;background:rgba(31,157,85,0.15);color:#1f9d55;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+      `}</style>
+      <a className="sa-brand" href="https://skyflixazerbaycan.com"><img src="/skyflix-icon.png" alt="" /> SkyFlix Azerbaycan</a>
+      <div className="sa-card">
+        {!result ? (
+          <>
+            <h1 className="sa-title">Abunəliyi uzat</h1>
+            <p className="sa-sub">Ödənişdən sonra sizə göndərilən kodu və WhatsApp nömrənizi yazın.</p>
+            {error && <div className="sa-error">{error}</div>}
+            <label className="sa-label">WhatsApp nömrəsi</label>
+            <input className="sa-input" type="tel" inputMode="tel" placeholder="050 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <label className="sa-label">Kod</label>
+            <input className="sa-input" placeholder="Kodu yazın" autoCapitalize="characters" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && submit()} />
+            <button className="sa-btn" onClick={submit} disabled={busy}>{busy ? "Yoxlanılır..." : "Vaxtı artır"}</button>
+          </>
+        ) : (
+          <>
+            <div className="sa-ok-icon"><CheckCircle2 size={28} /></div>
+            <h1 className="sa-title">Uzadıldı ✓</h1>
+            <p className="sa-sub">Abunəliyiniz {result.months} ay uzadıldı. Yeni bitmə tarixi: <b style={{ color: "#F5EBEA" }}>{fmt(result.new_expires)}</b></p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------
 // AYRICA SİSTEM: skyflixazerbaycan.com/#siyahi — Netflix müştəri siyahısı (yalnız admin)
 // -----------------------------------------------------
 function NetflixListPage() {
@@ -3966,6 +4053,21 @@ function NetflixListPage() {
     if (error) return flash("Xəta: " + error.message);
     setRows((l) => l.map((x) => (x.id === r.id ? data : x)));
     flash("+" + months + " ay → " + fmtDate(newExp));
+  }
+
+  async function makeCode(r, months) {
+    if (!r.phone) return flash("Bu sətirdə nömrə yoxdur.");
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const arr = new Uint8Array(6); crypto.getRandomValues(arr);
+    const code = Array.from(arr, (b) => chars[b % chars.length]).join("");
+    const { error } = await supabase.from("list_codes").insert({
+      code, row_id: r.id, phone: skyNormPhone(r.phone), months,
+    });
+    if (error) return flash("Xəta: " + error.message);
+    const link = "https://skyflixazerbaycan.com/#artir";
+    const txt = "Salam! Netflix abunəliyinizi uzatmaq üçün:\n" + link + "\n\nNömrə: +" + skyNormPhone(r.phone) + "\nKod: " + code + "\n\n(" + months + " ay, kod 24 saat etibarlıdır, bir dəfə işləyir.)";
+    const ok = await skyCopy(txt);
+    flash(ok ? months + " aylıq kod kopyalandı: " + code : "Kod: " + code);
   }
 
   async function removeRow(r) {
@@ -4159,6 +4261,7 @@ function NetflixListPage() {
                       <div style={{ ...S.row, marginTop: 8 }}>
                         <button style={S.mini} onClick={() => extend(r, 1)}>+1 ay</button>
                         <button style={S.mini} onClick={() => { const n = parseInt(window.prompt("Neçə ay?", "1") || "", 10); if (n > 0) extend(r, n); }}>+ ay…</button>
+                        <button style={{ ...S.mini, borderColor: "var(--gold)", color: "var(--gold)" }} onClick={() => { const n = parseInt(window.prompt("Kod neçə ay uzatsın? (1/2/3/6/12)", "1") || "", 10); if (n > 0) makeCode(r, n); }}>Kod yarat</button>
                         <button style={S.mini} onClick={() => setEdit({ ...r, expires_at: r.expires_at || "" })}>Redaktə</button>
                         <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => removeRow(r)}>Sil</button>
                       </div>
@@ -7750,6 +7853,7 @@ function getSharedSlug() {
   const h = window.location.hash.replace("#", "");
   if (h === "abunelikidare" || window.location.pathname.replace(/\/+$/, "") === "/abunelikidare") return "__manager__";
   if (h === "siyahi" || window.location.pathname.replace(/\/+$/, "") === "/siyahi") return "__netflixlist__";
+  if (h === "artir" || window.location.pathname.replace(/\/+$/, "") === "/artir") return "__listextend__";
   return h.startsWith("h-") ? h.slice(2) : null;
 }
 
@@ -7762,6 +7866,7 @@ export default function App() {
   }, []);
   if (slug === "__manager__") return <SubscriptionManagerPage />;
   if (slug === "__netflixlist__") return <NetflixListPage />;
+  if (slug === "__listextend__") return <ListExtendPage />;
   if (slug) return <SharedAccountPage key={slug} slug={slug} />;
   return <MainApp />;
 }
