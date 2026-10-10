@@ -3938,6 +3938,7 @@ function NetflixListPage() {
   const [loadError, setLoadError] = useState("");
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
+  const [dateQ, setDateQ] = useState("");
   const [showCount, setShowCount] = useState(60);
   const [tab, setTab] = useState("list"); // list | add | bulk
   const [sortBy, setSortBy] = useState("exp"); // exp | none
@@ -4002,16 +4003,51 @@ function NetflixListPage() {
     return d.toISOString().slice(0, 10);
   }
 
+  // Tarix sorğusunu oxu: "11 oktyabr" / "oktyabr" / "11.10" / "11.10.2026" / "2026-10-11"
+  function parseDateQuery(raw) {
+    const q = (raw || "").trim().toLowerCase();
+    if (!q) return null;
+    const iso = q.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (iso) return { year: +iso[1], month: +iso[2], day: +iso[3] };
+    const months = { yanvar: 1, fevral: 2, mart: 3, aprel: 4, may: 5, iyun: 6, iyul: 7, avqust: 8, sentyabr: 9, oktyabr: 10, noyabr: 11, dekabr: 12 };
+    let month = null, day = null, year = null;
+    for (const w of q.split(/[^a-zçəğıöşüı]+/i)) {
+      if (w.length >= 3) {
+        for (const name in months) { if (name.startsWith(w) || w.startsWith(name)) { month = months[name]; break; } }
+        if (month) break;
+      }
+    }
+    const nums = (q.match(/\d+/g) || []).map(Number);
+    for (const n of nums) { if (n >= 1900) year = n; }
+    const dm = nums.filter((n) => n < 1900);
+    if (month) {
+      for (const n of dm) { if (n >= 1 && n <= 31) { day = n; break; } }
+    } else if (dm.length >= 2) { day = dm[0]; month = dm[1]; }
+    else if (dm.length === 1) { day = dm[0]; }
+    if (!month && !day && !year) return null;
+    return { year, month, day };
+  }
+  function dateMatches(expISO, f) {
+    if (!expISO) return false;
+    const d = new Date(expISO + "T00:00:00");
+    if (f.year && d.getFullYear() !== f.year) return false;
+    if (f.month && d.getMonth() + 1 !== f.month) return false;
+    if (f.day && d.getDate() !== f.day) return false;
+    return true;
+  }
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = rows;
-    if (q) list = rows.filter((r) =>
+    if (q) list = list.filter((r) =>
       (r.phone || "").toLowerCase().includes(q) ||
       (r.account_email || "").toLowerCase().includes(q) ||
       (r.room_name || "").toLowerCase().includes(q) ||
       (r.note || "").toLowerCase().includes(q));
+    const f = parseDateQuery(dateQ);
+    if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
     return list;
-  }, [rows, search]);
+  }, [rows, search, dateQ]);
 
   const stats = React.useMemo(() => {
     const now = Date.now();
@@ -4218,7 +4254,19 @@ function NetflixListPage() {
 
             {tab === "list" && (
               <>
-                <input style={{ ...S.input, marginBottom: 12 }} placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
+                <input style={{ ...S.input, marginBottom: 8 }} placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
+                <div style={{ ...S.row, marginBottom: 4 }}>
+                  <input style={{ ...S.input, flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
+                  {dateQ && <button style={S.mini} onClick={() => setDateQ("")}>Təmizlə</button>}
+                </div>
+                <p style={{ ...S.small, marginTop: 0, marginBottom: 10 }}>Gün+ay yazsanız (11 oktyabr) həmin gün bitənlər, yalnız ay yazsanız (oktyabr) o ay bitənlər göstərilir.</p>
+                {dateQ && (() => {
+                  const f = parseDateQuery(dateQ);
+                  const mN = ["", "yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
+                  let lbl = "";
+                  if (f) lbl = (f.day ? f.day + " " : "") + (f.month ? mN[f.month] : "") + (f.year ? " " + f.year : "");
+                  return <div style={{ ...S.box, padding: "8px 12px", marginBottom: 8 }}><b>{f ? ("Filtr: " + lbl.trim() + " tarixində bitənlər") : "Tarix anlaşılmadı"}</b> — {filtered.length} nömrə</div>;
+                })()}
                 {loading && <p style={S.small}>Yüklənir...</p>}
                 {!loading && !filtered.length && <p style={S.small}>Nəticə yoxdur.</p>}
                 <p style={S.small}>{filtered.length} nəticə</p>
