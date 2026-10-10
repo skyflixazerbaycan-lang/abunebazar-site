@@ -4122,19 +4122,28 @@ function NetflixListPage() {
     let start = 0;
     const head = lines[0].map((c) => c.toLowerCase().trim());
     if (head.includes("phone") || head.includes("account_email")) start = 1;
+    // Təkrarı atlamaq üçün açar: nömrə | mail | otaq adı
+    const keyOf = (ph, em, rn) => skyNormPhone(ph) + "|" + (em || "").trim().toLowerCase() + "|" + (rn || "").trim().toLowerCase();
+    const existing = new Set(rows.map((r) => keyOf(r.phone, r.account_email, r.room_name)));
+    const seen = new Set();
     const toInsert = [];
+    let dupExisting = 0, dupFile = 0;
     for (let i = start; i < lines.length; i++) {
       const c = lines[i];
       const [phone = "", room_name = "", room_pass = "", account_email = "", note = "", expires_at = ""] = c;
       if (!phone && !account_email) continue;
       let exp = expires_at.trim();
       if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) exp = ""; // yalnız YYYY-MM-DD
+      const k = keyOf(phone, account_email, room_name);
+      if (existing.has(k)) { dupExisting++; continue; } // siyahıda artıq var → atla
+      if (seen.has(k)) { dupFile++; continue; }          // fayl içində təkrar → atla
+      seen.add(k);
       toInsert.push({
         phone: skyNormPhone(phone), room_name: room_name.trim(), room_pass: room_pass.trim(),
         account_email: account_email.trim(), note: note.trim(), expires_at: exp || null,
       });
     }
-    if (!toInsert.length) return setBulkReport("Düzgün sətir tapılmadı.");
+    if (!toInsert.length) return setBulkReport("Yeni sətir yoxdur. (Artıq siyahıda olan: " + dupExisting + ", faylda təkrar: " + dupFile + ")");
     setBulkBusy(true);
     let ok = 0, err = 0;
     for (let i = 0; i < toInsert.length; i += 500) {
@@ -4143,7 +4152,10 @@ function NetflixListPage() {
     }
     await loadAll();
     setBulkBusy(false);
-    setBulkReport("Yükləndi: " + ok + " sətir." + (err ? " Xəta: " + err + " partiya." : ""));
+    setBulkReport("Əlavə olundu: " + ok + " yeni sətir." +
+      (dupExisting ? " Artıq siyahıda olduğu üçün atlandı: " + dupExisting + "." : "") +
+      (dupFile ? " Faylda təkrar atlandı: " + dupFile + "." : "") +
+      (err ? " Xəta: " + err + " partiya." : ""));
     setBulkText("");
   }
 
@@ -4245,6 +4257,7 @@ function NetflixListPage() {
               <div style={S.box}>
                 <div style={{ fontWeight: 600 }}>Toplu yüklə (CSV)</div>
                 <p style={S.small}>Sütunlar: <b>phone, room_name, room_pass, account_email, note, expires_at</b> (tarix: YYYY-MM-DD). Hazır CSV faylını seçin və ya mətni yapışdırın.</p>
+                <p style={{ ...S.small, color: "var(--gold)" }}>Qeyd: artıq siyahıda olan nömrə+mail+otaq sətirləri avtomatik atlanır — təkrar (dublikat) yaranmır, mövcud sətirlər silinmir/dəyişmir.</p>
                 <div style={{ ...S.row, margin: "6px 0" }}><input type="file" accept=".csv,.txt" onChange={(e) => readFile(e.target.files[0])} /></div>
                 <textarea style={{ ...S.input, minHeight: 120, fontFamily: "monospace", fontSize: 12 }} value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="phone,room_name,room_pass,account_email,note,expires_at" />
                 <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkUpload}>{bulkBusy ? "Yüklənir..." : "Yüklə"}</button>
