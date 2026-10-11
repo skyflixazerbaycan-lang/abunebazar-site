@@ -3950,6 +3950,7 @@ function NetflixListPage() {
   const [service, setService] = useState("netflix"); // netflix | spotify | youtube
   const [typeFilter, setTypeFilter] = useState("all"); // all | sexsi | ortaq
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
+  const [multiOnly, setMultiOnly] = useState(false); // çox servisli müştərilər
   const [warnOpen, setWarnOpen] = useState(false);
 
   const SERVICES = {
@@ -3957,7 +3958,8 @@ function NetflixListPage() {
     spotify: { label: "Spotify", color: "#1DB954", grad: "linear-gradient(135deg,#1ED760,#128a3c)", icon: "S" },
     youtube: { label: "YouTube", color: "#FF2742", grad: "linear-gradient(135deg,#FF4D67,#C4001F)", icon: "Y" },
   };
-  const svc = SERVICES[service];
+  const ALL_SVC = { label: "Bütün servislər", color: "#9B6DFF", grad: "linear-gradient(135deg,#B18CFF,#6D4BD8)", icon: "∞" };
+  const svc = service === "all" ? ALL_SVC : SERVICES[service];
 
   useEffect(() => {
     document.title = "SkyFlix — Siyahı";
@@ -4071,12 +4073,26 @@ function NetflixListPage() {
   const TYPE_LABEL = { sexsi: "Şəxsi", ortaq: "Ortaq" };
   const hasTypes = service === "netflix"; // şəxsi/ortaq ayırması yalnız Netflix-də
   const svcCounts = React.useMemo(() => {
-    const c = { netflix: 0, spotify: 0, youtube: 0 };
+    const c = { all: rows.length, netflix: 0, spotify: 0, youtube: 0 };
     rows.forEach((r) => { const s = svcOf(r); if (c[s] !== undefined) c[s]++; });
     return c;
   }, [rows]);
 
-  const serviceRows = React.useMemo(() => rows.filter((r) => svcOf(r) === service), [rows, service]);
+  // Eyni nömrə fərqli servislərdə → çox servisli müştəri
+  const phoneServices = React.useMemo(() => {
+    const m = new Map();
+    rows.forEach((r) => {
+      if (!r.phone) return;
+      if (!m.has(r.phone)) m.set(r.phone, new Set());
+      m.get(r.phone).add(svcOf(r));
+    });
+    return m;
+  }, [rows]);
+  const multiCount = React.useMemo(() => {
+    let n = 0; phoneServices.forEach((s) => { if (s.size >= 2) n++; }); return n;
+  }, [phoneServices]);
+
+  const serviceRows = React.useMemo(() => (service === "all" ? rows : rows.filter((r) => svcOf(r) === service)), [rows, service]);
 
   const typeCounts = React.useMemo(() => {
     const c = { sexsi: 0, ortaq: 0 };
@@ -4087,6 +4103,7 @@ function NetflixListPage() {
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = serviceRows;
+    if (multiOnly) list = list.filter((r) => r.phone && (phoneServices.get(r.phone) || new Set()).size >= 2);
     if (statusFilter !== "all") list = list.filter((r) => {
       const dl = daysLeft(r.expires_at);
       if (statusFilter === "expired") return dl !== null && dl < 0;
@@ -4100,8 +4117,10 @@ function NetflixListPage() {
       (r.note || "").toLowerCase().includes(q));
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
+    // çox servisli rejimdə eyni nömrələr yan-yana olsun
+    if (multiOnly) list = [...list].sort((a, b) => (a.phone || "").localeCompare(b.phone || ""));
     return list;
-  }, [serviceRows, search, dateQ, typeFilter, statusFilter]);
+  }, [serviceRows, search, dateQ, typeFilter, statusFilter, multiOnly, phoneServices]);
 
   const stats = React.useMemo(() => {
     let active = 0, soon = 0, expired = 0;
@@ -4116,8 +4135,8 @@ function NetflixListPage() {
   async function copyAllPhones() {
     const list = filtered.filter((r) => r.phone);
     if (!list.length) return flash("Nömrə yoxdur.");
-    // şəxsi: nömrənin yanında otaq/ad adı; ortaq: otaq adı
-    const line = (r) => "+" + r.phone + (r.room_name ? " — " + r.room_name : "") + (r.room_pass ? " (" + r.room_pass + ")" : "");
+    // hər nömrənin yanında servis adı + otaq/ad adı
+    const line = (r) => "+" + r.phone + " [" + ((SERVICES[svcOf(r)] || ALL_SVC).label) + "]" + (r.room_name ? " — " + r.room_name : "") + (r.room_pass ? " (" + r.room_pass + ")" : "");
     const sx = list.filter((r) => acctType(r) === "sexsi").map(line);
     const or = list.filter((r) => acctType(r) === "ortaq").map(line);
     const parts = [];
@@ -4279,7 +4298,7 @@ function NetflixListPage() {
         .sai-login input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);}
 
         /* service selector */
-        .svc-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+        .svc-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
         .svc-pill{position:relative;overflow:hidden;cursor:pointer;border:1px solid var(--line);border-radius:16px;padding:14px 12px;background:var(--surface);backdrop-filter:blur(10px);transition:transform .2s,border-color .3s,box-shadow .3s;display:flex;align-items:center;gap:11px;}
         .svc-pill:hover{transform:translateY(-2px);}
         .svc-pill .sico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;flex:0 0 auto;font-family:'Space Grotesk',sans-serif;}
@@ -4399,9 +4418,9 @@ function NetflixListPage() {
         {!checking && session && session.user.email === ADMIN_EMAIL && (
           <>
             <div className="svc-bar">
-              {Object.entries(SERVICES).map(([k, s]) => (
+              {[["all", ALL_SVC]].concat(Object.entries(SERVICES)).map(([k, s]) => (
                 <div key={k} className={"svc-pill" + (service === k ? " on" : "")} style={{ "--pc": s.color, "--pg": s.grad }}
-                  onClick={() => { setService(k); setShowCount(60); setEdit(null); setTypeFilter("all"); setStatusFilter("all"); }}>
+                  onClick={() => { setService(k); setShowCount(60); setEdit(null); setTypeFilter("all"); setStatusFilter("all"); setMultiOnly(false); }}>
                   <span className="sico" style={{ background: s.grad }}>{s.icon}</span>
                   <div><div className="snm">{s.label}</div><div className="scnt">{svcCounts[k]} nömrə</div></div>
                 </div>
@@ -4468,6 +4487,14 @@ function NetflixListPage() {
                     <button className={"tchip" + (typeFilter === "ortaq" ? " on" : "")} onClick={() => { setTypeFilter("ortaq"); setShowCount(60); }}>Ortaq ({typeCounts.ortaq})</button>
                   </div>
                 )}
+                {service === "all" && (
+                  <div className="type-chips">
+                    <button className={"tchip" + (multiOnly ? " on" : "")} style={multiOnly ? { background: "#9B6DFF", borderColor: "transparent", color: "#fff" } : {}} onClick={() => { setMultiOnly((v) => !v); setShowCount(60); }}>
+                      ⇄ Çox servisli müştərilər ({multiCount})
+                    </button>
+                    {multiOnly && <span className="nl-small" style={{ alignSelf: "center" }}>Eyni nömrə ilə birdən çox servisdə olanlar</span>}
+                  </div>
+                )}
                 <input className="nl-input" placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
                 <div className="nl-row" style={{ marginBottom: 4 }}>
                   <input className="nl-input" style={{ flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
@@ -4521,7 +4548,9 @@ function NetflixListPage() {
                       <div key={r.id} className={"nl-rowcard " + cls} style={delay}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 700 }}>+{r.phone || "—"}<span className={"tbadge " + acctType(r)}>{TYPE_LABEL[acctType(r)]}</span>{r.note && <span className="nl-small" style={{ fontWeight: 400 }}> · {r.note}</span>}</div>
+                            <div style={{ fontWeight: 700 }}>+{r.phone || "—"}
+                              {service === "all" && (() => { const s = SERVICES[svcOf(r)] || ALL_SVC; return <span className="tbadge" style={{ background: "color-mix(in srgb," + s.color + " 18%,transparent)", color: s.color, border: "1px solid color-mix(in srgb," + s.color + " 45%,transparent)" }}>{s.label}</span>; })()}
+                              <span className={"tbadge " + acctType(r)}>{TYPE_LABEL[acctType(r)]}</span>{r.note && <span className="nl-small" style={{ fontWeight: 400 }}> · {r.note}</span>}</div>
                             <div className="nl-small">{r.account_email || "mail yoxdur"}</div>
                             <div className="nl-small">{acctType(r) === "sexsi" ? "Ad" : "Otaq"}: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
                           </div>
