@@ -3965,6 +3965,9 @@ function NetflixListPage() {
   const [typeFilter, setTypeFilter] = useState("all"); // all | sexsi | ortaq
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
   const [warnOpen, setWarnOpen] = useState(false);
+  const [monthPick, setMonthPick] = useState(null); // {mode:"extend"|"code", row}
+  const [codeOut, setCodeOut] = useState(null); // {code, text, phone, months}
+  const [codeBusy, setCodeBusy] = useState(false);
 
   const SERVICES = {
     netflix: { label: "Netflix", color: "#E50914", grad: "linear-gradient(135deg,#FF2436,#B20710)", icon: "N" },
@@ -4219,18 +4222,21 @@ function NetflixListPage() {
 
   async function makeCode(r, months) {
     if (!r.phone) return flash("Bu sətirdə nömrə yoxdur.");
+    setCodeBusy(true);
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const arr = new Uint8Array(6); crypto.getRandomValues(arr);
     const code = Array.from(arr, (b) => chars[b % chars.length]).join("");
     const svcLabel = (SERVICES[svcOf(r)] || SERVICES.netflix).label;
-    const { error } = await supabase.from("list_codes").insert({
-      code, row_id: r.id, phone: skyNormPhone(r.phone), months, service: svcOf(r),
-    });
-    if (error) return flash("Xəta: " + error.message);
+    // əvvəl service ilə, xəta olsa (sütun yoxdursa) servicesiz yenidən cəhd et
+    let { error } = await supabase.from("list_codes").insert({ code, row_id: r.id, phone: skyNormPhone(r.phone), months, service: svcOf(r) });
+    if (error && /service/i.test(error.message || "")) {
+      ({ error } = await supabase.from("list_codes").insert({ code, row_id: r.id, phone: skyNormPhone(r.phone), months }));
+    }
+    setCodeBusy(false);
+    if (error) { flash("Xəta: " + error.message); return; }
     const link = "https://skyflixazerbaycan.com/#artir";
     const txt = "Salam! " + svcLabel + " abunəliyinizi uzatmaq üçün:\n" + link + "\n\nNömrə: +" + skyNormPhone(r.phone) + "\nKod: " + code + "\n\n(" + months + " ay, kod 24 saat etibarlıdır, bir dəfə işləyir.)";
-    const ok = await skyCopy(txt);
-    flash(ok ? months + " aylıq kod kopyalandı: " + code : "Kod: " + code);
+    setCodeOut({ code, text: txt, phone: skyNormPhone(r.phone), months });
   }
 
   async function removeRow(r) {
@@ -4408,6 +4414,17 @@ function NetflixListPage() {
         @keyframes wnPop{from{opacity:0;transform:translateY(24px) scale(.92);}to{opacity:1;transform:none;}}
         @keyframes warnPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,60,60,.45);}50%{box-shadow:0 0 0 14px rgba(255,60,60,0);}}
 
+        /* month-picker / code modal */
+        .pk-overlay{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:18px;background:rgba(5,3,4,.7);backdrop-filter:blur(8px);animation:fadeIn .2s both;}
+        .pk-card{max-width:420px;width:100%;background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--line);border-radius:20px;padding:22px 20px;box-shadow:0 30px 80px -24px rgba(0,0,0,.75);animation:wnPop .35s cubic-bezier(.2,1.25,.4,1) both;}
+        .pk-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin:0 0 4px;}
+        .pk-sub{font-size:13px;color:var(--muted);margin:0 0 16px;word-break:break-all;}
+        .pk-months{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px;}
+        .pk-mbtn{padding:14px 8px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit;}
+        .pk-mbtn:hover{background:var(--accent);border-color:transparent;color:#fff;transform:translateY(-2px);}
+        .pk-code{font-family:'Space Grotesk',monospace;font-size:34px;font-weight:800;letter-spacing:4px;text-align:center;color:var(--accent);background:rgba(0,0,0,.25);border:1px dashed color-mix(in srgb,var(--accent) 50%,transparent);border-radius:14px;padding:16px;margin:4px 0 14px;}
+        .pk-x{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;float:right;line-height:1;padding:0;margin:-6px -4px 0 0;}
+
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
         @keyframes popIn{from{opacity:0;transform:translate(-50%,10px) scale(.95);}to{opacity:1;transform:translate(-50%,0) scale(1);}}
         @keyframes glow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);}50%{box-shadow:0 0 22px -2px color-mix(in srgb,var(--accent) 55%,transparent);}}
@@ -4419,6 +4436,47 @@ function NetflixListPage() {
           {session && <button className="ab-btn ab-btn-ghost" onClick={() => supabase.auth.signOut()}>Çıxış</button>}
         </div>
         {msg && <div className="ad-status">{msg}</div>}
+
+        {monthPick && !codeOut && (
+          <div className="pk-overlay" onClick={(e) => { if (e.target === e.currentTarget) setMonthPick(null); }}>
+            <div className="pk-card">
+              <button className="pk-x" onClick={() => setMonthPick(null)}>×</button>
+              <h3 className="pk-title">{monthPick.mode === "code" ? "Kod yarat" : "Vaxtı artır"}</h3>
+              <p className="pk-sub">+{monthPick.row.phone}{monthPick.row.room_name ? " · " + monthPick.row.room_name : ""}<br />Neçə aya?</p>
+              <div className="pk-months">
+                {[1, 2, 3, 6, 12].map((m) => (
+                  <button key={m} className="pk-mbtn" disabled={codeBusy} onClick={async () => {
+                    const row = monthPick.row, mode = monthPick.mode;
+                    if (mode === "extend") { setMonthPick(null); await extend(row, m); }
+                    else { await makeCode(row, m); }
+                  }}>{m === 12 ? "1 il" : m + " ay"}</button>
+                ))}
+                <button className="pk-mbtn" disabled={codeBusy} onClick={async () => {
+                  const v = parseInt(window.prompt("Neçə ay?", "1") || "", 10);
+                  if (v > 0) { const row = monthPick.row, mode = monthPick.mode; if (mode === "extend") { setMonthPick(null); await extend(row, v); } else { await makeCode(row, v); } }
+                }}>Başqa…</button>
+              </div>
+              {codeBusy && <p className="nl-small" style={{ textAlign: "center" }}>Yaradılır...</p>}
+            </div>
+          </div>
+        )}
+
+        {codeOut && (
+          <div className="pk-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setCodeOut(null); setMonthPick(null); } }}>
+            <div className="pk-card">
+              <button className="pk-x" onClick={() => { setCodeOut(null); setMonthPick(null); }}>×</button>
+              <h3 className="pk-title">Kod hazırdır ✓</h3>
+              <p className="pk-sub">+{codeOut.phone} · {codeOut.months === 12 ? "1 il" : codeOut.months + " ay"} · 24 saat etibarlı, bir dəfəlik</p>
+              <div className="pk-code">{codeOut.code}</div>
+              <div className="nl-row" style={{ flexDirection: "column", gap: 8 }}>
+                <button className="ab-btn ab-btn-gold" style={{ width: "100%" }} onClick={async () => { const ok = await skyCopy(codeOut.text); flash(ok ? "WhatsApp mətni kopyalandı ✓" : "Kopyalanmadı"); }}>WhatsApp mətnini kopyala</button>
+                <a className="ab-btn ab-btn-gold" style={{ width: "100%", textDecoration: "none", background: "#25D366" }} href={"https://wa.me/" + codeOut.phone + "?text=" + encodeURIComponent(codeOut.text)} target="_blank" rel="noreferrer">WhatsApp-da aç</a>
+                <button className="ab-btn ab-btn-ghost" style={{ width: "100%" }} onClick={async () => { const ok = await skyCopy(codeOut.code); flash(ok ? "Kod kopyalandı: " + codeOut.code : codeOut.code); }}>Yalnız kodu kopyala</button>
+                <button className="nl-mini" style={{ alignSelf: "center" }} onClick={() => { setCodeOut(null); setMonthPick(null); }}>Bağla</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {warnOpen && session && session.user.email === ADMIN_EMAIL && (
           <div className="wn-overlay" onClick={(e) => { if (e.target === e.currentTarget) {} }}>
@@ -4604,8 +4662,8 @@ function NetflixListPage() {
                         </div>
                         <div className="nl-row" style={{ marginTop: 10 }}>
                           <button className="nl-mini" onClick={() => extend(r, 1)}>+1 ay</button>
-                          <button className="nl-mini" onClick={() => { const n = parseInt(window.prompt("Neçə ay?", "1") || "", 10); if (n > 0) extend(r, n); }}>+ ay…</button>
-                          <button className="nl-mini accent" onClick={() => { const n = parseInt(window.prompt("Kod neçə ay uzatsın? (1/2/3/6/12)", "1") || "", 10); if (n > 0) makeCode(r, n); }}>Kod yarat</button>
+                          <button className="nl-mini" onClick={() => setMonthPick({ mode: "extend", row: r })}>+ ay…</button>
+                          <button className="nl-mini accent" onClick={() => setMonthPick({ mode: "code", row: r })}>Kod yarat</button>
                           <button className="nl-mini" onClick={() => setEdit({ ...r, expires_at: r.expires_at || "" })}>Redaktə</button>
                           <button className="nl-mini" style={{ color: "var(--accent)" }} onClick={() => removeRow(r)}>Sil</button>
                         </div>
