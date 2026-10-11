@@ -3948,6 +3948,7 @@ function NetflixListPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkReport, setBulkReport] = useState("");
   const [service, setService] = useState("netflix"); // netflix | spotify | youtube
+  const [typeFilter, setTypeFilter] = useState("all"); // all | sexsi | ortaq
 
   const SERVICES = {
     netflix: { label: "Netflix", color: "#E50914", grad: "linear-gradient(135deg,#FF2436,#B20710)", icon: "N" },
@@ -4045,6 +4046,16 @@ function NetflixListPage() {
   }
 
   const svcOf = (r) => r.service || "netflix";
+  // Hesab növü: ad yazılıbsa "şəxsi"; "Otaq..." və ya "ortaq" qeydi varsa "ortaq"
+  function acctType(r) {
+    const rn = (r.room_name || "").toLowerCase().trim();
+    const note = (r.note || "").toLowerCase();
+    if (note.includes("ortaq")) return "ortaq";
+    if (!rn) return "ortaq";
+    if (/^(otaq|otaqq|otaaq|otag|oyaq|oraq|otq|ota|o)\s*\.?\s*\d+/.test(rn)) return "ortaq";
+    return "sexsi";
+  }
+  const TYPE_LABEL = { sexsi: "Şəxsi", ortaq: "Ortaq" };
   const svcCounts = React.useMemo(() => {
     const c = { netflix: 0, spotify: 0, youtube: 0 };
     rows.forEach((r) => { const s = svcOf(r); if (c[s] !== undefined) c[s]++; });
@@ -4053,9 +4064,16 @@ function NetflixListPage() {
 
   const serviceRows = React.useMemo(() => rows.filter((r) => svcOf(r) === service), [rows, service]);
 
+  const typeCounts = React.useMemo(() => {
+    const c = { sexsi: 0, ortaq: 0 };
+    serviceRows.forEach((r) => { c[acctType(r)]++; });
+    return c;
+  }, [serviceRows]);
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = serviceRows;
+    if (typeFilter !== "all") list = list.filter((r) => acctType(r) === typeFilter);
     if (q) list = list.filter((r) =>
       (r.phone || "").toLowerCase().includes(q) ||
       (r.account_email || "").toLowerCase().includes(q) ||
@@ -4064,7 +4082,7 @@ function NetflixListPage() {
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
     return list;
-  }, [serviceRows, search, dateQ]);
+  }, [serviceRows, search, dateQ, typeFilter]);
 
   const stats = React.useMemo(() => {
     let active = 0, soon = 0, expired = 0;
@@ -4079,9 +4097,14 @@ function NetflixListPage() {
   async function copyAllPhones() {
     const list = filtered.filter((r) => r.phone);
     if (!list.length) return flash("Nömrə yoxdur.");
-    const txt = list.map((r) => "+" + r.phone).join("\n");
+    const sx = list.filter((r) => acctType(r) === "sexsi").map((r) => "+" + r.phone);
+    const or = list.filter((r) => acctType(r) === "ortaq").map((r) => "+" + r.phone);
+    const parts = [];
+    if (sx.length) parts.push("ŞƏXSİ (" + sx.length + "):\n" + sx.join("\n"));
+    if (or.length) parts.push("ORTAQ (" + or.length + "):\n" + or.join("\n"));
+    const txt = parts.join("\n\n");
     const ok = await skyCopy(txt);
-    flash(ok ? list.length + " nömrə kopyalandı ✓" : "Kopyalanmadı");
+    flash(ok ? list.length + " nömrə kopyalandı (şəxsi " + sx.length + ", ortaq " + or.length + ") ✓" : "Kopyalanmadı");
   }
 
   async function saveNew() {
@@ -4271,6 +4294,13 @@ function NetflixListPage() {
         .nl-rowcard.expired{opacity:.5;}
         .nl-badge{font-size:12px;font-weight:700;white-space:nowrap;}
         .nl-copybar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:12px;backdrop-filter:blur(8px);}
+        .type-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+        .tchip{padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);transition:.18s;}
+        .tchip:hover{background:rgba(255,255,255,.09);}
+        .tchip.on{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 6px 16px -6px color-mix(in srgb,var(--accent) 70%,transparent);}
+        .tbadge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;}
+        .tbadge.sexsi{background:rgba(70,130,255,.16);color:#7FA8FF;border:1px solid rgba(70,130,255,.35);}
+        .tbadge.ortaq{background:rgba(255,180,40,.15);color:#F2B33A;border:1px solid rgba(255,180,40,.35);}
 
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
         @keyframes popIn{from{opacity:0;transform:translate(-50%,10px) scale(.95);}to{opacity:1;transform:translate(-50%,0) scale(1);}}
@@ -4357,6 +4387,11 @@ function NetflixListPage() {
 
             {tab === "list" && (
               <>
+                <div className="type-chips">
+                  <button className={"tchip" + (typeFilter === "all" ? " on" : "")} onClick={() => { setTypeFilter("all"); setShowCount(60); }}>Hamısı ({typeCounts.sexsi + typeCounts.ortaq})</button>
+                  <button className={"tchip" + (typeFilter === "sexsi" ? " on" : "")} onClick={() => { setTypeFilter("sexsi"); setShowCount(60); }}>Şəxsi ({typeCounts.sexsi})</button>
+                  <button className={"tchip" + (typeFilter === "ortaq" ? " on" : "")} onClick={() => { setTypeFilter("ortaq"); setShowCount(60); }}>Ortaq ({typeCounts.ortaq})</button>
+                </div>
                 <input className="nl-input" placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
                 <div className="nl-row" style={{ marginBottom: 4 }}>
                   <input className="nl-input" style={{ flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
@@ -4410,9 +4445,9 @@ function NetflixListPage() {
                       <div key={r.id} className={"nl-rowcard " + cls} style={delay}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 700 }}>+{r.phone || "—"} {r.note && <span className="nl-small" style={{ fontWeight: 400 }}>· {r.note}</span>}</div>
+                            <div style={{ fontWeight: 700 }}>+{r.phone || "—"}<span className={"tbadge " + acctType(r)}>{TYPE_LABEL[acctType(r)]}</span>{r.note && <span className="nl-small" style={{ fontWeight: 400 }}> · {r.note}</span>}</div>
                             <div className="nl-small">{r.account_email || "mail yoxdur"}</div>
-                            <div className="nl-small">Otaq: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
+                            <div className="nl-small">{acctType(r) === "sexsi" ? "Ad" : "Otaq"}: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
                           </div>
                           <div style={{ textAlign: "right" }}>
                             <div className="nl-badge" style={{ color }}>{dl === null ? "tarixsiz" : dl < 0 ? "Bitib" : dl + " gün"}</div>
