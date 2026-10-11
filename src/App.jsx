@@ -3968,6 +3968,9 @@ function NetflixListPage() {
   const [monthPick, setMonthPick] = useState(null); // {mode:"extend"|"code", row}
   const [codeOut, setCodeOut] = useState(null); // {code, text, phone, months}
   const [codeBusy, setCodeBusy] = useState(false);
+  const [histFilter, setHistFilter] = useState("all"); // all | used | pending
+  const [history, setHistory] = useState([]);
+  const [histLoading, setHistLoading] = useState(false);
 
   const SERVICES = {
     netflix: { label: "Netflix", color: "#E50914", grad: "linear-gradient(135deg,#FF2436,#B20710)", icon: "N" },
@@ -4005,6 +4008,21 @@ function NetflixListPage() {
 
   function flash(t) { setMsg(t); setTimeout(() => setMsg(""), 2600); }
 
+  async function loadHistory() {
+    setHistLoading(true);
+    try {
+      let all = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from("list_codes").select("*").order("created_at", { ascending: false }).range(from, from + 999);
+        if (error) throw error;
+        all = all.concat(data || []);
+        if (!data || data.length < 1000 || all.length >= 3000) break;
+      }
+      setHistory(all);
+    } catch (e) { flash("Tarixçə yüklənmədi: " + (e.message || e)); }
+    setHistLoading(false);
+  }
+
   async function login(e) {
     e.preventDefault(); setError("");
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
@@ -4030,6 +4048,12 @@ function NetflixListPage() {
       setLoadError("Yüklənmədi: " + (e.message || e) + " — SQL faylını işə salmısınız?");
     }
     setLoading(false);
+  }
+
+  function fmtDT(d) {
+    if (!d) return "—";
+    const x = new Date(d); const p = (n) => String(n).padStart(2, "0");
+    return p(x.getDate()) + "." + p(x.getMonth() + 1) + "." + x.getFullYear() + " " + p(x.getHours()) + ":" + p(x.getMinutes());
   }
 
   function daysLeft(d) {
@@ -4235,7 +4259,13 @@ function NetflixListPage() {
     setCodeBusy(false);
     if (error) { flash("Xəta: " + error.message); return; }
     const link = "https://skyflixazerbaycan.com/#artir";
-    const txt = "Salam! " + svcLabel + " abunəliyinizi uzatmaq üçün:\n" + link + "\n\nNömrə: +" + skyNormPhone(r.phone) + "\nKod: " + code + "\n\n(" + months + " ay, kod 24 saat etibarlıdır, bir dəfə işləyir.)";
+    const txt =
+      "Salam! " + svcLabel + " abunəliyinizin qeydiyyata düşməsi üçün aşağıdakı linkə daxil olub nömrənizi və sizə verilən PIN kodu qeyd edin:\n\n" +
+      link + "\n\n" +
+      "📱 Nömrə: +" + skyNormPhone(r.phone) + "\n" +
+      "🔑 PIN kod: " + code + "\n\n" +
+      "⚠️ Bunu etməsəniz abunəliyiniz yenilənməyəcək.\n" +
+      "(" + (months === 12 ? "1 il" : months + " ay") + " · kod 24 saat etibarlıdır · yalnız bir dəfə işləyir)";
     setCodeOut({ code, text: txt, phone: skyNormPhone(r.phone), months });
   }
 
@@ -4554,8 +4584,8 @@ function NetflixListPage() {
             </div>
 
             <div className="nl-tabs">
-              {[["list", "Siyahı"], ["add", "Əlavə et"], ["bulk", "Toplu yüklə"]].map(([k, l]) => (
-                <button key={k} className={"nl-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>
+              {[["list", "Siyahı"], ["add", "Əlavə et"], ["bulk", "Toplu yüklə"], ["history", "Tarixçə"]].map(([k, l]) => (
+                <button key={k} className={"nl-tab" + (tab === k ? " on" : "")} onClick={() => { setTab(k); if (k === "history") loadHistory(); }}>{l}</button>
               ))}
             </div>
 
@@ -4692,6 +4722,49 @@ function NetflixListPage() {
                   })}
                 </div>
                 {filtered.length > showCount && <button className="ab-btn ab-btn-ghost" style={{ marginTop: 12 }} onClick={() => setShowCount((c) => c + 60)}>Daha çox ({filtered.length - showCount})</button>}
+              </>
+            )}
+
+            {tab === "history" && (
+              <>
+                <div className="nl-stats">
+                  <div className="nl-stat"><span className="bar" /><div className="v">{history.length}</div><div className="l">Ümumi kod</div></div>
+                  <div className="nl-stat"><span className="bar" style={{ background: "#2ec27a" }} /><div className="v">{history.filter((c) => c.used).length}</div><div className="l">Uzadıldı</div></div>
+                  <div className="nl-stat"><span className="bar" style={{ background: "#F2B33A" }} /><div className="v">{history.filter((c) => !c.used).length}</div><div className="l">Uzatmayıb</div></div>
+                </div>
+                <div className="st-chips">
+                  <button className={"stchip all" + (histFilter === "all" ? " on" : "")} onClick={() => setHistFilter("all")}>Hamısı ({history.length})</button>
+                  <button className={"stchip active" + (histFilter === "used" ? " on" : "")} onClick={() => setHistFilter("used")}><span className="dot" style={{ background: "#1f9d55" }} />Uzadılanlar ({history.filter((c) => c.used).length})</button>
+                  <button className={"stchip" + (histFilter === "pending" ? " on" : "")} style={histFilter === "pending" ? { background: "#F2B33A", borderColor: "transparent", color: "#1a1210" } : {}} onClick={() => setHistFilter("pending")}>Uzatmayanlar ({history.filter((c) => !c.used).length})</button>
+                  <button className="nl-mini" onClick={loadHistory}>↻ Yenilə</button>
+                </div>
+                <p className="nl-small" style={{ marginTop: 0, marginBottom: 10 }}>Kim kod alıb vaxtını uzadıb / uzatmayıb buradan izlənir.</p>
+                {histLoading && <p className="nl-small">Yüklənir...</p>}
+                {!histLoading && !history.length && <p className="nl-small">Hələ kod yaradılmayıb. (list_codes SQL işə salınıbmı?)</p>}
+                <div className="nl-list" key={histFilter}>
+                  {history.filter((c) => histFilter === "all" ? true : histFilter === "used" ? c.used : !c.used).slice(0, 300).map((c, ix) => {
+                    const svcC = SERVICES[c.service || "netflix"] || ALL_SVC;
+                    const expired = !c.used && c.expires_at && new Date(c.expires_at) < new Date();
+                    const stColor = c.used ? "#2ec27a" : expired ? "#9a9a9a" : "#F2B33A";
+                    return (
+                      <div key={c.id} className="nl-rowcard" style={{ borderLeftColor: stColor, animationDelay: Math.min(ix, 25) * 0.02 + "s" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700 }}>+{c.phone}
+                              <span className="tbadge" style={{ background: "color-mix(in srgb," + svcC.color + " 18%,transparent)", color: svcC.color, border: "1px solid color-mix(in srgb," + svcC.color + " 45%,transparent)" }}>{svcC.label}</span>
+                            </div>
+                            <div className="nl-small">Kod: {c.code} · {c.months === 12 ? "1 il" : c.months + " ay"}</div>
+                            <div className="nl-small">Yaradıldı: {fmtDT(c.created_at)}</div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div className="nl-badge" style={{ color: stColor }}>{c.used ? "Uzadıldı ✓" : expired ? "İşlənmədi" : "Gözləyir"}</div>
+                            <div className="nl-small">{c.used ? fmtDT(c.used_at) : ""}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </>
             )}
           </>
