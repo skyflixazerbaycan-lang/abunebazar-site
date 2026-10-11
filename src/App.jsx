@@ -4012,12 +4012,16 @@ function NetflixListPage() {
     setLoading(true); setLoadError("");
     try {
       let all = [];
+      // Səhifələmə UNİKAL id üzrə — expires_at unikal olmadığı üçün say dəyişirdi (gah 270 gah 269)
       for (let from = 0; ; from += 1000) {
-        const { data, error } = await supabase.from("netflix_list").select("*").order("expires_at", { ascending: true, nullsFirst: false }).range(from, from + 999);
+        const { data, error } = await supabase.from("netflix_list").select("*").order("id", { ascending: true }).range(from, from + 999);
         if (error) throw error;
         all = all.concat(data || []);
         if (!data || data.length < 1000) break;
       }
+      // təhlükəsizlik üçün id-yə görə təkrarları təmizlə
+      const seen = new Set();
+      all = all.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
       setRows(all);
     } catch (e) {
       setLoadError("Yüklənmədi: " + (e.message || e) + " — SQL faylını işə salmısınız?");
@@ -4137,8 +4141,12 @@ function NetflixListPage() {
       (r.note || "").toLowerCase().includes(q));
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
+    if (service !== "multi") {
+      // tarixə görə sırala (ən tez bitən öncə, tarixsizlər sonda)
+      list = [...list].sort((a, b) => (a.expires_at || "9999-99-99").localeCompare(b.expires_at || "9999-99-99"));
+    }
     return list;
-  }, [serviceRows, search, dateQ, typeFilter, statusFilter]);
+  }, [serviceRows, search, dateQ, typeFilter, statusFilter, service]);
 
   const stats = React.useMemo(() => {
     let active = 0, soon = 0, expired = 0, undated = 0;
