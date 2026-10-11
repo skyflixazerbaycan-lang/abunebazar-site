@@ -3949,6 +3949,8 @@ function NetflixListPage() {
   const [bulkReport, setBulkReport] = useState("");
   const [service, setService] = useState("netflix"); // netflix | spotify | youtube
   const [typeFilter, setTypeFilter] = useState("all"); // all | sexsi | ortaq
+  const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
+  const [warnOpen, setWarnOpen] = useState(false);
 
   const SERVICES = {
     netflix: { label: "Netflix", color: "#E50914", grad: "linear-gradient(135deg,#FF2436,#B20710)", icon: "N" },
@@ -3968,8 +3970,18 @@ function NetflixListPage() {
   }, []);
 
   useEffect(() => {
-    if (session && session.user.email === ADMIN_EMAIL) loadAll();
+    if (session && session.user.email === ADMIN_EMAIL) {
+      loadAll();
+      let seen = false;
+      try { seen = sessionStorage.getItem("sky_siyahi_warned") === "1"; } catch {}
+      if (!seen) setWarnOpen(true);
+    }
   }, [session]);
+
+  function ackWarn() {
+    try { sessionStorage.setItem("sky_siyahi_warned", "1"); } catch {}
+    setWarnOpen(false);
+  }
 
   function flash(t) { setMsg(t); setTimeout(() => setMsg(""), 2600); }
 
@@ -4046,8 +4058,9 @@ function NetflixListPage() {
   }
 
   const svcOf = (r) => r.service || "netflix";
-  // Hesab növü: ad yazılıbsa "şəxsi"; "Otaq..." və ya "ortaq" qeydi varsa "ortaq"
+  // Hesab növü. Spotify/YouTube → hamısı şəxsi. Netflix → ad=şəxsi, Otaq/ortaq=ortaq
   function acctType(r) {
+    if (svcOf(r) !== "netflix") return "sexsi";
     const rn = (r.room_name || "").toLowerCase().trim();
     const note = (r.note || "").toLowerCase();
     if (note.includes("ortaq")) return "ortaq";
@@ -4056,6 +4069,7 @@ function NetflixListPage() {
     return "sexsi";
   }
   const TYPE_LABEL = { sexsi: "Şəxsi", ortaq: "Ortaq" };
+  const hasTypes = service === "netflix"; // şəxsi/ortaq ayırması yalnız Netflix-də
   const svcCounts = React.useMemo(() => {
     const c = { netflix: 0, spotify: 0, youtube: 0 };
     rows.forEach((r) => { const s = svcOf(r); if (c[s] !== undefined) c[s]++; });
@@ -4073,6 +4087,11 @@ function NetflixListPage() {
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = serviceRows;
+    if (statusFilter !== "all") list = list.filter((r) => {
+      const dl = daysLeft(r.expires_at);
+      if (statusFilter === "expired") return dl !== null && dl < 0;
+      return dl === null || dl >= 0; // active (tarixsizlər də aktiv sayılır)
+    });
     if (typeFilter !== "all") list = list.filter((r) => acctType(r) === typeFilter);
     if (q) list = list.filter((r) =>
       (r.phone || "").toLowerCase().includes(q) ||
@@ -4082,7 +4101,7 @@ function NetflixListPage() {
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
     return list;
-  }, [serviceRows, search, dateQ, typeFilter]);
+  }, [serviceRows, search, dateQ, typeFilter, statusFilter]);
 
   const stats = React.useMemo(() => {
     let active = 0, soon = 0, expired = 0;
@@ -4097,11 +4116,13 @@ function NetflixListPage() {
   async function copyAllPhones() {
     const list = filtered.filter((r) => r.phone);
     if (!list.length) return flash("Nömrə yoxdur.");
-    const sx = list.filter((r) => acctType(r) === "sexsi").map((r) => "+" + r.phone);
-    const or = list.filter((r) => acctType(r) === "ortaq").map((r) => "+" + r.phone);
+    // şəxsi: nömrənin yanında otaq/ad adı; ortaq: otaq adı
+    const line = (r) => "+" + r.phone + (r.room_name ? " — " + r.room_name : "") + (r.room_pass ? " (" + r.room_pass + ")" : "");
+    const sx = list.filter((r) => acctType(r) === "sexsi").map(line);
+    const or = list.filter((r) => acctType(r) === "ortaq").map(line);
     const parts = [];
-    if (sx.length) parts.push("ŞƏXSİ (" + sx.length + "):\n" + sx.join("\n"));
-    if (or.length) parts.push("ORTAQ (" + or.length + "):\n" + or.join("\n"));
+    if (sx.length) parts.push("━━ ŞƏXSİ (" + sx.length + ") ━━\n" + sx.join("\n"));
+    if (or.length) parts.push("━━ ORTAQ (" + or.length + ") ━━\n" + or.join("\n"));
     const txt = parts.join("\n\n");
     const ok = await skyCopy(txt);
     flash(ok ? list.length + " nömrə kopyalandı (şəxsi " + sx.length + ", ortaq " + or.length + ") ✓" : "Kopyalanmadı");
@@ -4230,18 +4251,20 @@ function NetflixListPage() {
         .sai-root{--bg:#0A0608;--surface:rgba(255,255,255,0.045);--surface2:rgba(255,255,255,0.07);--text:#F6EFEE;--muted:#9C8E8C;--line:rgba(255,255,255,0.09);--accent:#E50914;
           min-height:100vh;color:var(--text);font-family:Inter,system-ui,sans-serif;position:relative;overflow-x:hidden;
           background:#0A0608;}
-        .sai-root::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+        .sai-root::before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;
           background:
-            radial-gradient(60% 50% at 15% -5%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
-            radial-gradient(55% 45% at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
-            radial-gradient(70% 60% at 50% 120%, rgba(120,60,200,.10), transparent 70%);
-          transition:background .6s ease;}
+            radial-gradient(42% 40% at 15% 8%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+            radial-gradient(40% 36% at 95% 4%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+            radial-gradient(55% 50% at 55% 118%, rgba(120,60,200,.13), transparent 70%);
+          transition:background .6s ease;animation:aurora 16s ease-in-out infinite alternate;}
+        @keyframes aurora{0%{transform:translate3d(-2%,-1%,0) scale(1);}50%{transform:translate3d(3%,2%,0) scale(1.08);}100%{transform:translate3d(-1%,3%,0) scale(1.03);}}
         .sai-root *{box-sizing:border-box;}
         .sai-wrap{max-width:1040px;margin:0 auto;padding:22px 16px 80px;position:relative;z-index:1;}
         .sai-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px;}
         .sai-brand{display:flex;align-items:center;gap:11px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:.3px;}
         .sai-logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;
-          background:var(--accent);box-shadow:0 6px 20px -4px color-mix(in srgb,var(--accent) 70%,transparent);transition:.4s;}
+          background:var(--accent);box-shadow:0 6px 20px -4px color-mix(in srgb,var(--accent) 70%,transparent);transition:.4s;animation:floaty 3.4s ease-in-out infinite;}
+        @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
         .sai-sub{color:var(--accent);font-weight:700;}
         .sai-root .ab-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:11px 17px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:transform .15s,box-shadow .2s,background .2s;}
         .sai-root .ab-btn:active{transform:scale(.96);}
@@ -4301,6 +4324,30 @@ function NetflixListPage() {
         .tbadge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;}
         .tbadge.sexsi{background:rgba(70,130,255,.16);color:#7FA8FF;border:1px solid rgba(70,130,255,.35);}
         .tbadge.ortaq{background:rgba(255,180,40,.15);color:#F2B33A;border:1px solid rgba(255,180,40,.35);}
+        .st-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+        .stchip{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);transition:.18s;}
+        .stchip:hover{background:rgba(255,255,255,.09);transform:translateY(-1px);}
+        .stchip .dot{width:8px;height:8px;border-radius:50%;}
+        .stchip.on.all{background:var(--accent);border-color:transparent;color:#fff;}
+        .stchip.on.active{background:#1f9d55;border-color:transparent;color:#fff;}
+        .stchip.on.expired{background:#c43b3b;border-color:transparent;color:#fff;box-shadow:0 6px 18px -6px rgba(196,59,59,.7);}
+
+        /* warning modal */
+        .wn-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(5,3,4,.72);backdrop-filter:blur(8px);animation:fadeIn .25s both;}
+        .wn-card{max-width:440px;width:100%;background:linear-gradient(180deg,rgba(40,14,16,.96),rgba(18,8,10,.97));border:1px solid rgba(255,80,80,.4);border-radius:22px;padding:26px 22px 20px;text-align:center;box-shadow:0 0 0 1px rgba(255,60,60,.15),0 30px 90px -20px rgba(0,0,0,.8),0 0 60px -10px rgba(255,40,40,.35);animation:wnPop .45s cubic-bezier(.2,1.25,.4,1) both;}
+        .wn-ico{width:74px;height:74px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;font-size:40px;background:radial-gradient(circle,rgba(255,70,70,.25),rgba(255,70,70,.05));border:2px solid rgba(255,80,80,.55);animation:warnPulse 1.6s ease-in-out infinite;}
+        .wn-title{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FF5A5A;letter-spacing:.5px;margin:0 0 6px;text-shadow:0 0 18px rgba(255,60,60,.5);}
+        .wn-sub{font-size:14px;color:#F3D8D8;margin:0 0 16px;line-height:1.5;}
+        .wn-rules{text-align:left;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;margin-bottom:16px;}
+        .wn-rules li{font-size:13px;color:#Ecdede;margin:7px 0;line-height:1.45;list-style:none;position:relative;padding-left:22px;}
+        .wn-rules li::before{content:"⚠";position:absolute;left:0;top:0;color:#FF7A3A;font-size:13px;}
+        .wn-resp{font-size:12.5px;color:#FFB27A;background:rgba(255,120,40,.1);border:1px dashed rgba(255,140,60,.4);border-radius:10px;padding:10px;margin-bottom:16px;font-weight:600;}
+        .wn-btn{width:100%;border:none;border-radius:13px;padding:14px;font-size:14.5px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit;background:linear-gradient(135deg,#FF3B3B,#B41020);box-shadow:0 10px 30px -8px rgba(255,40,40,.6);transition:transform .15s,filter .2s;}
+        .wn-btn:hover{filter:brightness(1.08);}
+        .wn-btn:active{transform:scale(.97);}
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        @keyframes wnPop{from{opacity:0;transform:translateY(24px) scale(.92);}to{opacity:1;transform:none;}}
+        @keyframes warnPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,60,60,.45);}50%{box-shadow:0 0 0 14px rgba(255,60,60,0);}}
 
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
         @keyframes popIn{from{opacity:0;transform:translate(-50%,10px) scale(.95);}to{opacity:1;transform:translate(-50%,0) scale(1);}}
@@ -4313,6 +4360,25 @@ function NetflixListPage() {
           {session && <button className="ab-btn ab-btn-ghost" onClick={() => supabase.auth.signOut()}>Çıxış</button>}
         </div>
         {msg && <div className="ad-status">{msg}</div>}
+
+        {warnOpen && session && session.user.email === ADMIN_EMAIL && (
+          <div className="wn-overlay" onClick={(e) => { if (e.target === e.currentTarget) {} }}>
+            <div className="wn-card">
+              <div className="wn-ico">⚠️</div>
+              <h2 className="wn-title">DİQQƏT!</h2>
+              <p className="wn-sub">Bu saytda <b>çox diqqətli</b> davranın! Burada minlərlə müştərinin məlumatı var.</p>
+              <ul className="wn-rules">
+                <li>Bu panelin linkini <b>heç kimlə paylaşmayın</b> — yalnız admin üçündür.</li>
+                <li>Nömrə, hesab və şifrə məlumatlarını kənar şəxslərə verməyin.</li>
+                <li>Giriş mail və şifrənizi qoruyun, başqa cihazda açıq saxlamayın.</li>
+                <li>Silmə və dəyişiklik əməliyyatları geri qaytarıla bilməz — ehtiyatlı olun.</li>
+                <li>Məlumatları yalnız öz işiniz üçün istifadə edin.</li>
+              </ul>
+              <div className="wn-resp">Bu panelə daxil olmaqla bütün məsuliyyəti <b>öz üzərimə götürürəm</b>.</div>
+              <button className="wn-btn" onClick={ackWarn}>Başa düşdüm, məsuliyyəti götürürəm</button>
+            </div>
+          </div>
+        )}
 
         {checking && <p style={{ color: "var(--muted)" }}>Yüklənir...</p>}
 
@@ -4335,7 +4401,7 @@ function NetflixListPage() {
             <div className="svc-bar">
               {Object.entries(SERVICES).map(([k, s]) => (
                 <div key={k} className={"svc-pill" + (service === k ? " on" : "")} style={{ "--pc": s.color, "--pg": s.grad }}
-                  onClick={() => { setService(k); setShowCount(60); setEdit(null); }}>
+                  onClick={() => { setService(k); setShowCount(60); setEdit(null); setTypeFilter("all"); setStatusFilter("all"); }}>
                   <span className="sico" style={{ background: s.grad }}>{s.icon}</span>
                   <div><div className="snm">{s.label}</div><div className="scnt">{svcCounts[k]} nömrə</div></div>
                 </div>
@@ -4343,8 +4409,11 @@ function NetflixListPage() {
             </div>
 
             <div className="nl-stats">
-              {[["Hamısı", stats.total], ["Aktiv", stats.active], ["3 günə bitən", stats.soon], ["Vaxtı bitən", stats.expired]].map(([l, v], ix) => (
-                <div key={l} className="nl-stat" style={{ animationDelay: ix * 0.05 + "s" }}><span className="bar" /><div className="v">{loading ? "…" : v}</div><div className="l">{l}</div></div>
+              {[["Hamısı", stats.total, "all"], ["Aktiv", stats.active, "active"], ["3 günə bitən", stats.soon, "active"], ["Vaxtı bitən", stats.expired, "expired"]].map(([l, v, st], ix) => (
+                <div key={l} className="nl-stat" style={{ animationDelay: ix * 0.05 + "s", cursor: "pointer" }}
+                  onClick={() => { setTab("list"); setStatusFilter(st); setShowCount(60); }}>
+                  <span className="bar" /><div className="v">{loading ? "…" : v}</div><div className="l">{l}</div>
+                </div>
               ))}
             </div>
 
@@ -4387,11 +4456,18 @@ function NetflixListPage() {
 
             {tab === "list" && (
               <>
-                <div className="type-chips">
-                  <button className={"tchip" + (typeFilter === "all" ? " on" : "")} onClick={() => { setTypeFilter("all"); setShowCount(60); }}>Hamısı ({typeCounts.sexsi + typeCounts.ortaq})</button>
-                  <button className={"tchip" + (typeFilter === "sexsi" ? " on" : "")} onClick={() => { setTypeFilter("sexsi"); setShowCount(60); }}>Şəxsi ({typeCounts.sexsi})</button>
-                  <button className={"tchip" + (typeFilter === "ortaq" ? " on" : "")} onClick={() => { setTypeFilter("ortaq"); setShowCount(60); }}>Ortaq ({typeCounts.ortaq})</button>
+                <div className="st-chips">
+                  <button className={"stchip all" + (statusFilter === "all" ? " on" : "")} onClick={() => { setStatusFilter("all"); setShowCount(60); }}>Hamısı ({stats.total})</button>
+                  <button className={"stchip active" + (statusFilter === "active" ? " on" : "")} onClick={() => { setStatusFilter("active"); setShowCount(60); }}><span className="dot" style={{ background: "#1f9d55" }} />Aktiv ({stats.active})</button>
+                  <button className={"stchip expired" + (statusFilter === "expired" ? " on" : "")} onClick={() => { setStatusFilter("expired"); setShowCount(60); }}><span className="dot" style={{ background: "#ff5a5a" }} />Vaxtı bitənlər ({stats.expired})</button>
                 </div>
+                {hasTypes && (
+                  <div className="type-chips">
+                    <button className={"tchip" + (typeFilter === "all" ? " on" : "")} onClick={() => { setTypeFilter("all"); setShowCount(60); }}>Hamısı ({typeCounts.sexsi + typeCounts.ortaq})</button>
+                    <button className={"tchip" + (typeFilter === "sexsi" ? " on" : "")} onClick={() => { setTypeFilter("sexsi"); setShowCount(60); }}>Şəxsi ({typeCounts.sexsi})</button>
+                    <button className={"tchip" + (typeFilter === "ortaq" ? " on" : "")} onClick={() => { setTypeFilter("ortaq"); setShowCount(60); }}>Ortaq ({typeCounts.ortaq})</button>
+                  </div>
+                )}
                 <input className="nl-input" placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
                 <div className="nl-row" style={{ marginBottom: 4 }}>
                   <input className="nl-input" style={{ flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
