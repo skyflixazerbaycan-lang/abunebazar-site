@@ -4255,12 +4255,13 @@ function NetflixListPage() {
     let start = 0;
     const head = lines[0].map((c) => c.toLowerCase().trim());
     if (head.includes("phone") || head.includes("account_email")) start = 1;
-    // Təkrarı atlamaq üçün açar: nömrə | mail | otaq adı
+    // Açar: nömrə | mail | otaq adı | servis
     const keyOf = (ph, em, rn, s) => skyNormPhone(ph) + "|" + (em || "").trim().toLowerCase() + "|" + (rn || "").trim().toLowerCase() + "|" + (s || "netflix");
-    const existing = new Set(rows.map((r) => keyOf(r.phone, r.account_email, r.room_name, svcOf(r))));
+    const existing = new Map(rows.map((r) => [keyOf(r.phone, r.account_email, r.room_name, svcOf(r)), r]));
     const seen = new Set();
     const toInsert = [];
-    let dupExisting = 0, dupFile = 0;
+    const toUpdate = []; // mövcud nömrələrin yenilənməsi (tarix/şifrə/qeyd dəyişibsə)
+    let dupFile = 0, unchanged = 0;
     for (let i = start; i < lines.length; i++) {
       const c = lines[i];
       const [phone = "", room_name = "", room_pass = "", account_email = "", note = "", expires_at = ""] = c;
@@ -4268,27 +4269,45 @@ function NetflixListPage() {
       let exp = expires_at.trim();
       if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) exp = ""; // yalnız YYYY-MM-DD
       const k = keyOf(phone, account_email, room_name, service);
-      if (existing.has(k)) { dupExisting++; continue; } // siyahıda artıq var → atla
-      if (seen.has(k)) { dupFile++; continue; }          // fayl içində təkrar → atla
+      if (existing.has(k)) {
+        const ex = existing.get(k);
+        const newExp = exp || null, newPass = room_pass.trim(), newNote = note.trim();
+        const curExp = ex.expires_at || null;
+        // nəsə dəyişibsə YENİLƏ (xüsusən tarix)
+        if (curExp !== newExp || (ex.room_pass || "") !== newPass || (ex.note || "") !== newNote) {
+          toUpdate.push({ id: ex.id, expires_at: newExp, room_pass: newPass, note: newNote });
+        } else unchanged++;
+        continue;
+      }
+      if (seen.has(k)) { dupFile++; continue; } // fayl içində təkrar
       seen.add(k);
       toInsert.push({
         phone: skyNormPhone(phone), room_name: room_name.trim(), room_pass: room_pass.trim(),
         account_email: account_email.trim(), note: note.trim(), expires_at: exp || null, service,
       });
     }
-    if (!toInsert.length) return setBulkReport("Yeni sətir yoxdur. (Artıq siyahıda olan: " + dupExisting + ", faylda təkrar: " + dupFile + ")");
+    if (!toInsert.length && !toUpdate.length) return setBulkReport("Dəyişiklik yoxdur. (Dəyişməyən: " + unchanged + ", faylda təkrar: " + dupFile + ")");
     setBulkBusy(true);
-    let ok = 0, err = 0;
+    let ok = 0, err = 0, upd = 0;
+    // yeni sətirlər
     for (let i = 0; i < toInsert.length; i += 500) {
       const { error } = await supabase.from("netflix_list").insert(toInsert.slice(i, i + 500));
       if (error) err++; else ok += toInsert.slice(i, i + 500).length;
     }
+    // mövcudların yenilənməsi (20-lik paralel partiyalarla)
+    for (let i = 0; i < toUpdate.length; i += 20) {
+      const batch = toUpdate.slice(i, i + 20);
+      const res = await Promise.all(batch.map((u) =>
+        supabase.from("netflix_list").update({ expires_at: u.expires_at, room_pass: u.room_pass, note: u.note }).eq("id", u.id)
+      ));
+      res.forEach((r) => { if (r.error) err++; else upd++; });
+    }
     await loadAll();
     setBulkBusy(false);
-    setBulkReport("Əlavə olundu: " + ok + " yeni sətir." +
-      (dupExisting ? " Artıq siyahıda olduğu üçün atlandı: " + dupExisting + "." : "") +
-      (dupFile ? " Faylda təkrar atlandı: " + dupFile + "." : "") +
-      (err ? " Xəta: " + err + " partiya." : ""));
+    setBulkReport("Əlavə olundu: " + ok + " yeni." + (upd ? " Yeniləndi: " + upd + "." : "") +
+      (unchanged ? " Dəyişməyən: " + unchanged + "." : "") +
+      (dupFile ? " Faylda təkrar: " + dupFile + "." : "") +
+      (err ? " Xəta: " + err + "." : ""));
     setBulkText("");
   }
 
@@ -4563,7 +4582,7 @@ function NetflixListPage() {
               <div className="nl-panel">
                 <div style={{ fontWeight: 600 }}>Toplu yüklə (CSV) — <span style={{ color: "var(--accent)" }}>{svc.label}</span></div>
                 <p className="nl-small">Sütunlar: <b>phone, room_name, room_pass, account_email, note, expires_at</b> (tarix: YYYY-MM-DD). Seçilmiş <b>{svc.label}</b> xidmətinə yüklənir.</p>
-                <p className="nl-small" style={{ color: "var(--accent)" }}>Artıq olan nömrə+mail+otaq sətirləri avtomatik atlanır — dublikat yaranmır.</p>
+                <p className="nl-small" style={{ color: "var(--accent)" }}>Yeni nömrələr əlavə olunur; artıq olan nömrələrin <b>tarixi/şifrəsi/qeydi dəyişibsə yenilənir</b> (dublikat yaranmır).</p>
                 <div className="nl-row" style={{ margin: "6px 0" }}><input type="file" accept=".csv,.txt" onChange={(e) => readFile(e.target.files[0])} /></div>
                 <textarea className="nl-input" style={{ minHeight: 120, fontFamily: "monospace", fontSize: 12 }} value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="phone,room_name,room_pass,account_email,note,expires_at" />
                 <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkUpload}>{bulkBusy ? "Yüklənir..." : "Yüklə"}</button>
