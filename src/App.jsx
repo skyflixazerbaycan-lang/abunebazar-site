@@ -3950,7 +3950,6 @@ function NetflixListPage() {
   const [service, setService] = useState("netflix"); // netflix | spotify | youtube
   const [typeFilter, setTypeFilter] = useState("all"); // all | sexsi | ortaq
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
-  const [multiOnly, setMultiOnly] = useState(false); // çox servisli müştərilər
   const [warnOpen, setWarnOpen] = useState(false);
 
   const SERVICES = {
@@ -3959,7 +3958,9 @@ function NetflixListPage() {
     youtube: { label: "YouTube", color: "#FF2742", grad: "linear-gradient(135deg,#FF4D67,#C4001F)", icon: "Y" },
   };
   const ALL_SVC = { label: "Bütün servislər", color: "#9B6DFF", grad: "linear-gradient(135deg,#B18CFF,#6D4BD8)", icon: "∞" };
-  const svc = service === "all" ? ALL_SVC : SERVICES[service];
+  const MULTI_SVC = { label: "Çox servisli", color: "#F59E0B", grad: "linear-gradient(135deg,#FFC24B,#E0820A)", icon: "⇄" };
+  const svc = service === "all" ? ALL_SVC : service === "multi" ? MULTI_SVC : SERVICES[service];
+  const mixedView = service === "all" || service === "multi"; // servis qarışıqdır
 
   useEffect(() => {
     document.title = "SkyFlix — Siyahı";
@@ -4092,7 +4093,12 @@ function NetflixListPage() {
     let n = 0; phoneServices.forEach((s) => { if (s.size >= 2) n++; }); return n;
   }, [phoneServices]);
 
-  const serviceRows = React.useMemo(() => (service === "all" ? rows : rows.filter((r) => svcOf(r) === service)), [rows, service]);
+  const serviceRows = React.useMemo(() => {
+    if (service === "all") return rows;
+    if (service === "multi") return rows.filter((r) => r.phone && (phoneServices.get(r.phone) || new Set()).size >= 2)
+      .slice().sort((a, b) => (a.phone || "").localeCompare(b.phone || ""));
+    return rows.filter((r) => svcOf(r) === service);
+  }, [rows, service, phoneServices]);
 
   const typeCounts = React.useMemo(() => {
     const c = { sexsi: 0, ortaq: 0 };
@@ -4103,7 +4109,6 @@ function NetflixListPage() {
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = serviceRows;
-    if (multiOnly) list = list.filter((r) => r.phone && (phoneServices.get(r.phone) || new Set()).size >= 2);
     if (statusFilter !== "all") list = list.filter((r) => {
       const dl = daysLeft(r.expires_at);
       if (statusFilter === "expired") return dl !== null && dl < 0;
@@ -4117,10 +4122,8 @@ function NetflixListPage() {
       (r.note || "").toLowerCase().includes(q));
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
-    // çox servisli rejimdə eyni nömrələr yan-yana olsun
-    if (multiOnly) list = [...list].sort((a, b) => (a.phone || "").localeCompare(b.phone || ""));
     return list;
-  }, [serviceRows, search, dateQ, typeFilter, statusFilter, multiOnly, phoneServices]);
+  }, [serviceRows, search, dateQ, typeFilter, statusFilter]);
 
   const stats = React.useMemo(() => {
     let active = 0, soon = 0, expired = 0;
@@ -4135,16 +4138,26 @@ function NetflixListPage() {
   async function copyAllPhones() {
     const list = filtered.filter((r) => r.phone);
     if (!list.length) return flash("Nömrə yoxdur.");
-    // hər nömrənin yanında servis adı + otaq/ad adı
-    const line = (r) => "+" + r.phone + " [" + ((SERVICES[svcOf(r)] || ALL_SVC).label) + "]" + (r.room_name ? " — " + r.room_name : "") + (r.room_pass ? " (" + r.room_pass + ")" : "");
-    const sx = list.filter((r) => acctType(r) === "sexsi").map(line);
-    const or = list.filter((r) => acctType(r) === "ortaq").map(line);
-    const parts = [];
-    if (sx.length) parts.push("━━ ŞƏXSİ (" + sx.length + ") ━━\n" + sx.join("\n"));
-    if (or.length) parts.push("━━ ORTAQ (" + or.length + ") ━━\n" + or.join("\n"));
-    const txt = parts.join("\n\n");
+    const lineOf = (r) => "+" + r.phone + (r.room_name ? " — " + r.room_name : "") + (r.room_pass ? " (" + r.room_pass + ")" : "");
+    const blocks = [];
+    for (const s of ["netflix", "spotify", "youtube"]) {
+      const rs = list.filter((r) => svcOf(r) === s);
+      if (!rs.length) continue;
+      const head = "═══ " + SERVICES[s].label.toUpperCase() + " (" + rs.length + ") ═══";
+      if (s === "netflix") {
+        const or = rs.filter((r) => acctType(r) === "ortaq").map(lineOf);
+        const sx = rs.filter((r) => acctType(r) === "sexsi").map(lineOf);
+        let body = "";
+        if (or.length) body += "— Ortaq (" + or.length + ") —\n" + or.join("\n");
+        if (sx.length) body += (body ? "\n\n" : "") + "— Şəxsi (" + sx.length + ") —\n" + sx.join("\n");
+        blocks.push(head + "\n" + body);
+      } else {
+        blocks.push(head + "\n" + rs.map(lineOf).join("\n"));
+      }
+    }
+    const txt = blocks.join("\n\n");
     const ok = await skyCopy(txt);
-    flash(ok ? list.length + " nömrə kopyalandı (şəxsi " + sx.length + ", ortaq " + or.length + ") ✓" : "Kopyalanmadı");
+    flash(ok ? list.length + " nömrə kopyalandı ✓" : "Kopyalanmadı");
   }
 
   async function saveNew() {
@@ -4350,6 +4363,8 @@ function NetflixListPage() {
         .stchip.on.all{background:var(--accent);border-color:transparent;color:#fff;}
         .stchip.on.active{background:#1f9d55;border-color:transparent;color:#fff;}
         .stchip.on.expired{background:#c43b3b;border-color:transparent;color:#fff;box-shadow:0 6px 18px -6px rgba(196,59,59,.7);}
+        .phone-group{margin:12px 0 4px;padding:7px 12px;border-radius:10px;font-weight:700;font-size:13.5px;background:color-mix(in srgb,#F59E0B 14%,transparent);border:1px solid color-mix(in srgb,#F59E0B 35%,transparent);color:#F5B74B;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .phone-group .pg-svc{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
 
         /* warning modal */
         .wn-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(5,3,4,.72);backdrop-filter:blur(8px);animation:fadeIn .25s both;}
@@ -4418,11 +4433,11 @@ function NetflixListPage() {
         {!checking && session && session.user.email === ADMIN_EMAIL && (
           <>
             <div className="svc-bar">
-              {[["all", ALL_SVC]].concat(Object.entries(SERVICES)).map(([k, s]) => (
+              {[["all", ALL_SVC]].concat(Object.entries(SERVICES)).concat([["multi", MULTI_SVC]]).map(([k, s]) => (
                 <div key={k} className={"svc-pill" + (service === k ? " on" : "")} style={{ "--pc": s.color, "--pg": s.grad }}
-                  onClick={() => { setService(k); setShowCount(60); setEdit(null); setTypeFilter("all"); setStatusFilter("all"); setMultiOnly(false); }}>
+                  onClick={() => { setService(k); setShowCount(60); setEdit(null); setTypeFilter("all"); setStatusFilter("all"); }}>
                   <span className="sico" style={{ background: s.grad }}>{s.icon}</span>
-                  <div><div className="snm">{s.label}</div><div className="scnt">{svcCounts[k]} nömrə</div></div>
+                  <div><div className="snm">{s.label}</div><div className="scnt">{k === "multi" ? multiCount + " nömrə" : svcCounts[k] + " nömrə"}</div></div>
                 </div>
               ))}
             </div>
@@ -4487,12 +4502,9 @@ function NetflixListPage() {
                     <button className={"tchip" + (typeFilter === "ortaq" ? " on" : "")} onClick={() => { setTypeFilter("ortaq"); setShowCount(60); }}>Ortaq ({typeCounts.ortaq})</button>
                   </div>
                 )}
-                {service === "all" && (
-                  <div className="type-chips">
-                    <button className={"tchip" + (multiOnly ? " on" : "")} style={multiOnly ? { background: "#9B6DFF", borderColor: "transparent", color: "#fff" } : {}} onClick={() => { setMultiOnly((v) => !v); setShowCount(60); }}>
-                      ⇄ Çox servisli müştərilər ({multiCount})
-                    </button>
-                    {multiOnly && <span className="nl-small" style={{ alignSelf: "center" }}>Eyni nömrə ilə birdən çox servisdə olanlar</span>}
+                {service === "multi" && (
+                  <div className="nl-panel" style={{ padding: "10px 14px", borderColor: "color-mix(in srgb,#F59E0B 40%,transparent)" }}>
+                    <span className="nl-small" style={{ color: "#F5B74B" }}>⇄ Eyni nömrə ilə <b>birdən çox servisdə</b> abunəliyi olan müştərilər. Eyni nömrələr ardıcıl düzülüb.</span>
                   </div>
                 )}
                 <input className="nl-input" placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
@@ -4526,8 +4538,14 @@ function NetflixListPage() {
                     const color = dl === null ? "var(--muted)" : dl < 0 ? "#9a9a9a" : dl <= 3 ? "var(--accent)" : "#2ec27a";
                     const delay = { animationDelay: Math.min(ix, 25) * 0.025 + "s" };
                     const isEdit = edit && edit.id === r.id;
-                    if (isEdit) return (
-                      <div key={r.id} className="nl-rowcard">
+                    const prevPhone = ix > 0 ? filtered[ix - 1].phone : null;
+                    const header = service === "multi" && r.phone && r.phone !== prevPhone ? (
+                      <div className="phone-group">+{r.phone}
+                        {Array.from(phoneServices.get(r.phone) || []).map((ss) => { const c = SERVICES[ss] || ALL_SVC; return <span key={ss} className="pg-svc" style={{ background: "color-mix(in srgb," + c.color + " 22%,transparent)", color: c.color }}>{c.label}</span>; })}
+                      </div>
+                    ) : null;
+                    const card = isEdit ? (
+                      <div className="nl-rowcard">
                         <input className="nl-input" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} placeholder="Nömrə" />
                         <div className="nl-row">
                           <input className="nl-input" style={{ flex: 1 }} value={edit.room_name} onChange={(e) => setEdit({ ...edit, room_name: e.target.value })} placeholder="Otaq adı" />
@@ -4543,13 +4561,12 @@ function NetflixListPage() {
                           <button className="nl-mini" onClick={() => setEdit(null)}>Ləğv</button>
                         </div>
                       </div>
-                    );
-                    return (
-                      <div key={r.id} className={"nl-rowcard " + cls} style={delay}>
+                    ) : (
+                      <div className={"nl-rowcard " + cls} style={delay}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 700 }}>+{r.phone || "—"}
-                              {service === "all" && (() => { const s = SERVICES[svcOf(r)] || ALL_SVC; return <span className="tbadge" style={{ background: "color-mix(in srgb," + s.color + " 18%,transparent)", color: s.color, border: "1px solid color-mix(in srgb," + s.color + " 45%,transparent)" }}>{s.label}</span>; })()}
+                              {mixedView && (() => { const s = SERVICES[svcOf(r)] || ALL_SVC; return <span className="tbadge" style={{ background: "color-mix(in srgb," + s.color + " 18%,transparent)", color: s.color, border: "1px solid color-mix(in srgb," + s.color + " 45%,transparent)" }}>{s.label}</span>; })()}
                               <span className={"tbadge " + acctType(r)}>{TYPE_LABEL[acctType(r)]}</span>{r.note && <span className="nl-small" style={{ fontWeight: 400 }}> · {r.note}</span>}</div>
                             <div className="nl-small">{r.account_email || "mail yoxdur"}</div>
                             <div className="nl-small">{acctType(r) === "sexsi" ? "Ad" : "Otaq"}: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
@@ -4568,6 +4585,7 @@ function NetflixListPage() {
                         </div>
                       </div>
                     );
+                    return <React.Fragment key={r.id}>{header}{card}</React.Fragment>;
                   })}
                 </div>
                 {filtered.length > showCount && <button className="ab-btn ab-btn-ghost" style={{ marginTop: 12 }} onClick={() => setShowCount((c) => c + 60)}>Daha çox ({filtered.length - showCount})</button>}
