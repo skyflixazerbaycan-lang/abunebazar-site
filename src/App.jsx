@@ -3415,14 +3415,28 @@ function skyParseDate(s) {
 }
 
 function skyParseRows(text) {
-  return String(text || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const sep = line.includes("\t") ? "\t" : line.includes(";") ? ";" : ",";
-      return line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
-    });
+  const lines = String(text || "").split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (!lines.length) return [];
+  // Ayırıcını BİR DƏFƏ başlıq sətrindən seç (sahə içindəki ; və , işi pozmasın)
+  const head = lines[0];
+  const sep = head.includes("\t") ? "\t" : (head.split(";").length > head.split(",").length ? ";" : ",");
+  const parseLine = (line) => {
+    const out = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) {
+        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+        else cur += ch;
+      } else {
+        if (ch === '"') q = true;
+        else if (ch === sep) { out.push(cur); cur = ""; }
+        else cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map((c) => c.trim());
+  };
+  return lines.map(parseLine);
 }
 
 async function skyCopy(text) {
@@ -4112,7 +4126,8 @@ function NetflixListPage() {
     if (statusFilter !== "all") list = list.filter((r) => {
       const dl = daysLeft(r.expires_at);
       if (statusFilter === "expired") return dl !== null && dl < 0;
-      return dl === null || dl >= 0; // active (tarixsizlər də aktiv sayılır)
+      if (statusFilter === "undated") return dl === null;
+      return dl !== null && dl >= 0; // active
     });
     if (typeFilter !== "all") list = list.filter((r) => acctType(r) === typeFilter);
     if (q) list = list.filter((r) =>
@@ -4126,13 +4141,15 @@ function NetflixListPage() {
   }, [serviceRows, search, dateQ, typeFilter, statusFilter]);
 
   const stats = React.useMemo(() => {
-    let active = 0, soon = 0, expired = 0;
+    let active = 0, soon = 0, expired = 0, undated = 0;
     serviceRows.forEach((r) => {
       const dl = daysLeft(r.expires_at);
-      if (dl === null) return;
-      if (dl < 0) expired++; else { active++; if (dl <= 3) soon++; }
+      if (dl === null) { undated++; return; }
+      if (dl < 0) { expired++; return; }
+      active++; if (dl <= 3) soon++;
     });
-    return { total: serviceRows.length, active, soon, expired };
+    // Hamısı = Aktiv + Vaxtı bitən + Tarixsiz
+    return { total: serviceRows.length, active, soon, expired, undated };
   }, [serviceRows]);
 
   async function copyAllPhones() {
@@ -4494,6 +4511,7 @@ function NetflixListPage() {
                   <button className={"stchip all" + (statusFilter === "all" ? " on" : "")} onClick={() => { setStatusFilter("all"); setShowCount(60); }}>Hamısı ({stats.total})</button>
                   <button className={"stchip active" + (statusFilter === "active" ? " on" : "")} onClick={() => { setStatusFilter("active"); setShowCount(60); }}><span className="dot" style={{ background: "#1f9d55" }} />Aktiv ({stats.active})</button>
                   <button className={"stchip expired" + (statusFilter === "expired" ? " on" : "")} onClick={() => { setStatusFilter("expired"); setShowCount(60); }}><span className="dot" style={{ background: "#ff5a5a" }} />Vaxtı bitənlər ({stats.expired})</button>
+                  {stats.undated > 0 && <button className={"stchip" + (statusFilter === "undated" ? " on" : "")} style={statusFilter === "undated" ? { background: "#8a8a8a", borderColor: "transparent", color: "#fff" } : {}} onClick={() => { setStatusFilter("undated"); setShowCount(60); }}><span className="dot" style={{ background: "#9a9a9a" }} />Tarixsiz ({stats.undated})</button>}
                 </div>
                 {hasTypes && (
                   <div className="type-chips">
