@@ -3947,9 +3947,17 @@ function NetflixListPage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkReport, setBulkReport] = useState("");
+  const [service, setService] = useState("netflix"); // netflix | spotify | youtube
+
+  const SERVICES = {
+    netflix: { label: "Netflix", color: "#E50914", grad: "linear-gradient(135deg,#FF2436,#B20710)", icon: "N" },
+    spotify: { label: "Spotify", color: "#1DB954", grad: "linear-gradient(135deg,#1ED760,#128a3c)", icon: "S" },
+    youtube: { label: "YouTube", color: "#FF2742", grad: "linear-gradient(135deg,#FF4D67,#C4001F)", icon: "Y" },
+  };
+  const svc = SERVICES[service];
 
   useEffect(() => {
-    document.title = "Netflix siyahı — SkyFlix";
+    document.title = "SkyFlix — Siyahı";
     const meta = document.createElement("meta");
     meta.name = "robots"; meta.content = "noindex, nofollow";
     document.head.appendChild(meta);
@@ -4036,9 +4044,18 @@ function NetflixListPage() {
     return true;
   }
 
+  const svcOf = (r) => r.service || "netflix";
+  const svcCounts = React.useMemo(() => {
+    const c = { netflix: 0, spotify: 0, youtube: 0 };
+    rows.forEach((r) => { const s = svcOf(r); if (c[s] !== undefined) c[s]++; });
+    return c;
+  }, [rows]);
+
+  const serviceRows = React.useMemo(() => rows.filter((r) => svcOf(r) === service), [rows, service]);
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = rows;
+    let list = serviceRows;
     if (q) list = list.filter((r) =>
       (r.phone || "").toLowerCase().includes(q) ||
       (r.account_email || "").toLowerCase().includes(q) ||
@@ -4047,29 +4064,37 @@ function NetflixListPage() {
     const f = parseDateQuery(dateQ);
     if (f) list = list.filter((r) => dateMatches(r.expires_at, f));
     return list;
-  }, [rows, search, dateQ]);
+  }, [serviceRows, search, dateQ]);
 
   const stats = React.useMemo(() => {
-    const now = Date.now();
     let active = 0, soon = 0, expired = 0;
-    rows.forEach((r) => {
+    serviceRows.forEach((r) => {
       const dl = daysLeft(r.expires_at);
       if (dl === null) return;
       if (dl < 0) expired++; else { active++; if (dl <= 3) soon++; }
     });
-    return { total: rows.length, active, soon, expired };
-  }, [rows]);
+    return { total: serviceRows.length, active, soon, expired };
+  }, [serviceRows]);
+
+  async function copyAllPhones() {
+    const list = filtered.filter((r) => r.phone);
+    if (!list.length) return flash("Nömrə yoxdur.");
+    const txt = list.map((r) => "+" + r.phone).join("\n");
+    const ok = await skyCopy(txt);
+    flash(ok ? list.length + " nömrə kopyalandı ✓" : "Kopyalanmadı");
+  }
 
   async function saveNew() {
     if (!form.phone.trim() && !form.account_email.trim()) return flash("Nömrə və ya mail yazın.");
     const { data, error } = await supabase.from("netflix_list").insert({
       phone: skyNormPhone(form.phone), room_name: form.room_name.trim(), room_pass: form.room_pass.trim(),
       account_email: form.account_email.trim(), note: form.note.trim(), expires_at: form.expires_at || null,
+      service,
     }).select().single();
     if (error) return flash("Xəta: " + error.message);
     setRows((l) => [data, ...l]);
     setForm({ phone: "", room_name: "", room_pass: "", account_email: "", note: "", expires_at: "" });
-    flash("Əlavə edildi ✓");
+    flash(svc.label + " siyahısına əlavə edildi ✓");
   }
 
   async function saveEdit() {
@@ -4096,12 +4121,13 @@ function NetflixListPage() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const arr = new Uint8Array(6); crypto.getRandomValues(arr);
     const code = Array.from(arr, (b) => chars[b % chars.length]).join("");
+    const svcLabel = (SERVICES[svcOf(r)] || SERVICES.netflix).label;
     const { error } = await supabase.from("list_codes").insert({
-      code, row_id: r.id, phone: skyNormPhone(r.phone), months,
+      code, row_id: r.id, phone: skyNormPhone(r.phone), months, service: svcOf(r),
     });
     if (error) return flash("Xəta: " + error.message);
     const link = "https://skyflixazerbaycan.com/#artir";
-    const txt = "Salam! Netflix abunəliyinizi uzatmaq üçün:\n" + link + "\n\nNömrə: +" + skyNormPhone(r.phone) + "\nKod: " + code + "\n\n(" + months + " ay, kod 24 saat etibarlıdır, bir dəfə işləyir.)";
+    const txt = "Salam! " + svcLabel + " abunəliyinizi uzatmaq üçün:\n" + link + "\n\nNömrə: +" + skyNormPhone(r.phone) + "\nKod: " + code + "\n\n(" + months + " ay, kod 24 saat etibarlıdır, bir dəfə işləyir.)";
     const ok = await skyCopy(txt);
     flash(ok ? months + " aylıq kod kopyalandı: " + code : "Kod: " + code);
   }
@@ -4123,8 +4149,8 @@ function NetflixListPage() {
     const head = lines[0].map((c) => c.toLowerCase().trim());
     if (head.includes("phone") || head.includes("account_email")) start = 1;
     // Təkrarı atlamaq üçün açar: nömrə | mail | otaq adı
-    const keyOf = (ph, em, rn) => skyNormPhone(ph) + "|" + (em || "").trim().toLowerCase() + "|" + (rn || "").trim().toLowerCase();
-    const existing = new Set(rows.map((r) => keyOf(r.phone, r.account_email, r.room_name)));
+    const keyOf = (ph, em, rn, s) => skyNormPhone(ph) + "|" + (em || "").trim().toLowerCase() + "|" + (rn || "").trim().toLowerCase() + "|" + (s || "netflix");
+    const existing = new Set(rows.map((r) => keyOf(r.phone, r.account_email, r.room_name, svcOf(r))));
     const seen = new Set();
     const toInsert = [];
     let dupExisting = 0, dupFile = 0;
@@ -4134,13 +4160,13 @@ function NetflixListPage() {
       if (!phone && !account_email) continue;
       let exp = expires_at.trim();
       if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) exp = ""; // yalnız YYYY-MM-DD
-      const k = keyOf(phone, account_email, room_name);
+      const k = keyOf(phone, account_email, room_name, service);
       if (existing.has(k)) { dupExisting++; continue; } // siyahıda artıq var → atla
       if (seen.has(k)) { dupFile++; continue; }          // fayl içində təkrar → atla
       seen.add(k);
       toInsert.push({
         phone: skyNormPhone(phone), room_name: room_name.trim(), room_pass: room_pass.trim(),
-        account_email: account_email.trim(), note: note.trim(), expires_at: exp || null,
+        account_email: account_email.trim(), note: note.trim(), expires_at: exp || null, service,
       });
     }
     if (!toInsert.length) return setBulkReport("Yeni sətir yoxdur. (Artıq siyahıda olan: " + dupExisting + ", faylda təkrar: " + dupFile + ")");
@@ -4176,30 +4202,84 @@ function NetflixListPage() {
   };
 
   return (
-    <div className="sai-root dark">
+    <div className="sai-root dark" style={{ "--accent": svc.color }}>
       <style>{`
-        .sai-root{--bg:#150708;--surface:#1D0D0E;--surface2:#2A1315;--gold:#FF3B4E;--text:#F5EBEA;--muted:#A98D8B;--line:rgba(255,255,255,0.1);
-          min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;}
+        .sai-root{--bg:#0A0608;--surface:rgba(255,255,255,0.045);--surface2:rgba(255,255,255,0.07);--text:#F6EFEE;--muted:#9C8E8C;--line:rgba(255,255,255,0.09);--accent:#E50914;
+          min-height:100vh;color:var(--text);font-family:Inter,system-ui,sans-serif;position:relative;overflow-x:hidden;
+          background:#0A0608;}
+        .sai-root::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+          background:
+            radial-gradient(60% 50% at 15% -5%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+            radial-gradient(55% 45% at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+            radial-gradient(70% 60% at 50% 120%, rgba(120,60,200,.10), transparent 70%);
+          transition:background .6s ease;}
         .sai-root *{box-sizing:border-box;}
-        .sai-wrap{max-width:1000px;margin:0 auto;padding:18px 16px 60px;}
-        .sai-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px;}
-        .sai-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;}
-        .sai-brand img{width:28px;height:28px;border-radius:7px;}
-        .sai-root .ab-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;}
-        .sai-root .ab-btn-gold{background:var(--gold);color:#fff;}
-        .sai-root .ab-btn-ghost{background:transparent;color:var(--text);border-color:var(--line);}
-        .sai-root .ad-status{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;background:#1f6f43;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3);}
-        .sai-login{max-width:380px;margin:60px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 20px;}
-        .sai-login h1{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 16px;}
-        .sai-login input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;margin-bottom:10px;}
-        .nl-rowcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;}
-        .nl-rowcard.soon{border-color:var(--gold);}
-        .nl-rowcard.expired{opacity:.6;}
+        .sai-wrap{max-width:1040px;margin:0 auto;padding:22px 16px 80px;position:relative;z-index:1;}
+        .sai-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px;}
+        .sai-brand{display:flex;align-items:center;gap:11px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:.3px;}
+        .sai-logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;
+          background:var(--accent);box-shadow:0 6px 20px -4px color-mix(in srgb,var(--accent) 70%,transparent);transition:.4s;}
+        .sai-sub{color:var(--accent);font-weight:700;}
+        .sai-root .ab-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:11px 17px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;transition:transform .15s,box-shadow .2s,background .2s;}
+        .sai-root .ab-btn:active{transform:scale(.96);}
+        .sai-root .ab-btn-gold{background:var(--accent);color:#fff;box-shadow:0 8px 22px -6px color-mix(in srgb,var(--accent) 65%,transparent);}
+        .sai-root .ab-btn-gold:hover{filter:brightness(1.08);box-shadow:0 10px 28px -6px color-mix(in srgb,var(--accent) 80%,transparent);}
+        .sai-root .ab-btn-ghost{background:rgba(255,255,255,.04);color:var(--text);border-color:var(--line);backdrop-filter:blur(8px);}
+        .sai-root .ab-btn-ghost:hover{background:rgba(255,255,255,.09);}
+        .sai-root .ad-status{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:50;background:rgba(18,24,20,.85);backdrop-filter:blur(14px);color:#fff;padding:12px 20px;border-radius:14px;font-size:14px;font-weight:600;border:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.45);animation:popIn .3s cubic-bezier(.2,1.3,.4,1);}
+        .sai-login{max-width:390px;margin:70px auto 0;background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--line);border-radius:22px;padding:28px 24px;box-shadow:0 30px 80px -30px rgba(0,0,0,.7);animation:fadeUp .5s both;}
+        .sai-login h1{font-family:'Space Grotesk',sans-serif;font-size:23px;margin:0 0 18px;}
+        .sai-login input{width:100%;background:rgba(0,0,0,.25);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:13px;font-size:16px;margin-bottom:11px;transition:.2s;}
+        .sai-login input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);}
+
+        /* service selector */
+        .svc-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+        .svc-pill{position:relative;overflow:hidden;cursor:pointer;border:1px solid var(--line);border-radius:16px;padding:14px 12px;background:var(--surface);backdrop-filter:blur(10px);transition:transform .2s,border-color .3s,box-shadow .3s;display:flex;align-items:center;gap:11px;}
+        .svc-pill:hover{transform:translateY(-2px);}
+        .svc-pill .sico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;flex:0 0 auto;font-family:'Space Grotesk',sans-serif;}
+        .svc-pill .snm{font-weight:700;font-size:15px;line-height:1.1;}
+        .svc-pill .scnt{font-size:12px;color:var(--muted);}
+        .svc-pill.on{border-color:transparent;box-shadow:0 10px 30px -10px var(--pc),0 0 0 1.5px var(--pc) inset;transform:translateY(-2px);}
+        .svc-pill.on::after{content:"";position:absolute;inset:0;background:var(--pg);opacity:.14;}
+        .svc-pill.on .snm{color:#fff;}
+
+        .nl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:11px;margin-bottom:18px;}
+        .nl-stat{background:var(--surface);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:16px;padding:16px 16px 14px;position:relative;overflow:hidden;animation:fadeUp .45s both;transition:transform .2s;}
+        .nl-stat:hover{transform:translateY(-2px);}
+        .nl-stat .v{font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:700;line-height:1;background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--accent) 60%,#fff));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+        .nl-stat .l{font-size:12.5px;color:var(--muted);margin-top:7px;}
+        .nl-stat .bar{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);}
+
+        .nl-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+        .nl-tab{padding:9px 16px;border-radius:999px;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);transition:.2s;}
+        .nl-tab.on{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 6px 18px -6px color-mix(in srgb,var(--accent) 70%,transparent);}
+
+        .nl-panel{background:var(--surface);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;animation:fadeUp .4s both;}
+        .nl-input{width:100%;background:rgba(0,0,0,.25);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:14px;margin-bottom:8px;transition:.2s;}
+        .nl-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);}
+        .nl-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .nl-small{font-size:12px;color:var(--muted);}
+        .nl-mini{padding:7px 11px;border-radius:10px;font-size:12.5px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:.15s;}
+        .nl-mini:hover{background:rgba(255,255,255,.1);transform:translateY(-1px);}
+        .nl-mini.accent{border-color:var(--accent);color:var(--accent);}
+        .nl-mini.accent:hover{background:var(--accent);color:#fff;}
+
+        .nl-list{display:flex;flex-direction:column;gap:9px;}
+        .nl-rowcard{background:var(--surface);backdrop-filter:blur(8px);border:1px solid var(--line);border-left:3px solid color-mix(in srgb,var(--accent) 55%,transparent);border-radius:14px;padding:13px 14px;animation:fadeUp .4s both;transition:transform .16s,box-shadow .2s,border-color .2s;}
+        .nl-rowcard:hover{transform:translateY(-2px);box-shadow:0 14px 34px -16px rgba(0,0,0,.6);border-left-color:var(--accent);}
+        .nl-rowcard.soon{border-color:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);animation:fadeUp .4s both,glow 2.4s ease-in-out infinite;}
+        .nl-rowcard.expired{opacity:.5;}
         .nl-badge{font-size:12px;font-weight:700;white-space:nowrap;}
+        .nl-copybar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:12px;backdrop-filter:blur(8px);}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+        @keyframes popIn{from{opacity:0;transform:translate(-50%,10px) scale(.95);}to{opacity:1;transform:translate(-50%,0) scale(1);}}
+        @keyframes glow{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);}50%{box-shadow:0 0 22px -2px color-mix(in srgb,var(--accent) 55%,transparent);}}
+        @media(max-width:560px){.svc-bar{grid-template-columns:1fr;}.svc-pill{padding:11px 13px;}}
       `}</style>
       <div className="sai-wrap">
         <div className="sai-top">
-          <div className="sai-brand"><img src="/skyflix-icon.png" alt="" /> Netflix siyahı</div>
+          <div className="sai-brand"><span className="sai-logo">{svc.icon}</span> SkyFlix <span className="sai-sub">· {svc.label}</span></div>
           {session && <button className="ab-btn ab-btn-ghost" onClick={() => supabase.auth.signOut()}>Çıxış</button>}
         </div>
         {msg && <div className="ad-status">{msg}</div>}
@@ -4222,114 +4302,135 @@ function NetflixListPage() {
 
         {!checking && session && session.user.email === ADMIN_EMAIL && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 14 }}>
-              {[["Hamısı", stats.total], ["Aktiv", stats.active], ["3 günə bitən", stats.soon], ["Vaxtı bitən", stats.expired]].map(([l, v]) => (
-                <div key={l} style={S.box}><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 24, fontWeight: 700 }}>{loading ? "…" : v}</div><div style={S.small}>{l}</div></div>
+            <div className="svc-bar">
+              {Object.entries(SERVICES).map(([k, s]) => (
+                <div key={k} className={"svc-pill" + (service === k ? " on" : "")} style={{ "--pc": s.color, "--pg": s.grad }}
+                  onClick={() => { setService(k); setShowCount(60); setEdit(null); }}>
+                  <span className="sico" style={{ background: s.grad }}>{s.icon}</span>
+                  <div><div className="snm">{s.label}</div><div className="scnt">{svcCounts[k]} nömrə</div></div>
+                </div>
               ))}
             </div>
 
-            <div style={{ ...S.row, marginBottom: 12 }}>
+            <div className="nl-stats">
+              {[["Hamısı", stats.total], ["Aktiv", stats.active], ["3 günə bitən", stats.soon], ["Vaxtı bitən", stats.expired]].map(([l, v], ix) => (
+                <div key={l} className="nl-stat" style={{ animationDelay: ix * 0.05 + "s" }}><span className="bar" /><div className="v">{loading ? "…" : v}</div><div className="l">{l}</div></div>
+              ))}
+            </div>
+
+            <div className="nl-tabs">
               {[["list", "Siyahı"], ["add", "Əlavə et"], ["bulk", "Toplu yüklə"]].map(([k, l]) => (
-                <button key={k} style={S.chip(tab === k)} onClick={() => setTab(k)}>{l}</button>
+                <button key={k} className={"nl-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>
               ))}
             </div>
 
-            {loadError && <div style={{ ...S.box, color: "var(--gold)" }}>{loadError}</div>}
+            {loadError && <div className="nl-panel" style={{ color: "var(--accent)" }}>{loadError}</div>}
 
             {tab === "add" && (
-              <div style={S.box}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Yeni sətir</div>
-                <input style={S.input} placeholder="Nömrə" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                <div style={S.row}>
-                  <input style={{ ...S.input, flex: 1 }} placeholder="Otaq adı" value={form.room_name} onChange={(e) => setForm({ ...form, room_name: e.target.value })} />
-                  <input style={{ ...S.input, width: 120 }} placeholder="Otaq şifrəsi" value={form.room_pass} onChange={(e) => setForm({ ...form, room_pass: e.target.value })} />
+              <div className="nl-panel">
+                <div style={{ fontWeight: 600, marginBottom: 10 }}>Yeni sətir — <span style={{ color: "var(--accent)" }}>{svc.label}</span></div>
+                <input className="nl-input" placeholder="Nömrə" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <div className="nl-row">
+                  <input className="nl-input" style={{ flex: 1 }} placeholder="Otaq adı" value={form.room_name} onChange={(e) => setForm({ ...form, room_name: e.target.value })} />
+                  <input className="nl-input" style={{ width: 120 }} placeholder="Otaq şifrəsi" value={form.room_pass} onChange={(e) => setForm({ ...form, room_pass: e.target.value })} />
                 </div>
-                <input style={S.input} placeholder="Netflix mail" autoCapitalize="none" value={form.account_email} onChange={(e) => setForm({ ...form, account_email: e.target.value })} />
-                <div style={S.row}>
-                  <input style={{ ...S.input, flex: 1 }} placeholder="Qeyd (məs. ortaq)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-                  <input style={{ ...S.input, width: 170 }} type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+                <input className="nl-input" placeholder={svc.label + " mail"} autoCapitalize="none" value={form.account_email} onChange={(e) => setForm({ ...form, account_email: e.target.value })} />
+                <div className="nl-row">
+                  <input className="nl-input" style={{ flex: 1 }} placeholder="Qeyd (məs. ortaq)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                  <input className="nl-input" style={{ width: 170 }} type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
                 </div>
                 <button className="ab-btn ab-btn-gold" onClick={saveNew}>Əlavə et</button>
               </div>
             )}
 
             {tab === "bulk" && (
-              <div style={S.box}>
-                <div style={{ fontWeight: 600 }}>Toplu yüklə (CSV)</div>
-                <p style={S.small}>Sütunlar: <b>phone, room_name, room_pass, account_email, note, expires_at</b> (tarix: YYYY-MM-DD). Hazır CSV faylını seçin və ya mətni yapışdırın.</p>
-                <p style={{ ...S.small, color: "var(--gold)" }}>Qeyd: artıq siyahıda olan nömrə+mail+otaq sətirləri avtomatik atlanır — təkrar (dublikat) yaranmır, mövcud sətirlər silinmir/dəyişmir.</p>
-                <div style={{ ...S.row, margin: "6px 0" }}><input type="file" accept=".csv,.txt" onChange={(e) => readFile(e.target.files[0])} /></div>
-                <textarea style={{ ...S.input, minHeight: 120, fontFamily: "monospace", fontSize: 12 }} value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="phone,room_name,room_pass,account_email,note,expires_at" />
+              <div className="nl-panel">
+                <div style={{ fontWeight: 600 }}>Toplu yüklə (CSV) — <span style={{ color: "var(--accent)" }}>{svc.label}</span></div>
+                <p className="nl-small">Sütunlar: <b>phone, room_name, room_pass, account_email, note, expires_at</b> (tarix: YYYY-MM-DD). Seçilmiş <b>{svc.label}</b> xidmətinə yüklənir.</p>
+                <p className="nl-small" style={{ color: "var(--accent)" }}>Artıq olan nömrə+mail+otaq sətirləri avtomatik atlanır — dublikat yaranmır.</p>
+                <div className="nl-row" style={{ margin: "6px 0" }}><input type="file" accept=".csv,.txt" onChange={(e) => readFile(e.target.files[0])} /></div>
+                <textarea className="nl-input" style={{ minHeight: 120, fontFamily: "monospace", fontSize: 12 }} value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="phone,room_name,room_pass,account_email,note,expires_at" />
                 <button className="ab-btn ab-btn-gold" disabled={bulkBusy} onClick={bulkUpload}>{bulkBusy ? "Yüklənir..." : "Yüklə"}</button>
-                {bulkReport && <p style={{ ...S.small, marginTop: 8 }}>{bulkReport}</p>}
+                {bulkReport && <p className="nl-small" style={{ marginTop: 8 }}>{bulkReport}</p>}
               </div>
             )}
 
             {tab === "list" && (
               <>
-                <input style={{ ...S.input, marginBottom: 8 }} placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
-                <div style={{ ...S.row, marginBottom: 4 }}>
-                  <input style={{ ...S.input, flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
-                  {dateQ && <button style={S.mini} onClick={() => setDateQ("")}>Təmizlə</button>}
+                <input className="nl-input" placeholder="Axtar: nömrə / mail / otaq / qeyd" value={search} onChange={(e) => { setSearch(e.target.value); setShowCount(60); }} />
+                <div className="nl-row" style={{ marginBottom: 4 }}>
+                  <input className="nl-input" style={{ flex: 1, marginBottom: 0 }} placeholder="Tarixə görə bitənlər: məs. 11 oktyabr  /  oktyabr  /  11.10" value={dateQ} onChange={(e) => { setDateQ(e.target.value); setShowCount(60); }} />
+                  {dateQ && <button className="nl-mini" onClick={() => setDateQ("")}>Təmizlə</button>}
                 </div>
-                <p style={{ ...S.small, marginTop: 0, marginBottom: 10 }}>Gün+ay yazsanız (11 oktyabr) həmin gün bitənlər, yalnız ay yazsanız (oktyabr) o ay bitənlər göstərilir.</p>
-                {dateQ && (() => {
-                  const f = parseDateQuery(dateQ);
-                  const mN = ["", "yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
-                  let lbl = "";
-                  if (f) lbl = (f.day ? f.day + " " : "") + (f.month ? mN[f.month] : "") + (f.year ? " " + f.year : "");
-                  return <div style={{ ...S.box, padding: "8px 12px", marginBottom: 8 }}><b>{f ? ("Filtr: " + lbl.trim() + " tarixində bitənlər") : "Tarix anlaşılmadı"}</b> — {filtered.length} nömrə</div>;
-                })()}
-                {loading && <p style={S.small}>Yüklənir...</p>}
-                {!loading && !filtered.length && <p style={S.small}>Nəticə yoxdur.</p>}
-                <p style={S.small}>{filtered.length} nəticə</p>
-                {filtered.slice(0, showCount).map((r) => {
-                  const dl = daysLeft(r.expires_at);
-                  const cls = dl === null ? "" : dl < 0 ? "expired" : dl <= 3 ? "soon" : "";
-                  const color = dl === null ? "var(--muted)" : dl < 0 ? "#9a9a9a" : dl <= 3 ? "var(--gold)" : "#1f9d55";
-                  const isEdit = edit && edit.id === r.id;
-                  if (isEdit) return (
-                    <div key={r.id} className="nl-rowcard">
-                      <input style={S.input} value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} placeholder="Nömrə" />
-                      <div style={S.row}>
-                        <input style={{ ...S.input, flex: 1 }} value={edit.room_name} onChange={(e) => setEdit({ ...edit, room_name: e.target.value })} placeholder="Otaq adı" />
-                        <input style={{ ...S.input, width: 110 }} value={edit.room_pass} onChange={(e) => setEdit({ ...edit, room_pass: e.target.value })} placeholder="Şifrə" />
-                      </div>
-                      <input style={S.input} value={edit.account_email} onChange={(e) => setEdit({ ...edit, account_email: e.target.value })} placeholder="Mail" autoCapitalize="none" />
-                      <div style={S.row}>
-                        <input style={{ ...S.input, flex: 1 }} value={edit.note || ""} onChange={(e) => setEdit({ ...edit, note: e.target.value })} placeholder="Qeyd" />
-                        <input style={{ ...S.input, width: 160 }} type="date" value={edit.expires_at || ""} onChange={(e) => setEdit({ ...edit, expires_at: e.target.value })} />
-                      </div>
-                      <div style={S.row}>
-                        <button className="ab-btn ab-btn-gold" onClick={saveEdit}>Yadda saxla</button>
-                        <button style={S.mini} onClick={() => setEdit(null)}>Ləğv</button>
-                      </div>
-                    </div>
-                  );
-                  return (
-                    <div key={r.id} className={"nl-rowcard " + cls}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700 }}>+{r.phone || "—"} {r.note && <span style={{ ...S.small, fontWeight: 400 }}>· {r.note}</span>}</div>
-                          <div style={S.small}>{r.account_email || "mail yoxdur"}</div>
-                          <div style={S.small}>Otaq: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
+                <p className="nl-small" style={{ marginTop: 0, marginBottom: 10 }}>Gün+ay (11 oktyabr) → həmin gün; yalnız ay (oktyabr) → o ay bitənlər.</p>
+
+                <div className="nl-copybar">
+                  <div className="nl-small">
+                    <b style={{ color: "var(--text)", fontSize: 15 }}>{filtered.length}</b> nəticə
+                    {dateQ && (() => {
+                      const f = parseDateQuery(dateQ);
+                      const mN = ["", "yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
+                      if (!f) return " · tarix anlaşılmadı";
+                      const lbl = (f.day ? f.day + " " : "") + (f.month ? mN[f.month] : "") + (f.year ? " " + f.year : "");
+                      return " · " + lbl.trim() + " bitənlər";
+                    })()}
+                  </div>
+                  <button className="nl-mini accent" onClick={copyAllPhones}>⧉ Bütün nömrələri kopyala ({filtered.filter((r) => r.phone).length})</button>
+                </div>
+
+                {loading && <p className="nl-small">Yüklənir...</p>}
+                {!loading && !filtered.length && <p className="nl-small">Nəticə yoxdur.</p>}
+
+                <div className="nl-list" key={service + "|" + search + "|" + dateQ}>
+                  {filtered.slice(0, showCount).map((r, ix) => {
+                    const dl = daysLeft(r.expires_at);
+                    const cls = dl === null ? "" : dl < 0 ? "expired" : dl <= 3 ? "soon" : "";
+                    const color = dl === null ? "var(--muted)" : dl < 0 ? "#9a9a9a" : dl <= 3 ? "var(--accent)" : "#2ec27a";
+                    const delay = { animationDelay: Math.min(ix, 25) * 0.025 + "s" };
+                    const isEdit = edit && edit.id === r.id;
+                    if (isEdit) return (
+                      <div key={r.id} className="nl-rowcard">
+                        <input className="nl-input" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} placeholder="Nömrə" />
+                        <div className="nl-row">
+                          <input className="nl-input" style={{ flex: 1 }} value={edit.room_name} onChange={(e) => setEdit({ ...edit, room_name: e.target.value })} placeholder="Otaq adı" />
+                          <input className="nl-input" style={{ width: 110 }} value={edit.room_pass} onChange={(e) => setEdit({ ...edit, room_pass: e.target.value })} placeholder="Şifrə" />
                         </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div className="nl-badge" style={{ color }}>{dl === null ? "tarixsiz" : dl < 0 ? "Bitib" : dl + " gün"}</div>
-                          <div style={S.small}>{fmtDate(r.expires_at)}</div>
+                        <input className="nl-input" value={edit.account_email} onChange={(e) => setEdit({ ...edit, account_email: e.target.value })} placeholder="Mail" autoCapitalize="none" />
+                        <div className="nl-row">
+                          <input className="nl-input" style={{ flex: 1 }} value={edit.note || ""} onChange={(e) => setEdit({ ...edit, note: e.target.value })} placeholder="Qeyd" />
+                          <input className="nl-input" style={{ width: 160 }} type="date" value={edit.expires_at || ""} onChange={(e) => setEdit({ ...edit, expires_at: e.target.value })} />
+                        </div>
+                        <div className="nl-row">
+                          <button className="ab-btn ab-btn-gold" onClick={saveEdit}>Yadda saxla</button>
+                          <button className="nl-mini" onClick={() => setEdit(null)}>Ləğv</button>
                         </div>
                       </div>
-                      <div style={{ ...S.row, marginTop: 8 }}>
-                        <button style={S.mini} onClick={() => extend(r, 1)}>+1 ay</button>
-                        <button style={S.mini} onClick={() => { const n = parseInt(window.prompt("Neçə ay?", "1") || "", 10); if (n > 0) extend(r, n); }}>+ ay…</button>
-                        <button style={{ ...S.mini, borderColor: "var(--gold)", color: "var(--gold)" }} onClick={() => { const n = parseInt(window.prompt("Kod neçə ay uzatsın? (1/2/3/6/12)", "1") || "", 10); if (n > 0) makeCode(r, n); }}>Kod yarat</button>
-                        <button style={S.mini} onClick={() => setEdit({ ...r, expires_at: r.expires_at || "" })}>Redaktə</button>
-                        <button style={{ ...S.mini, color: "var(--gold)" }} onClick={() => removeRow(r)}>Sil</button>
+                    );
+                    return (
+                      <div key={r.id} className={"nl-rowcard " + cls} style={delay}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700 }}>+{r.phone || "—"} {r.note && <span className="nl-small" style={{ fontWeight: 400 }}>· {r.note}</span>}</div>
+                            <div className="nl-small">{r.account_email || "mail yoxdur"}</div>
+                            <div className="nl-small">Otaq: {r.room_name || "—"}{r.room_pass ? " · şifrə " + r.room_pass : ""}</div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div className="nl-badge" style={{ color }}>{dl === null ? "tarixsiz" : dl < 0 ? "Bitib" : dl + " gün"}</div>
+                            <div className="nl-small">{fmtDate(r.expires_at)}</div>
+                          </div>
+                        </div>
+                        <div className="nl-row" style={{ marginTop: 10 }}>
+                          <button className="nl-mini" onClick={() => extend(r, 1)}>+1 ay</button>
+                          <button className="nl-mini" onClick={() => { const n = parseInt(window.prompt("Neçə ay?", "1") || "", 10); if (n > 0) extend(r, n); }}>+ ay…</button>
+                          <button className="nl-mini accent" onClick={() => { const n = parseInt(window.prompt("Kod neçə ay uzatsın? (1/2/3/6/12)", "1") || "", 10); if (n > 0) makeCode(r, n); }}>Kod yarat</button>
+                          <button className="nl-mini" onClick={() => setEdit({ ...r, expires_at: r.expires_at || "" })}>Redaktə</button>
+                          <button className="nl-mini" style={{ color: "var(--accent)" }} onClick={() => removeRow(r)}>Sil</button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-                {filtered.length > showCount && <button className="ab-btn ab-btn-ghost" onClick={() => setShowCount((c) => c + 60)}>Daha çox ({filtered.length - showCount})</button>}
+                    );
+                  })}
+                </div>
+                {filtered.length > showCount && <button className="ab-btn ab-btn-ghost" style={{ marginTop: 12 }} onClick={() => setShowCount((c) => c + 60)}>Daha çox ({filtered.length - showCount})</button>}
               </>
             )}
           </>
