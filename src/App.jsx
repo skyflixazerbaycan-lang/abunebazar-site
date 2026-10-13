@@ -3496,6 +3496,15 @@ function SharedAccountPage({ slug }) {
   const [whatsapp, setWhatsapp] = useState("517873090");
   const [codeCopied, setCodeCopied] = useState(-1);
   const [nowTick, setNowTick] = useState(Date.now());
+  const [vpnHidden, setVpnHidden] = useState(() => {
+    try { return localStorage.getItem("skyvpn:" + slug) === "1"; } catch { return false; }
+  });
+  function dismissVpn() {
+    setVpnHidden(true);
+    try { localStorage.setItem("skyvpn:" + slug, "1"); } catch {}
+  }
+  const VPN_WA = "994557857203";
+  const VPN_TEXT = "Salam! Premium VPN ilə Instagram və TikTok-a giriş etmək istəyirəm. Ətraflı məlumat ala bilərəm?";
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3600,6 +3609,42 @@ function SharedAccountPage({ slug }) {
         .sa-btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.16);color:#F5EBEA;margin-top:10px;}
         .sa-error{background:rgba(225,18,42,0.12);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;
           border-radius:12px;padding:11px 13px;font-size:14px;margin-bottom:14px;line-height:1.45;}
+        .sa-vpn{position:relative;overflow:hidden;background:linear-gradient(145deg,#2a0e2a 0%,#241019 55%,#0f1a2e 100%);
+          border:1px solid rgba(255,255,255,0.14);border-radius:18px;padding:20px 18px 18px;margin:0 0 20px;text-align:center;
+          box-shadow:0 10px 30px rgba(214,36,159,0.18);animation:saVpnIn .5s cubic-bezier(.2,.8,.2,1) both;}
+        @keyframes saVpnIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+        .sa-vpn-glow{position:absolute;top:-55px;left:50%;transform:translateX(-50%);width:240px;height:150px;
+          background:radial-gradient(ellipse at center,rgba(254,44,85,0.35),rgba(37,244,238,0.12) 55%,transparent 72%);
+          filter:blur(14px);pointer-events:none;z-index:0;}
+        .sa-vpn>*{position:relative;z-index:1;}
+        .sa-vpn-logos{display:flex;justify-content:center;gap:14px;margin-bottom:12px;}
+        .sa-vpn-logo{width:48px;height:48px;display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+          animation:saFloat 3.4s ease-in-out infinite;}
+        .sa-vpn-logo:last-child{animation-delay:.5s;}
+        @keyframes saFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+        .sa-vpn-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:#fff;margin:0 0 6px;letter-spacing:.2px;}
+        .sa-vpn-text{color:#E9D9E6;font-size:13.5px;line-height:1.55;margin:0 auto 16px;max-width:300px;}
+        .sa-vpn-text b{color:#fff;font-weight:700;}
+        .sa-vpn-btns{display:flex;flex-direction:column;gap:9px;}
+        .sa-vpn-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+          border:0;border-radius:12px;padding:13px 14px;font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none;
+          color:#fff;background:linear-gradient(135deg,#FE2C55,#D6249F 55%,#833AB4);
+          box-shadow:0 6px 18px rgba(254,44,85,0.4);transition:transform .15s ease,box-shadow .15s ease;}
+        .sa-vpn-cta:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(254,44,85,0.5);}
+        .sa-vpn-cta:active{transform:translateY(0);}
+        .sa-vpn-skip{width:100%;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#B9A7B6;
+          border-radius:12px;padding:11px 14px;font-size:13.5px;font-weight:500;cursor:pointer;transition:background .15s ease,color .15s ease;}
+        .sa-vpn-skip:hover{background:rgba(255,255,255,0.06);color:#F5EBEA;}
+        @media(min-width:520px){
+          .sa-vpn{padding:24px 24px 20px;}
+          .sa-vpn-logos{gap:18px;margin-bottom:14px;}
+          .sa-vpn-logo{width:56px;height:56px;}
+          .sa-vpn-title{font-size:20px;}
+          .sa-vpn-text{font-size:14.5px;max-width:340px;}
+          .sa-vpn-btns{flex-direction:row;}
+          .sa-vpn-cta{flex:2;}
+          .sa-vpn-skip{flex:1;}
+        }
         .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
         .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
         .sa-value{font-family:'JetBrains Mono',monospace;font-size:17px;word-break:break-all;letter-spacing:.2px;}
@@ -3685,6 +3730,61 @@ function SharedAccountPage({ slug }) {
             <p className="sa-sub">
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
+
+            {!vpnHidden && (
+              <div className="sa-vpn">
+                <div className="sa-vpn-glow" aria-hidden="true" />
+                <div className="sa-vpn-logos">
+                  <span className="sa-vpn-logo">
+                    <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="Instagram">
+                      <defs>
+                        <radialGradient id="saIg" cx="30%" cy="107%" r="140%">
+                          <stop offset="0%" stopColor="#FDF497" />
+                          <stop offset="8%" stopColor="#FDF497" />
+                          <stop offset="45%" stopColor="#FD5949" />
+                          <stop offset="62%" stopColor="#D6249F" />
+                          <stop offset="92%" stopColor="#285AEB" />
+                        </radialGradient>
+                      </defs>
+                      <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#saIg)" />
+                      <rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" strokeWidth="3" />
+                      <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" strokeWidth="3" />
+                      <circle cx="33.3" cy="14.7" r="2.4" fill="#fff" />
+                    </svg>
+                  </span>
+                  <span className="sa-vpn-logo">
+                    <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="TikTok">
+                      <rect x="2" y="2" width="44" height="44" rx="13" fill="#010101" />
+                      <g transform="translate(10.6,9) scale(0.0545)">
+                        <path fill="#25F4EE" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+                      </g>
+                      <g transform="translate(12.9,11) scale(0.0545)">
+                        <path fill="#FE2C55" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+                      </g>
+                      <g transform="translate(11.75,10) scale(0.0545)">
+                        <path fill="#fff" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+                      </g>
+                    </svg>
+                  </span>
+                </div>
+                <div className="sa-vpn-title">Instagram və TikTok açılmır?</div>
+                <p className="sa-vpn-text">
+                  Instagram və TikTok-a giriş edə bilmirsinizsə, bizdən <b>Premium VPN</b> alaraq
+                  rahat və sürətli şəkildə giriş edə bilərsiniz.
+                </p>
+                <div className="sa-vpn-btns">
+                  <a
+                    className="sa-vpn-cta"
+                    href={`https://wa.me/${VPN_WA}?text=${encodeURIComponent(VPN_TEXT)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MessageCircle size={16} /> VPN üçün müraciət et
+                  </a>
+                  <button className="sa-vpn-skip" onClick={dismissVpn}>Maraqlanmıram</button>
+                </div>
+              </div>
+            )}
 
             <div className="sa-field">
               <div className="sa-field-top">
