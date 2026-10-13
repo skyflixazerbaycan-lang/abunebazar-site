@@ -3496,15 +3496,64 @@ function SharedAccountPage({ slug }) {
   const [whatsapp, setWhatsapp] = useState("517873090");
   const [codeCopied, setCodeCopied] = useState(-1);
   const [nowTick, setNowTick] = useState(Date.now());
-  const [vpnHidden, setVpnHidden] = useState(() => {
-    try { return localStorage.getItem("skyvpn:" + slug) === "1"; } catch { return false; }
-  });
-  function dismissVpn() {
-    setVpnHidden(true);
-    try { localStorage.setItem("skyvpn:" + slug, "1"); } catch {}
-  }
+  const [vpnHidden, setVpnHidden] = useState(false); // hər səhifə açılışında yenidən göstərilir
+  function dismissVpn() { setVpnHidden(true); }
   const VPN_WA = "994557857203";
   const VPN_TEXT = "Salam! Premium VPN ilə Instagram və TikTok-a giriş etmək istəyirəm. Ətraflı məlumat ala bilərəm?";
+  const vpnBanner = vpnHidden ? null : (
+    <div className="sa-vpn">
+      <div className="sa-vpn-glow" aria-hidden="true" />
+      <div className="sa-vpn-logos">
+        <span className="sa-vpn-logo">
+          <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="Instagram">
+            <defs>
+              <radialGradient id="saIg" cx="30%" cy="107%" r="140%">
+                <stop offset="0%" stopColor="#FDF497" />
+                <stop offset="8%" stopColor="#FDF497" />
+                <stop offset="45%" stopColor="#FD5949" />
+                <stop offset="62%" stopColor="#D6249F" />
+                <stop offset="92%" stopColor="#285AEB" />
+              </radialGradient>
+            </defs>
+            <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#saIg)" />
+            <rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" strokeWidth="3" />
+            <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" strokeWidth="3" />
+            <circle cx="33.3" cy="14.7" r="2.4" fill="#fff" />
+          </svg>
+        </span>
+        <span className="sa-vpn-logo">
+          <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="TikTok">
+            <rect x="2" y="2" width="44" height="44" rx="13" fill="#010101" />
+            <g transform="translate(10.6,9) scale(0.0545)">
+              <path fill="#25F4EE" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+            </g>
+            <g transform="translate(12.9,11) scale(0.0545)">
+              <path fill="#FE2C55" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+            </g>
+            <g transform="translate(11.75,10) scale(0.0545)">
+              <path fill="#fff" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
+            </g>
+          </svg>
+        </span>
+      </div>
+      <div className="sa-vpn-title">Instagram və TikTok açılmır?</div>
+      <p className="sa-vpn-text">
+        Instagram və TikTok-a giriş edə bilmirsinizsə, bizdən <b>Premium VPN</b> alaraq
+        rahat və sürətli şəkildə giriş edə bilərsiniz.
+      </p>
+      <div className="sa-vpn-btns">
+        <a
+          className="sa-vpn-cta"
+          href={`https://wa.me/${VPN_WA}?text=${encodeURIComponent(VPN_TEXT)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle size={16} /> VPN üçün müraciət et
+        </a>
+        <button className="sa-vpn-skip" onClick={dismissVpn}>Maraqlanmıram</button>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3692,6 +3741,7 @@ function SharedAccountPage({ slug }) {
           <>
             <h1 className="sa-title">Hesab məlumatlarınız</h1>
             <p className="sa-sub">WhatsApp nömrənizi və sizə göndərilən 4 rəqəmli PIN-i yazın.</p>
+            {vpnBanner}
             {error && <div className="sa-error">{error}</div>}
             <label className="sa-label" htmlFor="sa-phone">WhatsApp nömrəsi</label>
             <input
@@ -3731,60 +3781,7 @@ function SharedAccountPage({ slug }) {
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
 
-            {!vpnHidden && (
-              <div className="sa-vpn">
-                <div className="sa-vpn-glow" aria-hidden="true" />
-                <div className="sa-vpn-logos">
-                  <span className="sa-vpn-logo">
-                    <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="Instagram">
-                      <defs>
-                        <radialGradient id="saIg" cx="30%" cy="107%" r="140%">
-                          <stop offset="0%" stopColor="#FDF497" />
-                          <stop offset="8%" stopColor="#FDF497" />
-                          <stop offset="45%" stopColor="#FD5949" />
-                          <stop offset="62%" stopColor="#D6249F" />
-                          <stop offset="92%" stopColor="#285AEB" />
-                        </radialGradient>
-                      </defs>
-                      <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#saIg)" />
-                      <rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" strokeWidth="3" />
-                      <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" strokeWidth="3" />
-                      <circle cx="33.3" cy="14.7" r="2.4" fill="#fff" />
-                    </svg>
-                  </span>
-                  <span className="sa-vpn-logo">
-                    <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="TikTok">
-                      <rect x="2" y="2" width="44" height="44" rx="13" fill="#010101" />
-                      <g transform="translate(10.6,9) scale(0.0545)">
-                        <path fill="#25F4EE" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-                      </g>
-                      <g transform="translate(12.9,11) scale(0.0545)">
-                        <path fill="#FE2C55" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-                      </g>
-                      <g transform="translate(11.75,10) scale(0.0545)">
-                        <path fill="#fff" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-                      </g>
-                    </svg>
-                  </span>
-                </div>
-                <div className="sa-vpn-title">Instagram və TikTok açılmır?</div>
-                <p className="sa-vpn-text">
-                  Instagram və TikTok-a giriş edə bilmirsinizsə, bizdən <b>Premium VPN</b> alaraq
-                  rahat və sürətli şəkildə giriş edə bilərsiniz.
-                </p>
-                <div className="sa-vpn-btns">
-                  <a
-                    className="sa-vpn-cta"
-                    href={`https://wa.me/${VPN_WA}?text=${encodeURIComponent(VPN_TEXT)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <MessageCircle size={16} /> VPN üçün müraciət et
-                  </a>
-                  <button className="sa-vpn-skip" onClick={dismissVpn}>Maraqlanmıram</button>
-                </div>
-              </div>
-            )}
+            {vpnBanner}
 
             <div className="sa-field">
               <div className="sa-field-top">
