@@ -1273,9 +1273,9 @@ function CartRecommendationCard({ p, onAdd, go }) {
 const PROMO_CODE = "sky2manat";
 const PROMO_MIN = 10;
 const PROMO_DISCOUNT = 2;
-const PAY_CARD_NAME = "Elbrus Allahverdiyev";
-const PAY_CARD_BANK = "Kapital Bank";
-const PAY_CARD_NUMBER = "4169742323992731";
+const PAY_CARD_NAME = "Əzizov Turqut";
+const PAY_CARD_BANK = "ABB";
+const PAY_CARD_NUMBER = "5583902131752496";
 
 // Balans artırma cashback pillələri
 const CASHBACK_TIERS = [
