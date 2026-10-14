@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag, Search, KeyRound, Trash2, Eye, EyeOff, Upload } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag, Search, KeyRound, Trash2, Eye, EyeOff, Upload, FileText, ChevronDown } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const ICON_MAP = {
@@ -2049,6 +2049,17 @@ function QaydalarPage({ t, lang }) {
             ))}
           </Reveal>
         ))}
+        {(!lang || lang === "az") && CONTRACT_EXTRA_GROUPS.map((group, gi) => (
+          <Reveal key={"x" + gi} delay={(groups.length + gi) * 60} className="ab-rule-group">
+            <h4 className="ab-rule-group-title">{group.heading}</h4>
+            {group.items.map((txt, i) => (
+              <div className="ab-rule-item" key={i}>
+                <span className="ab-rule-num">•</span>
+                <p>{txt}</p>
+              </div>
+            ))}
+          </Reveal>
+        ))}
       </div>
     </section>
   );
@@ -2074,6 +2085,17 @@ function RulesModal({ onClose, t, lang }) {
                 <div className="ab-rule-item" key={i}>
                   <span className="ab-rule-num">{r.n}</span>
                   <p>{r.text}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+          {(!lang || lang === "az") && CONTRACT_EXTRA_GROUPS.map((group, gi) => (
+            <div key={"x" + gi} className="ab-rule-group">
+              <h4 className="ab-rule-group-title">{group.heading}</h4>
+              {group.items.map((txt, i) => (
+                <div className="ab-rule-item" key={i}>
+                  <span className="ab-rule-num">•</span>
+                  <p>{txt}</p>
                 </div>
               ))}
             </div>
@@ -3309,6 +3331,64 @@ const SKY_RULES = [
   "Otağın menyu dilini dəyişmədən səsləndirmə və altyazıya rus və digər dilləri əlavə etmək sərbəstdir. Onsuz da bütün hesablarımızda avtomatik əlavə olunur. Filmi başlatdıqdan sonra alt hissədən səsləndirmə yerindən filmin dilini rus və ya ingilis dilinə dəyişə bilərsiniz.",
 ];
 
+// ---- Müqavilə / İstifadəçi Şərtləri (kabinetdə qəbul üçün) ----
+// Versiya dəyişsə, bütün müştərilər yenidən qəbul etməli olur.
+const CONTRACT_VERSION = "v1-2026-10-14";
+const CONTRACT_EXTRA_GROUPS = [
+  {
+    heading: "Geri ödənişin mümkün olmadığı hallar",
+    items: [
+      "Dərhal təqdim olunan elektron xidmətlər, rəqəmsal məzmun və promokodlar Azərbaycan Respublikasının “İstehlakçıların Hüquqlarının Müdafiəsi Haqqında” Qanununa əsasən geri qaytarılmır.",
+      "Hesabın və ya abunəliyin aktivləşdirilməsi məhsulun təhvil verilməsi (təqdim edilməsi) sayılır və geri ödəniş üçün əsas deyil.",
+      "Netflix, Spotify, YouTube, OpenAI, Adobe və digər platformalar öz daxili siyasətlərinə əsasən istənilən vaxt hesabı və ya abunəliyi ləğv edə, deaktiv edə, bloklaya və ya əlavə yoxlama tətbiq edə bilər.",
+      "Platformaların daxili siyasətində baş verən dəyişikliyə görə hesabın bağlanmasına, deaktiv edilməsinə və ya xidmətin təmin edilə bilməməsinə görə SkyFlix Azerbaycan heç bir məsuliyyət daşımır və geri ödəniş etmir.",
+      "Geri ödəniş zamanı məhsulun təmin olunması və sifarişin icrası üçün çəkilmiş xərclər nəzərə alınır və bu xərclər geri qaytarılmır.",
+      "İstifadəçinin öz səhvlərinə görə geri ödəniş edilmir: yanlış platforma seçimi; yanlış e-mail və ya telefon məlumatının daxil edilməsi; şəxsi cihaz problemi ucbatından hesaba giriş edə bilməmək; VPN, region və ya cihaz uyğunluğu ilə bağlı istifadəçi xətaları.",
+      "İstifadəçiyə təqdim edilən hazır hesab, qoşulma dəvəti, family paketi və ya aktivləşdirilmiş xidmətdə görünən e-poçt adı, profil adı, istifadəçi adı, hesab adı, qrup/family adı və oxşar identifikasiya elementləri əvvəlcədən yaradılmış və ya texniki olaraq formalaşdırılmış ola bilər. Bu məlumatlar xidmətin funksionallığına təsir etmədiyi halda qüsur hesab olunmur. İstifadəçinin bu məlumatları subyektiv olaraq bəyənməməsi, estetik səbəblərlə narazı qalması və ya adlandırma ilə bağlı etirazları geri ödəniş, əvəzləmə, dəyişdirilmə və ya sifarişin ləğvi üçün əsas yaratmır.",
+      "Dərhal təqdim olunan rəqəmsal məzmun, elektron xidmət, aktiv kod və abunəliklər üzrə geri çəkilmə (imtina) hüququ, qanunvericiliklə başqa hal tələb olunmadıqda, tətbiq edilmir.",
+    ],
+  },
+  {
+    heading: "Geri ödəniş forması və müddəti",
+    items: [
+      "Geri ödənişlər yalnız istifadəçinin SkyflixAzerbaycan.com hesabına balans şəklində əlavə olunur. Bank kartına və ya birbaşa hesaba geri ödəniş edilmir. Balans yalnız SkyFlix Azerbaycan daxilində istifadə edilə bilər və nağdlaşdırılmır.",
+      "Geri ödəniş sorğusunun icra müddəti maksimum 5 iş günüdür. Bank/ödəniş sistemindən asılı olaraq bu müddət 1 ayadək uzana bilər.",
+      "Geri ödəniş həyata keçirilən hallarda sifarişin icrası ilə bağlı yaranan ödəniş əməliyyatları (bank komissiyası, vergi) və digər zəruri xidmət xərcləri nəzərə alınaraq ümumi məbləğdən 5%-dək xidmət haqqı tutulur və bu məbləğ yekun balansdan çıxılır. (Qeyd: saytda edilən ödənişlər zamanı SkyFlix Azerbaycan tərəfindən heç bir ödəniş tutulmur, tam faizsiz mədaxil edilir.)",
+      "Vaxtla məhdud rəqəmsal məhsullarda geri ödəniş hesablanarkən yalnız istifadə olunmamış müddət nəzərə alınır. Məhsulun ümumi qiyməti təqdim edilən müddətə bölünür, qalan istifadə müddətinə uyğun məbləğ müəyyən edilir. Həmin məbləğdən bank komissiyası, vergi və əməliyyat xərcləri nəzərə alınaraq 5%-dək xidmət haqqı tutulur. Yekun məbləğ istifadəçinin balansına əlavə edilir.",
+      "İstifadə müddətinin 90%-i və ya daha çoxu keçdikdə geri ödəniş hesablanmır və balans əlavə edilmir.",
+      "Əgər məhsul üzrə platforma, tədarükçü və ya texniki aktivləşdirmə xərci artıq çəkilibsə, bu xərc geri ödəniş məbləğindən çıxıla bilər.",
+    ],
+  },
+  {
+    heading: "Platformaların məsuliyyəti və məhdudiyyətlər",
+    items: [
+      "SkyFlix Azerbaycan yalnız xidmətin aktivləşdirilməsinə görə məsuliyyət daşıyır və platformaların daxili siyasətinə qarışa bilməz.",
+      "Abunəlik təqdim edildikdən sonra məhsulun işləməsi, ləğvi, deaktiv olunması və ya texniki problemlər müvafiq platformanın (Netflix, YouTube, Spotify, OpenAI və s.) məsuliyyət sahəsinə daxildir.",
+      "Bu kimi üçüncü tərəf müdaxilələrinə görə SkyFlix Azerbaycan tərəfindən geri ödəniş və ya əvəzləmə həyata keçirilmir.",
+    ],
+  },
+  {
+    heading: "Fırıldaqçılıq və təhlükəsizlik",
+    items: [
+      "Ağır qayda pozuntusu (saxta qəbz, kart fırıldaqçılığı, hesab oğurluğu və s.) aşkarlandıqda istifadəçi müddətsiz bloklanır.",
+      "SkyFlix Azerbaycan zəruri hallarda məlumatları hüquq-mühafizə orqanları ilə paylaşa bilər.",
+    ],
+  },
+  {
+    heading: "Əlavə xidmət haqqı",
+    items: [
+      "Sayt və ya platformalarda əlavə xərclər yarandıqda, abunəliyinizin fasiləsiz davam etdirilməsi üçün satıcı müştəridən minimum 0.10 AZN-dən 1 AZN-ə qədər əlavə ödəniş tələb edə bilər. Bu məbləğ xidmətin gücləndirilməsi, saytın texniki xərcləri və serverlərin saxlanması üçündür.",
+    ],
+  },
+  {
+    heading: "Müqavilənin qəbul edilməsi",
+    items: [
+      "Bu qaydaları qəbul etməklə istifadəçi SkyFlix Azerbaycan-ın bütün şərtlərini tam qəbul etdiyini və bütün məsuliyyəti anladığını təsdiq edir. Sifariş vermək, ödəniş etmək və ya hesaba daxil olmaq bu qaydaların qəbulu deməkdir.",
+      "Bu müqaviləni qəbul etdikdən sonra müqavilənin ləğvi tələbi və ödənişin geri istənməsi qəbul edilmir.",
+    ],
+  },
+];
+
 function skyNormPhone(p) {
   let d = String(p || "").replace(/\D/g, "");
   if (d.startsWith("00")) d = d.slice(2);
@@ -3496,64 +3576,30 @@ function SharedAccountPage({ slug }) {
   const [whatsapp, setWhatsapp] = useState("517873090");
   const [codeCopied, setCodeCopied] = useState(-1);
   const [nowTick, setNowTick] = useState(Date.now());
-  const [vpnHidden, setVpnHidden] = useState(false); // hər səhifə açılışında yenidən göstərilir
-  function dismissVpn() { setVpnHidden(true); }
-  const VPN_WA = "994557857203";
-  const VPN_TEXT = "Salam! Premium VPN ilə Instagram və TikTok-a giriş etmək istəyirəm. Ətraflı məlumat ala bilərəm?";
-  const vpnBanner = vpnHidden ? null : (
-    <div className="sa-vpn">
-      <div className="sa-vpn-glow" aria-hidden="true" />
-      <div className="sa-vpn-logos">
-        <span className="sa-vpn-logo">
-          <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="Instagram">
-            <defs>
-              <radialGradient id="saIg" cx="30%" cy="107%" r="140%">
-                <stop offset="0%" stopColor="#FDF497" />
-                <stop offset="8%" stopColor="#FDF497" />
-                <stop offset="45%" stopColor="#FD5949" />
-                <stop offset="62%" stopColor="#D6249F" />
-                <stop offset="92%" stopColor="#285AEB" />
-              </radialGradient>
-            </defs>
-            <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#saIg)" />
-            <rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" strokeWidth="3" />
-            <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" strokeWidth="3" />
-            <circle cx="33.3" cy="14.7" r="2.4" fill="#fff" />
-          </svg>
-        </span>
-        <span className="sa-vpn-logo">
-          <svg viewBox="0 0 48 48" width="100%" height="100%" aria-label="TikTok">
-            <rect x="2" y="2" width="44" height="44" rx="13" fill="#010101" />
-            <g transform="translate(10.6,9) scale(0.0545)">
-              <path fill="#25F4EE" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-            </g>
-            <g transform="translate(12.9,11) scale(0.0545)">
-              <path fill="#FE2C55" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-            </g>
-            <g transform="translate(11.75,10) scale(0.0545)">
-              <path fill="#fff" d="M448 209.9a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z" />
-            </g>
-          </svg>
-        </span>
-      </div>
-      <div className="sa-vpn-title">Instagram və TikTok açılmır?</div>
-      <p className="sa-vpn-text">
-        Instagram və TikTok-a giriş edə bilmirsinizsə, bizdən <b>Premium VPN</b> alaraq
-        rahat və sürətli şəkildə giriş edə bilərsiniz.
-      </p>
-      <div className="sa-vpn-btns">
-        <a
-          className="sa-vpn-cta"
-          href={`https://wa.me/${VPN_WA}?text=${encodeURIComponent(VPN_TEXT)}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <MessageCircle size={16} /> VPN üçün müraciət et
-        </a>
-        <button className="sa-vpn-skip" onClick={dismissVpn}>Maraqlanmıram</button>
-      </div>
-    </div>
-  );
+  const [contractAccepted, setContractAccepted] = useState(null); // null=bilinmir, true/false
+  const [contractChecking, setContractChecking] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [agreeChecked, setAgreeChecked] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+
+  async function checkContract(ph = phone) {
+    try {
+      setContractChecking(true);
+      const { data } = await supabase.rpc("contract_status", { p_phone: ph, p_version: CONTRACT_VERSION });
+      setContractAccepted(!!(data && data.accepted));
+    } catch { setContractAccepted(true); } // xəta olsa bloklamırıq
+    finally { setContractChecking(false); }
+  }
+  async function acceptContract() {
+    if (!agreeChecked || accepting) return;
+    setAccepting(true);
+    try {
+      await supabase.rpc("accept_contract", { p_phone: phone, p_name: result?.name || "", p_version: CONTRACT_VERSION });
+      setContractAccepted(true);
+    } catch (e) {
+      setError("Qəbul qeydə alınmadı, bir daha yoxlayın.");
+    } finally { setAccepting(false); }
+  }
 
   useEffect(() => {
     document.title = "Hesab məlumatları — SkyFlix";
@@ -3584,6 +3630,13 @@ function SharedAccountPage({ slug }) {
     if (result?.status !== "ok") return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
+  }, [result?.status]);
+
+  // Giriş uğurlu olanda müqavilə qəbulunu yoxla
+  useEffect(() => {
+    if (result?.status === "ok" && contractAccepted === null && !contractChecking) {
+      checkContract(phone);
+    }
   }, [result?.status]);
 
   async function check(ph = phone, pn = pin) {
@@ -3694,6 +3747,47 @@ function SharedAccountPage({ slug }) {
           .sa-vpn-cta{flex:2;}
           .sa-vpn-skip{flex:1;}
         }
+        .sa-cmodal{position:fixed;inset:0;z-index:9999;background:rgba(8,3,4,0.92);backdrop-filter:blur(6px);
+          display:flex;align-items:center;justify-content:center;padding:14px;animation:saCIn .25s ease both;}
+        @keyframes saCIn{from{opacity:0;}to{opacity:1;}}
+        .sa-cmodal-box{width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;
+          background:#1A0C0D;border:1px solid rgba(255,255,255,0.14);border-radius:20px;overflow:hidden;
+          box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:saCUp .3s cubic-bezier(.2,.8,.2,1) both;}
+        @keyframes saCUp{from{transform:translateY(16px) scale(.98);opacity:0;}to{transform:none;opacity:1;}}
+        .sa-cmodal-head{padding:22px 20px 14px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);
+          background:linear-gradient(180deg,rgba(225,18,42,0.12),transparent);}
+        .sa-cmodal-badge{width:48px;height:48px;border-radius:14px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;
+          background:linear-gradient(135deg,#FF3B4E,#B00C20);color:#fff;box-shadow:0 8px 20px rgba(225,18,42,0.4);}
+        .sa-cmodal-title{font-family:'Space Grotesk',sans-serif;font-size:20px;color:#fff;margin:0 0 8px;}
+        .sa-cmodal-note{color:#CBB7B5;font-size:13.5px;line-height:1.55;margin:0;}
+        .sa-cmodal-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0;}
+        .sa-crules-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+          background:#150708;border:0;border-bottom:1px solid rgba(255,255,255,0.08);color:#F5EBEA;
+          padding:16px 20px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;}
+        .sa-crules-toggle span{display:inline-flex;align-items:center;gap:9px;}
+        .sa-crules-toggle:hover{background:#1d0d0e;}
+        .sa-crules-chev{transition:transform .2s ease;flex-shrink:0;color:#A98D8B;}
+        .sa-crules-toggle.open .sa-crules-chev{transform:rotate(180deg);}
+        .sa-cmodal-scroll{overflow-y:auto;padding:16px 20px;-webkit-overflow-scrolling:touch;}
+        .sa-cgroup{margin-bottom:18px;}
+        .sa-cgroup-h{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14.5px;color:#FF8A95;
+          margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08);}
+        .sa-cline{display:flex;gap:8px;color:#D8C7C5;font-size:12.8px;line-height:1.55;margin:0 0 8px;}
+        .sa-cnum{flex-shrink:0;min-width:28px;color:#8f7a79;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:12px;}
+        .sa-cdot{flex-shrink:0;color:#FF3B4E;font-weight:700;}
+        .sa-cmodal-foot{padding:14px 20px 18px;border-top:1px solid rgba(255,255,255,0.1);background:#150708;}
+        .sa-cagree{display:flex;gap:10px;align-items:flex-start;cursor:pointer;margin-bottom:12px;color:#F5EBEA;font-size:13px;line-height:1.5;}
+        .sa-cagree input{width:20px;height:20px;flex-shrink:0;margin-top:1px;accent-color:#FF3B4E;cursor:pointer;}
+        .sa-cbtn{width:100%;border:0;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;
+          background:linear-gradient(135deg,#FF3B4E,#B00C20);box-shadow:0 8px 22px rgba(225,18,42,0.4);
+          transition:transform .15s ease,opacity .15s ease;}
+        .sa-cbtn:hover:not(:disabled){transform:translateY(-2px);}
+        .sa-cbtn:disabled{opacity:.45;cursor:not-allowed;}
+        @media(min-width:520px){
+          .sa-cmodal-title{font-size:23px;}
+          .sa-cmodal-note{font-size:14.5px;}
+          .sa-cline{font-size:13.5px;}
+        }
         .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
         .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
         .sa-value{font-family:'JetBrains Mono',monospace;font-size:17px;word-break:break-all;letter-spacing:.2px;}
@@ -3741,7 +3835,6 @@ function SharedAccountPage({ slug }) {
           <>
             <h1 className="sa-title">Hesab məlumatlarınız</h1>
             <p className="sa-sub">WhatsApp nömrənizi və sizə göndərilən 4 rəqəmli PIN-i yazın.</p>
-            {vpnBanner}
             {error && <div className="sa-error">{error}</div>}
             <label className="sa-label" htmlFor="sa-phone">WhatsApp nömrəsi</label>
             <input
@@ -3774,14 +3867,63 @@ function SharedAccountPage({ slug }) {
           </>
         )}
 
-        {result?.status === "ok" && (
+        {result?.status === "ok" && contractAccepted === false && (
+          <div className="sa-cmodal" role="dialog" aria-modal="true">
+            <div className="sa-cmodal-box">
+              <div className="sa-cmodal-head">
+                <div className="sa-cmodal-badge"><Shield size={22} /></div>
+                <h2 className="sa-cmodal-title">İstifadəçi Şərtləri Yeniləndi</h2>
+                <p className="sa-cmodal-note">
+                  14 oktyabr 2026-cı il tarixindən istifadəçi şərtləri ilə bağlı yeni qərarlar qəbul edilmişdir.
+                  Abunəliyinizi davam etdirmək və hesab məlumatlarına giriş əldə etmək üçün yeni istifadəçi şərtlərini qəbul etməlisiniz.
+                </p>
+              </div>
+              <div className="sa-cmodal-body">
+                <button className={`sa-crules-toggle ${rulesOpen ? "open" : ""}`} onClick={() => setRulesOpen((v) => !v)}>
+                  <span><FileText size={16} /> İstifadəçi şərtləri və müqavilələr</span>
+                  <ChevronDown size={18} className="sa-crules-chev" />
+                </button>
+                {rulesOpen && (
+                  <div className="sa-cmodal-scroll">
+                    {RULE_GROUPS_AZ.map((g, gi) => (
+                      <div className="sa-cgroup" key={"old" + gi}>
+                        <div className="sa-cgroup-h">{g.heading}</div>
+                        {g.items.map((it, ii) => (
+                          <p className="sa-cline" key={ii}><span className="sa-cnum">{it.n}</span>{it.text}</p>
+                        ))}
+                      </div>
+                    ))}
+                    {CONTRACT_EXTRA_GROUPS.map((g, gi) => (
+                      <div className="sa-cgroup" key={"new" + gi}>
+                        <div className="sa-cgroup-h">{g.heading}</div>
+                        {g.items.map((it, ii) => (
+                          <p className="sa-cline" key={ii}><span className="sa-cdot">•</span>{it}</p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="sa-cmodal-foot">
+                {error && <div className="sa-error" style={{ marginBottom: 10 }}>{error}</div>}
+                <label className="sa-cagree">
+                  <input type="checkbox" checked={agreeChecked} onChange={(e) => setAgreeChecked(e.target.checked)} />
+                  <span>İstifadəçi şərtləri və müqavilələri qəbul edirəm və bütün məsuliyyəti anlayıram.</span>
+                </label>
+                <button className="sa-cbtn" disabled={!agreeChecked || accepting} onClick={acceptContract}>
+                  {accepting ? "Qeydə alınır..." : "Yeni istifadəçi şərtlərini qəbul et"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {result?.status === "ok" && contractAccepted !== false && (
           <>
             <h1 className="sa-title">{result.service || "Hesab"}</h1>
             <p className="sa-sub">
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
-
-            {vpnBanner}
 
             <div className="sa-field">
               <div className="sa-field-top">
@@ -4998,6 +5140,8 @@ function SharedAccountsAdmin() {
   const [members, setMembers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [codes, setCodes] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [contractSearch, setContractSearch] = useState("");
   const [payReqs, setPayReqs] = useState([]);
   const [pendingPayCount, setPendingPayCount] = useState(0);
   const [notifForm, setNotifForm] = useState({ title: "", body: "", link: "" });
@@ -5059,6 +5203,14 @@ function SharedAccountsAdmin() {
       .order("received_at", { ascending: false })
       .limit(100);
     setCodes(data || []);
+  }
+
+  async function loadContracts() {
+    const { data } = await supabase
+      .from("contract_acceptances")
+      .select("*")
+      .order("accepted_at", { ascending: false });
+    setContracts(data || []);
   }
 
   async function sendNotification() {
@@ -5563,6 +5715,7 @@ function SharedAccountsAdmin() {
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
               ["payments", "Ödənişlər"],
+              ["contracts", "Müqavilələr"],
               ["notify", "Bildiriş göndər"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
@@ -5575,6 +5728,7 @@ function SharedAccountsAdmin() {
                   if (key === "logs") loadLogs();
                   if (key === "codes") loadCodes();
                   if (key === "payments") loadPayReqs();
+                  if (key === "contracts") loadContracts();
                 }}
               >
                 {label}
@@ -5929,6 +6083,39 @@ function SharedAccountsAdmin() {
               ))}
             </>
           )}
+
+          {tab === "contracts" && (() => {
+            const q = skyNormPhone(contractSearch);
+            const list = contractSearch.trim()
+              ? contracts.filter((c) => (c.phone || "").includes(q) || (c.name || "").toLowerCase().includes(contractSearch.trim().toLowerCase()))
+              : contracts;
+            return (
+              <div style={S.box}>
+                <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>Müqaviləni qəbul edənlər ({list.length})</span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button style={S.mini} onClick={loadContracts}><RotateCw size={12} /> Yenilə</button>
+                    <button style={S.mini} onClick={async () => {
+                      const nums = list.map((c) => c.phone).filter(Boolean).join("\n");
+                      if (await skyCopy(nums)) flashMsg(list.length + " nömrə kopyalandı ✓");
+                    }}><Copy size={12} /> Nömrələri kopyala</button>
+                  </div>
+                </div>
+                <input style={{ ...S.input, marginBottom: 10 }} placeholder="Nömrə və ya ad ilə axtar" value={contractSearch} onChange={(e) => setContractSearch(e.target.value)} />
+                {!contracts.length && <p style={S.small}>Hələ heç kim müqaviləni qəbul etməyib. Müştəri kabinetə girib şərtləri qəbul etdikcə burada görünəcək.</p>}
+                {contracts.length > 0 && !list.length && <p style={S.small}>Axtarışa uyğun nəticə yoxdur.</p>}
+                {list.map((c) => (
+                  <div key={c.id} style={{ borderTop: "1px solid var(--line)", padding: "10px 0", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", fontSize: 15 }}>+{c.phone}</div>
+                      <div style={S.small}>{c.name ? c.name + " · " : ""}{skyFmtDate(c.accepted_at)} · {c.version}</div>
+                    </div>
+                    <button style={S.mini} onClick={async () => (await skyCopy(c.phone)) && flashMsg("Nömrə kopyalandı ✓")}><Copy size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {tab === "codes" && (
             <div style={S.box}>
