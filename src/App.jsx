@@ -3673,6 +3673,9 @@ function SharedAccountPage({ slug }) {
     setResult(null);
     setPhone("");
     setPin("");
+    setContractAccepted(null);
+    setAgreeChecked(false);
+    setRulesOpen(false);
   }
 
   async function copy(label, text) {
