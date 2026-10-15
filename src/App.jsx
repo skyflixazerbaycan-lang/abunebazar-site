@@ -3760,21 +3760,20 @@ function SharedAccountPage({ slug }) {
     : "Salam! Hesab linki ilə bağlı kömək lazımdır.";
   const days = result?.expires_at ? skyDaysLeft(result.expires_at) : null;
 
-  // Yalnız ORTAQ Netflix hesabları üçün yeniləmə təklifi
+  // ORTAQ təyini: otaq adı "otaq..." və ya sadəcə rəqəm (1,2,3) → ortaq;
+  // adlı profil (Mehdi, Bella...) → şəxsi. Spotify/YouTube həmişə şəxsi.
   const svcL = String(result?.service || "").toLowerCase();
-  const roomL = String(result?.room_name || "").toLowerCase().trim();
+  const roomClean = String(result?.room_name || "").toLowerCase().replace(/\s/g, "");
   const noteL = String(result?.note || "").toLowerCase();
-  const isNetflix = svcL.includes("netflix") || svcL === "";
-  const isOrtaq = isNetflix && (noteL.includes("ortaq") || /^otaq\s*\d/.test(roomL));
+  const isSpotifyYt = svcL.includes("spotify") || svcL.includes("youtube");
+  const isOrtaq = !isSpotifyYt && (noteL.includes("ortaq") || /otaq/.test(roomClean) || /^\d+$/.test(roomClean));
 
   const unreadNotifs = cabNotifs.filter((n) => new Date(n.created_at).getTime() > notifReadAt).length;
 
-  // 1–10 gün qalıbsa və ortaqdırsa — avtomatik tam ekran təklif
+  // ORTAQ + 1–10 gün qalıbsa — HƏR girəndə avtomatik tam ekran təklif
   useEffect(() => {
     if (result?.status === "ok" && contractAccepted === true && isOrtaq && days !== null && days >= 1 && days <= 10) {
-      let shown = false;
-      try { shown = sessionStorage.getItem("skyrenew_" + slug) === "1"; } catch {}
-      if (!shown && !renewOpen && renewStep !== "done") {
+      if (!renewOpen && renewStep !== "done") {
         setRenewStep("intro"); setRenewPath("direct"); setRenewOpen(true);
       }
     }
@@ -3782,7 +3781,6 @@ function SharedAccountPage({ slug }) {
 
   function closeRenew() {
     setRenewOpen(false);
-    try { sessionStorage.setItem("skyrenew_" + slug, "1"); } catch {}
   }
   function pickPlan(p) { setRenewPlan(p); setRenewStep("pay"); }
   async function onReceiptPick(e) {
@@ -3792,21 +3790,24 @@ function SharedAccountPage({ slug }) {
   }
   async function submitRenewal() {
     if (!renewPlan || renewBusy) return;
+    const f = receiptFileRef.current;
+    if (!f) { setError("Davam etmək üçün ödəniş qəbzini yükləyin."); return; }
+    setError("");
     setRenewBusy(true);
     const gifts = giftFor(renewPlan.months, renewPath);
+    // Qəbz MƏCBURİ — yüklənməlidir
     let receiptUrl = "";
-    // Qəbz (istəyə bağlı) — storage varsa yüklə, yoxdursa keç
     try {
-      const f = receiptFileRef.current;
-      if (f) {
-        const path = skyNormPhone(phone) + "-" + Date.now() + "-" + (f.name || "qebz").replace(/[^\w.\-]/g, "_");
-        const up = await supabase.storage.from("receipts").upload(path, f, { upsert: false });
-        if (!up.error) {
-          const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
-          receiptUrl = pub?.publicUrl || "";
-        }
-      }
-    } catch {}
+      const path = skyNormPhone(phone) + "-" + Date.now() + "-" + (f.name || "qebz").replace(/[^\w.\-]/g, "_");
+      const up = await supabase.storage.from("receipts").upload(path, f, { upsert: false });
+      if (up.error) throw up.error;
+      const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
+      receiptUrl = pub?.publicUrl || "";
+    } catch (e) {
+      setRenewBusy(false);
+      setError("Qəbz yüklənmədi. İnternetinizi yoxlayıb bir daha cəhd edin.");
+      return;
+    }
     // Sorğunu yarat (admin görsün)
     try {
       await supabase.rpc("create_renewal_request", {
@@ -3990,6 +3991,9 @@ function SharedAccountPage({ slug }) {
           border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;}
         .sa-rnw-upload{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px dashed rgba(255,255,255,0.25);
           background:#150708;color:#B9A7B6;border-radius:12px;padding:13px;font-size:13.5px;cursor:pointer;margin-bottom:10px;}
+        .sa-rnw-upload.has{border-style:solid;border-color:#1f9d55;color:#8fe0b0;background:rgba(31,157,85,0.08);}
+        .sa-rnw-warn{background:rgba(225,18,42,0.1);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:11px;
+          padding:11px 12px;font-size:12px;line-height:1.55;margin-bottom:12px;}
         .sa-rnw-note2{font-size:12px;color:#8f7a79;line-height:1.5;margin:0 0 14px;text-align:center;}
         .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
         .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
@@ -4222,13 +4226,18 @@ function SharedAccountPage({ slug }) {
                       <Copy size={13} /> {copied === "rnwcard" ? "Kopyalandı ✓" : "Kart nömrəsini kopyala"}
                     </button>
                   </div>
-                  <label className="sa-rnw-upload">
-                    <Upload size={15} /> {receiptName ? receiptName : "Qəbzi yüklə (istəyə bağlı)"}
+                  <label className={`sa-rnw-upload ${receiptName ? "has" : ""}`}>
+                    <Upload size={15} /> {receiptName ? "✓ " + receiptName : "Ödəniş qəbzini yüklə (MƏCBURİ)"}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={onReceiptPick} />
                   </label>
-                  <p className="sa-rnw-note2">Göstərilən karta ödəyin, sonra “Ödəniş etdim” basın. Təsdiqdən sonra müddətiniz avtomatik artırılacaq.</p>
-                  <button className="sa-rnw-cta" disabled={renewBusy} onClick={submitRenewal}>{renewBusy ? "Göndərilir..." : "Ödəniş etdim"}</button>
-                  <button className="sa-rnw-ghost" onClick={() => setRenewStep("plans")}>Geri</button>
+                  <div className="sa-rnw-warn">
+                    ⚠️ Diqqət: saxta qəbz yükləmək və ya hər hansı dələduzluq cəhdi aşkarlanarsa, bu, qanunvericiliyə əsasən
+                    barənizdə cinayət işinin başlanmasına səbəb ola bilər. Yalnız real ödəniş qəbzini yükləyin.
+                  </div>
+                  {error && <div className="sa-error" style={{ marginBottom: 10 }}>{error}</div>}
+                  <p className="sa-rnw-note2">Göstərilən karta ödəyin, qəbzi yükləyin, sonra “Ödəniş etdim” basın. Təsdiqdən sonra müddətiniz avtomatik artırılacaq.</p>
+                  <button className="sa-rnw-cta" disabled={renewBusy || !receiptName} onClick={submitRenewal}>{renewBusy ? "Göndərilir..." : "Ödəniş etdim"}</button>
+                  <button className="sa-rnw-ghost" onClick={() => { setError(""); setRenewStep("plans"); }}>Geri</button>
                 </div>
               )}
 
