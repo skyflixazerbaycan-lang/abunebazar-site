@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag, Search, KeyRound, Trash2, Eye, EyeOff, Upload, FileText, ChevronDown } from "lucide-react";
+import { Shield, Clock, MessageCircle, Ticket, ChevronRight, Star, Menu, X, User, ShoppingCart, Minus, Plus, Play, Pause, VolumeX, Wallet, Ban, Send, CheckCircle2, LayoutGrid, Tv, Music2, Bot, Zap, BadgeCheck, Headset, Gamepad2, MessageSquare, Sun, Moon, Film, Book, Dumbbell, Palette, Camera, Briefcase, Copy, Gift, CreditCard, RotateCw, Tag, Search, KeyRound, Trash2, Eye, EyeOff, Upload, FileText, ChevronDown, Bell } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const ICON_MAP = {
@@ -3559,6 +3559,23 @@ async function skyFetchAll(table, orderCol, ascending = true) {
   return all;
 }
 
+// ---- Abunəlik yeniləmə planları və hədiyyələr ----
+const RENEW_WA = "994517873090";
+const RENEW_PLANS = [
+  { months: 1, amount: "3.22", label: "1 ay" },
+  { months: 3, amount: "8.55", label: "3 ay" },
+  { months: 6, amount: "16.39", label: "6 ay" },
+  { months: 12, amount: "21.77", label: "12 ay" },
+];
+const GIFT_12 = "12 aylıq YouTube Premium · 3 aylıq Exxen · 3 aylıq BluTv · 3 aylıq Amazon Prime Video · 3 aylıq HBO Max — hamısı PULSUZ";
+const GIFT_1_OFFER = "1 aylıq HBO Max və ya Exxen — PULSUZ";
+// Seçilən plan üçün hansı hədiyyə göstərilsin (path: 'direct' = birbaşa artır, 'offer' = Artırmıram sonrası)
+function giftFor(months, path) {
+  if (months === 12) return GIFT_12;
+  if (months === 1 && path === "offer") return GIFT_1_OFFER;
+  return "";
+}
+
 // -----------------------------------------------------
 // MÜŞTƏRİ SƏHİFƏSİ: skyflixazerbaycan.com/#h-<kod>
 // -----------------------------------------------------
@@ -3587,6 +3604,27 @@ function SharedAccountPage({ slug }) {
   const [accepting, setAccepting] = useState(false);
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  // Bildirişlər (kabinet zəng)
+  const [cabNotifs, setCabNotifs] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifReadAt, setNotifReadAt] = useState(() => {
+    try { return Number(localStorage.getItem("skycab_notif_read") || 0); } catch { return 0; }
+  });
+  // Yeniləmə axını
+  const [renewOpen, setRenewOpen] = useState(false);
+  const [renewStep, setRenewStep] = useState("intro"); // intro | offer | plans | pay | done
+  const [renewPath, setRenewPath] = useState("direct"); // direct | offer
+  const [renewPlan, setRenewPlan] = useState(null);
+  const [renewBusy, setRenewBusy] = useState(false);
+  const [receiptName, setReceiptName] = useState("");
+  const receiptFileRef = useRef(null);
+
+  function openNotifs() {
+    setNotifOpen((v) => !v);
+    const now = Date.now();
+    setNotifReadAt(now);
+    try { localStorage.setItem("skycab_notif_read", String(now)); } catch {}
+  }
 
   async function checkContract(ph = phone) {
     setContractChecking(true);
@@ -3655,6 +3693,21 @@ function SharedAccountPage({ slug }) {
     }
   }, [result?.status]);
 
+  // Bildirişləri yüklə (giriş olanda, hamıya olan bildirişlər)
+  useEffect(() => {
+    if (result?.status !== "ok" && result?.status !== "expired") return;
+    const load = () => supabase
+      .from("notifications")
+      .select("*")
+      .is("user_id", null)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => setCabNotifs(data || []));
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
+  }, [result?.status]);
+
   async function check(ph = phone, pn = pin) {
     setError("");
     if (skyNormPhone(ph).length < 9) return setError("WhatsApp nömrənizi tam yazın.");
@@ -3707,6 +3760,69 @@ function SharedAccountPage({ slug }) {
     : "Salam! Hesab linki ilə bağlı kömək lazımdır.";
   const days = result?.expires_at ? skyDaysLeft(result.expires_at) : null;
 
+  // Yalnız ORTAQ Netflix hesabları üçün yeniləmə təklifi
+  const svcL = String(result?.service || "").toLowerCase();
+  const roomL = String(result?.room_name || "").toLowerCase().trim();
+  const noteL = String(result?.note || "").toLowerCase();
+  const isNetflix = svcL.includes("netflix") || svcL === "";
+  const isOrtaq = isNetflix && (noteL.includes("ortaq") || /^otaq\s*\d/.test(roomL));
+
+  const unreadNotifs = cabNotifs.filter((n) => new Date(n.created_at).getTime() > notifReadAt).length;
+
+  // 1–10 gün qalıbsa və ortaqdırsa — avtomatik tam ekran təklif
+  useEffect(() => {
+    if (result?.status === "ok" && contractAccepted === true && isOrtaq && days !== null && days >= 1 && days <= 10) {
+      let shown = false;
+      try { shown = sessionStorage.getItem("skyrenew_" + slug) === "1"; } catch {}
+      if (!shown && !renewOpen && renewStep !== "done") {
+        setRenewStep("intro"); setRenewPath("direct"); setRenewOpen(true);
+      }
+    }
+  }, [result?.status, contractAccepted, isOrtaq, days]);
+
+  function closeRenew() {
+    setRenewOpen(false);
+    try { sessionStorage.setItem("skyrenew_" + slug, "1"); } catch {}
+  }
+  function pickPlan(p) { setRenewPlan(p); setRenewStep("pay"); }
+  async function onReceiptPick(e) {
+    const f = e.target.files && e.target.files[0];
+    receiptFileRef.current = f || null;
+    setReceiptName(f ? f.name : "");
+  }
+  async function submitRenewal() {
+    if (!renewPlan || renewBusy) return;
+    setRenewBusy(true);
+    const gifts = giftFor(renewPlan.months, renewPath);
+    let receiptUrl = "";
+    // Qəbz (istəyə bağlı) — storage varsa yüklə, yoxdursa keç
+    try {
+      const f = receiptFileRef.current;
+      if (f) {
+        const path = skyNormPhone(phone) + "-" + Date.now() + "-" + (f.name || "qebz").replace(/[^\w.\-]/g, "_");
+        const up = await supabase.storage.from("receipts").upload(path, f, { upsert: false });
+        if (!up.error) {
+          const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
+          receiptUrl = pub?.publicUrl || "";
+        }
+      }
+    } catch {}
+    // Sorğunu yarat (admin görsün)
+    try {
+      await supabase.rpc("create_renewal_request", {
+        p_slug: slug, p_phone: phone, p_months: renewPlan.months,
+        p_amount: Number(renewPlan.amount), p_gifts: gifts, p_receipt_url: receiptUrl,
+      });
+    } catch {}
+    setRenewBusy(false);
+    // WhatsApp-a yönləndir
+    let msg = "Salam! Mən müştəri kabinetim vasitəsilə abunəliyimi artırmaq üçün " + renewPlan.amount +
+      " AZN ödəniş etdim (" + renewPlan.label + "). Zəhmət olmasa abunəliyimin müddətini artırın.\nNömrəm: +" + skyNormPhone(phone);
+    if (gifts) msg += "\nAbunəliyim yenilənsin və qeyd edilən hədiyyələr təqdim edilsin: " + gifts;
+    window.open("https://wa.me/" + RENEW_WA + "?text=" + encodeURIComponent(msg), "_blank");
+    setRenewStep("done");
+  }
+
   return (
     <div className="sa-root">
       <style>{`
@@ -3715,7 +3831,7 @@ function SharedAccountPage({ slug }) {
         .sa-brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;
           font-size:17px;margin-bottom:34px;color:#F5EBEA;text-decoration:none;}
         .sa-brand img{width:28px;height:28px;border-radius:7px;}
-        .sa-card{width:100%;max-width:400px;background:#1D0D0E;border:1px solid rgba(255,255,255,0.1);
+        .sa-card{position:relative;width:100%;max-width:400px;background:#1D0D0E;border:1px solid rgba(255,255,255,0.1);
           border-radius:20px;padding:26px 22px;}
         .sa-title{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.2;margin:0 0 6px;}
         .sa-sub{color:#A98D8B;font-size:14px;line-height:1.5;margin:0 0 22px;}
@@ -3813,6 +3929,68 @@ function SharedAccountPage({ slug }) {
           .sa-cmodal-note{font-size:14.5px;}
           .sa-cline{font-size:13.5px;}
         }
+        .sa-bell-wrap{position:absolute;top:14px;right:14px;z-index:20;}
+        .sa-bell{position:relative;width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);
+          background:#150708;color:#F5EBEA;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+        .sa-bell:hover{background:#1d0d0e;}
+        .sa-bell-dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;
+          background:#FF3B4E;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+        .sa-notif-panel{position:absolute;top:48px;right:0;width:290px;max-height:360px;overflow-y:auto;background:#1D0D0E;
+          border:1px solid rgba(255,255,255,0.14);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,0.55);padding:6px;}
+        .sa-notif-head{font-weight:700;font-size:13px;padding:8px 10px;color:#A98D8B;}
+        .sa-notif-empty{padding:14px 10px;color:#A98D8B;font-size:13px;}
+        .sa-notif-item{padding:10px;border-top:1px solid rgba(255,255,255,0.07);}
+        .sa-notif-title{font-weight:700;font-size:13.5px;color:#fff;margin-bottom:3px;}
+        .sa-notif-body{font-size:12.5px;color:#D8C7C5;line-height:1.5;}
+        .sa-notif-link{display:inline-block;margin-top:5px;color:#FF8A95;font-size:12.5px;font-weight:600;text-decoration:none;}
+        .sa-notif-time{font-size:11px;color:#8f7a79;margin-top:5px;}
+        /* Yeniləmə modalı */
+        .sa-rnw{position:fixed;inset:0;z-index:9998;background:rgba(8,3,4,0.94);backdrop-filter:blur(6px);
+          display:flex;align-items:center;justify-content:center;padding:14px;animation:saCIn .25s ease both;}
+        .sa-rnw-box{width:100%;max-width:440px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;
+          background:#1A0C0D;border:1px solid rgba(255,255,255,0.14);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,0.6);
+          animation:saCUp .3s cubic-bezier(.2,.8,.2,1) both;}
+        .sa-rnw-pad{padding:28px 22px;text-align:center;}
+        .sa-rnw-scrollpad{padding:22px 20px;overflow-y:auto;}
+        .sa-rnw-emoji{font-size:44px;margin-bottom:10px;}
+        .sa-rnw-title{font-family:'Space Grotesk',sans-serif;font-size:21px;color:#fff;margin:0 0 10px;}
+        .sa-rnw-text{color:#CBB7B5;font-size:14px;line-height:1.6;margin:0 0 20px;}
+        .sa-rnw-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;padding:15px;
+          font-size:15.5px;font-weight:700;cursor:pointer;color:#fff;text-decoration:none;
+          background:linear-gradient(135deg,#FF3B4E,#B00C20);box-shadow:0 8px 22px rgba(225,18,42,0.4);
+          transition:transform .15s ease;}
+        .sa-rnw-cta:hover:not(:disabled){transform:translateY(-2px);}
+        .sa-rnw-cta:disabled{opacity:.5;cursor:not-allowed;}
+        .sa-rnw-ghost{width:100%;margin-top:10px;border:1px solid rgba(255,255,255,0.16);background:transparent;color:#B9A7B6;
+          border-radius:13px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;}
+        .sa-rnw-ghost:hover{background:rgba(255,255,255,0.05);color:#F5EBEA;}
+        .sa-rnw-plans{display:flex;flex-direction:column;gap:10px;margin:16px 0;}
+        .sa-rnw-plan{position:relative;text-align:left;border:1px solid rgba(255,255,255,0.14);background:#150708;border-radius:14px;
+          padding:14px 16px;cursor:pointer;transition:border-color .15s ease,transform .15s ease;}
+        .sa-rnw-plan:hover{border-color:#FF3B4E;transform:translateY(-1px);}
+        .sa-rnw-plan.best{border-color:#F5B301;background:linear-gradient(145deg,#211405,#150708);}
+        .sa-rnw-plan-top{display:flex;justify-content:space-between;align-items:baseline;}
+        .sa-rnw-plan-label{font-weight:700;font-size:16px;color:#fff;}
+        .sa-rnw-plan-price{font-weight:800;font-size:18px;color:#FF8A95;font-family:'Space Grotesk',sans-serif;}
+        .sa-rnw-plan.best .sa-rnw-plan-price{color:#F5B301;}
+        .sa-rnw-badge{display:inline-block;margin-top:8px;background:#F5B301;color:#1A1210;font-size:10.5px;font-weight:800;
+          padding:3px 9px;border-radius:999px;letter-spacing:.3px;}
+        .sa-rnw-gift{display:flex;gap:6px;align-items:flex-start;margin-top:9px;color:#E9D9C0;font-size:12px;line-height:1.5;
+          background:rgba(245,179,1,0.1);border:1px solid rgba(245,179,1,0.25);border-radius:9px;padding:7px 9px;}
+        .sa-rnw-sum{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin:14px 0;}
+        .sa-rnw-sum-row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;color:#CBB7B5;}
+        .sa-rnw-sum-row strong{color:#fff;}
+        .sa-rnw-sum-gift{display:flex;gap:6px;align-items:flex-start;margin-top:8px;color:#E9D9C0;font-size:12.5px;line-height:1.5;
+          background:rgba(245,179,1,0.1);border:1px solid rgba(245,179,1,0.25);border-radius:9px;padding:8px 10px;}
+        .sa-rnw-card{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px;margin-bottom:12px;}
+        .sa-rnw-card-h{font-weight:700;font-size:14px;color:#fff;margin-bottom:8px;}
+        .sa-rnw-card-row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;color:#CBB7B5;}
+        .sa-rnw-card-row b{color:#fff;font-family:'JetBrains Mono',monospace;}
+        .sa-rnw-copy{margin-top:10px;width:100%;border:1px solid rgba(255,255,255,0.16);background:transparent;color:#F5EBEA;
+          border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;}
+        .sa-rnw-upload{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px dashed rgba(255,255,255,0.25);
+          background:#150708;color:#B9A7B6;border-radius:12px;padding:13px;font-size:13.5px;cursor:pointer;margin-bottom:10px;}
+        .sa-rnw-note2{font-size:12px;color:#8f7a79;line-height:1.5;margin:0 0 14px;text-align:center;}
         .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
         .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
         .sa-value{font-family:'JetBrains Mono',monospace;font-size:17px;word-break:break-all;letter-spacing:.2px;}
@@ -3856,6 +4034,28 @@ function SharedAccountPage({ slug }) {
       </a>
 
       <div className="sa-card" key={result ? result.status : "form"}>
+        {(result?.status === "ok" || result?.status === "expired") && (
+          <div className="sa-bell-wrap">
+            <button className="sa-bell" onClick={openNotifs} aria-label="Bildirişlər">
+              <Bell size={18} />
+              {unreadNotifs > 0 && <span className="sa-bell-dot">{unreadNotifs > 9 ? "9+" : unreadNotifs}</span>}
+            </button>
+            {notifOpen && (
+              <div className="sa-notif-panel">
+                <div className="sa-notif-head">Bildirişlər</div>
+                {!cabNotifs.length && <div className="sa-notif-empty">Hələ bildiriş yoxdur.</div>}
+                {cabNotifs.map((n) => (
+                  <div className="sa-notif-item" key={n.id}>
+                    <div className="sa-notif-title">{n.title}</div>
+                    {n.body && <div className="sa-notif-body">{n.body}</div>}
+                    {n.link && <a className="sa-notif-link" href={n.link} target="_blank" rel="noreferrer">Ətraflı →</a>}
+                    <div className="sa-notif-time">{skyFmtDate(n.created_at)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {!result && (
           <>
             <h1 className="sa-title">Hesab məlumatlarınız</h1>
@@ -3947,6 +4147,104 @@ function SharedAccountPage({ slug }) {
           <div style={{ textAlign: "center", padding: "40px 0", color: "#A98D8B" }}>
             <RotateCw size={22} className="sa-spin" style={{ marginBottom: 10 }} />
             <p className="sa-sub" style={{ margin: 0 }}>Yoxlanılır...</p>
+          </div>
+        )}
+
+        {renewOpen && (
+          <div className="sa-rnw" role="dialog" aria-modal="true">
+            <div className="sa-rnw-box">
+              {renewStep === "intro" && (
+                <div className="sa-rnw-pad">
+                  <div className="sa-rnw-emoji">⏳</div>
+                  <h2 className="sa-rnw-title">Abunəliyinizin vaxtı bitmək üzrədir</h2>
+                  <p className="sa-rnw-text">
+                    Salam! Abunəliyinizin bitməsinə <b>{days} gün</b> qalıb. Fasiləsiz davam etmək üçün indi ödəniş edin —
+                    təsdiqdən sonra müddətiniz <b>avtomatik</b> artırılacaq.
+                  </p>
+                  <button className="sa-rnw-cta" onClick={() => { setRenewPath("direct"); setRenewStep("plans"); }}>Abunəliyi artır</button>
+                  <button className="sa-rnw-ghost" onClick={() => setRenewStep("offer")}>Hələlik yox</button>
+                </div>
+              )}
+
+              {renewStep === "offer" && (
+                <div className="sa-rnw-pad">
+                  <div className="sa-rnw-emoji">🎁</div>
+                  <h2 className="sa-rnw-title">Əminsiniz?</h2>
+                  <p className="sa-rnw-text">
+                    Əgər indi <b>1 aylıq</b> artırsanız, əlavə olaraq <b>1 aylıq HBO Max və ya Exxen</b> hədiyyə qazanacaqsınız!
+                  </p>
+                  <button className="sa-rnw-cta" onClick={() => { setRenewPath("offer"); setRenewStep("plans"); }}>Artırıram</button>
+                  <button className="sa-rnw-ghost" onClick={closeRenew}>Artırmıram</button>
+                </div>
+              )}
+
+              {renewStep === "plans" && (
+                <div className="sa-rnw-scrollpad">
+                  <h2 className="sa-rnw-title" style={{ textAlign: "center" }}>Müddət seçin</h2>
+                  <div className="sa-rnw-plans">
+                    {RENEW_PLANS.map((p) => {
+                      const g = giftFor(p.months, renewPath);
+                      return (
+                        <button key={p.months} className={`sa-rnw-plan ${p.months === 12 ? "best" : ""}`} onClick={() => pickPlan(p)}>
+                          <div className="sa-rnw-plan-top">
+                            <span className="sa-rnw-plan-label">{p.label}</span>
+                            <span className="sa-rnw-plan-price">{p.amount} ₼</span>
+                          </div>
+                          {p.months === 12 && <span className="sa-rnw-badge">ƏN SƏRFƏLİ + HƏDİYYƏLƏR</span>}
+                          {g && <div className="sa-rnw-gift"><Gift size={13} /> {g}</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button className="sa-rnw-ghost" onClick={closeRenew}>Bağla</button>
+                </div>
+              )}
+
+              {renewStep === "pay" && renewPlan && (
+                <div className="sa-rnw-scrollpad">
+                  <h2 className="sa-rnw-title" style={{ textAlign: "center" }}>Ödəniş</h2>
+                  <div className="sa-rnw-sum">
+                    <div className="sa-rnw-sum-row"><span>Seçim</span><strong>{renewPlan.label}</strong></div>
+                    <div className="sa-rnw-sum-row"><span>Ödəniləcək məbləğ</span><strong>{renewPlan.amount} ₼</strong></div>
+                    {giftFor(renewPlan.months, renewPath) && (
+                      <div className="sa-rnw-sum-gift"><Gift size={14} /> {giftFor(renewPlan.months, renewPath)}</div>
+                    )}
+                  </div>
+                  <div className="sa-rnw-card">
+                    <div className="sa-rnw-card-h">Kartdan karta ödəniş</div>
+                    <div className="sa-rnw-card-row"><span>Ad</span><b>{PAY_CARD_NAME}</b></div>
+                    <div className="sa-rnw-card-row"><span>Bank</span><b>{PAY_CARD_BANK}</b></div>
+                    <div className="sa-rnw-card-row">
+                      <span>Kart</span>
+                      <b style={{ letterSpacing: 1 }}>{formatCardNumber(PAY_CARD_NUMBER)}</b>
+                    </div>
+                    <button className="sa-rnw-copy" onClick={async () => { if (await skyCopy(PAY_CARD_NUMBER)) { setCopied("rnwcard"); setTimeout(() => setCopied(""), 1500); } }}>
+                      <Copy size={13} /> {copied === "rnwcard" ? "Kopyalandı ✓" : "Kart nömrəsini kopyala"}
+                    </button>
+                  </div>
+                  <label className="sa-rnw-upload">
+                    <Upload size={15} /> {receiptName ? receiptName : "Qəbzi yüklə (istəyə bağlı)"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={onReceiptPick} />
+                  </label>
+                  <p className="sa-rnw-note2">Göstərilən karta ödəyin, sonra “Ödəniş etdim” basın. Təsdiqdən sonra müddətiniz avtomatik artırılacaq.</p>
+                  <button className="sa-rnw-cta" disabled={renewBusy} onClick={submitRenewal}>{renewBusy ? "Göndərilir..." : "Ödəniş etdim"}</button>
+                  <button className="sa-rnw-ghost" onClick={() => setRenewStep("plans")}>Geri</button>
+                </div>
+              )}
+
+              {renewStep === "done" && (
+                <div className="sa-rnw-pad">
+                  <div className="sa-rnw-emoji">✅</div>
+                  <h2 className="sa-rnw-title">Ödəniş qeydə alındı</h2>
+                  <p className="sa-rnw-text">
+                    Təşəkkürlər! Ödənişiniz yoxlanıldıqdan sonra abunəliyiniz avtomatik artırılacaq. WhatsApp pəncərəsi açılmadısa,
+                    bizə birbaşa yazın.
+                  </p>
+                  <a className="sa-rnw-cta" href={`https://wa.me/${RENEW_WA}`} target="_blank" rel="noreferrer">WhatsApp-a yaz</a>
+                  <button className="sa-rnw-ghost" onClick={closeRenew}>Bağla</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -4077,11 +4375,15 @@ function SharedAccountPage({ slug }) {
             <button className="sa-btn sa-btn-ghost" onClick={() => check()} disabled={loading}>
               <RotateCw size={15} /> {loading ? "Yenilənir..." : "Yenilə"}
             </button>
-            {days <= 3 && (
+            {isOrtaq ? (
+              <button className="sa-btn" style={{ marginTop: 10 }} onClick={() => { setRenewPath("direct"); setRenewStep("plans"); setRenewOpen(true); }}>
+                <RotateCw size={16} /> Abunəliyi artır
+              </button>
+            ) : days <= 3 ? (
               <a className="sa-btn" style={{ marginTop: 10 }} href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
                 <MessageCircle size={16} /> Abunəliyi artır
               </a>
-            )}
+            ) : null}
             <div className="sa-rules">
               <div className="sa-rules-head">
                 <Shield size={16} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -5174,6 +5476,8 @@ function SharedAccountsAdmin() {
   const [codes, setCodes] = useState([]);
   const [contracts, setContracts] = useState([]);
   const [contractSearch, setContractSearch] = useState("");
+  const [renewReqs, setRenewReqs] = useState([]);
+  const [pendingRenewCount, setPendingRenewCount] = useState(0);
   const [payReqs, setPayReqs] = useState([]);
   const [pendingPayCount, setPendingPayCount] = useState(0);
   const [notifForm, setNotifForm] = useState({ title: "", body: "", link: "" });
@@ -5205,6 +5509,7 @@ function SharedAccountsAdmin() {
   useEffect(() => {
     loadAll();
     loadPayReqs();
+    loadRenewals();
   }, []);
 
   function flashMsg(t) {
@@ -5243,6 +5548,26 @@ function SharedAccountsAdmin() {
       .select("*")
       .order("accepted_at", { ascending: false });
     setContracts(data || []);
+  }
+
+  async function loadRenewals() {
+    const { data } = await supabase
+      .from("renewal_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setRenewReqs(data || []);
+    setPendingRenewCount((data || []).filter((r) => r.status === "pending").length);
+  }
+
+  async function approveRenewal(id) {
+    const { data } = await supabase.rpc("approve_renewal", { p_id: id });
+    if (data?.status === "ok") { flashMsg("Təsdiqləndi, müddət artırıldı ✓"); loadRenewals(); loadAll(); }
+    else flashMsg("Xəta: " + (data?.status || "naməlum"));
+  }
+  async function rejectRenewal(id) {
+    const { data } = await supabase.rpc("reject_renewal", { p_id: id });
+    if (data?.status === "ok") { flashMsg("Rədd edildi"); loadRenewals(); }
   }
 
   async function sendNotification() {
@@ -5747,6 +6072,7 @@ function SharedAccountsAdmin() {
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
               ["payments", "Ödənişlər"],
+              ["renewals", "Yeniləmələr"],
               ["contracts", "İstifadəçi şərtləri"],
               ["notify", "Bildiriş göndər"],
               ["codes", "Netflix kodları"],
@@ -5761,11 +6087,15 @@ function SharedAccountsAdmin() {
                   if (key === "codes") loadCodes();
                   if (key === "payments") loadPayReqs();
                   if (key === "contracts") loadContracts();
+                  if (key === "renewals") loadRenewals();
                 }}
               >
                 {label}
                 {key === "payments" && pendingPayCount > 0 && (
                   <span style={{ marginLeft: 6, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{pendingPayCount}</span>
+                )}
+                {key === "renewals" && pendingRenewCount > 0 && (
+                  <span style={{ marginLeft: 6, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{pendingRenewCount}</span>
                 )}
               </button>
             ))}
@@ -6114,6 +6444,50 @@ function SharedAccountsAdmin() {
                 </div>
               ))}
             </>
+          )}
+
+          {tab === "renewals" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>
+                  Ödəniş edib gözləyənlər
+                  {pendingRenewCount > 0 && (
+                    <span style={{ marginLeft: 8, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "2px 12px", fontSize: 13, fontWeight: 800, animation: "pulse 1.4s infinite" }}>
+                      {pendingRenewCount} nəfər ödəniş edib
+                    </span>
+                  )}
+                </span>
+                <button style={S.mini} onClick={loadRenewals}><RotateCw size={12} /> Yenilə</button>
+              </div>
+              {!renewReqs.length && <p style={S.small}>Hələ yeniləmə sorğusu yoxdur. Müştəri kabinetdən ödəniş etdikcə burada görünəcək.</p>}
+              {renewReqs.map((r) => (
+                <div key={r.id} style={{ borderTop: "1px solid var(--line)", padding: "12px 0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "'JetBrains Mono',monospace" }}>+{r.phone}</div>
+                      <div style={S.small}>
+                        {r.months} ay · {Number(r.amount).toFixed(2)} ₼ · {r.service || "Netflix"}{r.room_name ? " · " + r.room_name : ""} · {skyFmtDate(r.created_at)}
+                      </div>
+                      {r.gifts && <div style={{ ...S.small, color: "var(--gold)", marginTop: 3 }}>🎁 {r.gifts}</div>}
+                      {r.receipt_url && <a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ ...S.small, color: "#7FB3FF", display: "inline-block", marginTop: 3 }}>📎 Qəbzə bax</a>}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
+                        background: r.status === "approved" ? "rgba(31,157,85,0.2)" : r.status === "rejected" ? "rgba(225,18,42,0.2)" : "rgba(245,179,1,0.2)",
+                        color: r.status === "approved" ? "#1f9d55" : r.status === "rejected" ? "#FF6B7A" : "#F5B301" }}>
+                        {r.status === "approved" ? "təsdiqləndi" : r.status === "rejected" ? "rədd edildi" : "gözləyir"}
+                      </span>
+                      {r.status === "pending" && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13 }} onClick={() => approveRenewal(r.id)}>Təsdiqlə və artır</button>
+                          <button style={S.mini} onClick={() => rejectRenewal(r.id)}><Ban size={12} /></button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {tab === "contracts" && (() => {
