@@ -3770,9 +3770,11 @@ function SharedAccountPage({ slug }) {
 
   const unreadNotifs = cabNotifs.filter((n) => new Date(n.created_at).getTime() > notifReadAt).length;
 
-  // ORTAQ + 1–10 gün qalıbsa — HƏR girəndə avtomatik tam ekran təklif
+  // ORTAQ üçün avtomatik tam ekran: ok-da 1–10 gün qalanda; vaxtı bitəndə həmişə
   useEffect(() => {
-    if (result?.status === "ok" && contractAccepted === true && isOrtaq && days !== null && days >= 1 && days <= 10) {
+    const okWindow = result?.status === "ok" && contractAccepted === true && days !== null && days >= 1 && days <= 10;
+    const expiredWindow = result?.status === "expired";
+    if (isOrtaq && (okWindow || expiredWindow)) {
       if (!renewOpen && renewStep !== "done") {
         setRenewStep("intro"); setRenewPath("direct"); setRenewOpen(true);
       }
@@ -4160,10 +4162,11 @@ function SharedAccountPage({ slug }) {
               {renewStep === "intro" && (
                 <div className="sa-rnw-pad">
                   <div className="sa-rnw-emoji">⏳</div>
-                  <h2 className="sa-rnw-title">Abunəliyinizin vaxtı bitmək üzrədir</h2>
+                  <h2 className="sa-rnw-title">{result?.status === "expired" ? "Abunəliyinizin vaxtı bitib" : "Abunəliyinizin vaxtı bitmək üzrədir"}</h2>
                   <p className="sa-rnw-text">
-                    Salam! Abunəliyinizin bitməsinə <b>{days} gün</b> qalıb. Fasiləsiz davam etmək üçün indi ödəniş edin —
-                    təsdiqdən sonra müddətiniz <b>avtomatik</b> artırılacaq.
+                    {result?.status === "expired"
+                      ? <>Salam! Abunəliyinizin vaxtı bitib. Yenidən aktivləşdirmək üçün indi ödəniş edin — təsdiqdən sonra müddətiniz <b>avtomatik</b> artırılacaq və hesabınız açılacaq.</>
+                      : <>Salam! Abunəliyinizin bitməsinə <b>{days} gün</b> qalıb. Fasiləsiz davam etmək üçün indi ödəniş edin — təsdiqdən sonra müddətiniz <b>avtomatik</b> artırılacaq.</>}
                   </p>
                   <button className="sa-rnw-cta" onClick={() => { setRenewPath("direct"); setRenewStep("plans"); }}>Abunəliyi artır</button>
                   <button className="sa-rnw-ghost" onClick={() => setRenewStep("offer")}>Hələlik yox</button>
@@ -4417,9 +4420,15 @@ function SharedAccountPage({ slug }) {
               {result.service ? `${result.service} abunəliyiniz` : "Abunəliyiniz"} {skyFmtDate(result.expires_at, false)} tarixində bitib.
               Artırandan sonra bu link dərhal yenidən açılacaq.
             </p>
-            <a className="sa-btn" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
-              <MessageCircle size={16} /> Artırmaq üçün yazın
-            </a>
+            {isOrtaq ? (
+              <button className="sa-btn" onClick={() => { setRenewPath("direct"); setRenewStep("intro"); setRenewOpen(true); }}>
+                <RotateCw size={16} /> Abunəliyi artır
+              </button>
+            ) : (
+              <a className="sa-btn" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
+                <MessageCircle size={16} /> Artırmaq üçün yazın
+              </a>
+            )}
             <button className="sa-btn sa-btn-ghost" onClick={() => check()} disabled={loading}>
               <RotateCw size={15} /> {loading ? "Yoxlanılır..." : "Artırdım, yenidən yoxla"}
             </button>
