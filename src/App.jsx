@@ -3190,10 +3190,13 @@ function LiveChatButton({ settings }) {
   );
 }
 
-const GREETING_TEXT =
-  "Salam, mən SkyFlix-in səsli botuyam. Birazdan sənin üçün saytda gəzib sifariş verərkən ürəyin sıxılmasın deyə, Bella Ciao mahnısını qoşacam. Mahnını istəsən dayandıra və ya davam etdirə bilərsən. Xoş alışverişlər!";
+// Saytın arxa fon musiqi playlisti — YouTube video ID-ləri (sırayla çalınır, təkrarlanır).
+// Mahnıları dəyişmək üçün bu siyahını yenilə.
+const SITE_PLAYLIST = ["PSxCaYZpl1o"];
 
-function VideoWidget({ videoId }) {
+function VideoWidget({ videoIds }) {
+  const ids = Array.isArray(videoIds) ? videoIds.filter(Boolean) : [videoIds].filter(Boolean);
+  const firstId = ids[0];
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const startedRef = useRef(false);
@@ -3204,15 +3207,17 @@ function VideoWidget({ videoId }) {
     if (!wrapperRef.current) return;
 
     function createPlayer() {
+      if (!firstId) return;
       const target = document.createElement("div");
       wrapperRef.current.appendChild(target);
       playerRef.current = new window.YT.Player(target, {
-        videoId,
+        videoId: firstId,
         playerVars: {
           autoplay: 1,
           mute: 0,
           loop: 1,
-          playlist: videoId,
+          // bir neçə mahnı → ardıcıl çalınıb təkrarlanır
+          playlist: ids.join(","),
           controls: 0,
           modestbranding: 1,
           rel: 0,
@@ -3246,24 +3251,9 @@ function VideoWidget({ videoId }) {
     function startPlayer() {
       if (startedRef.current) return;
       startedRef.current = true;
-
+      // Səsli bot söndürüldü — birbaşa musiqi başlayır
       try {
-        if (window.speechSynthesis) {
-          const utter = new SpeechSynthesisUtterance(GREETING_TEXT);
-          utter.lang = "az-AZ";
-          utter.rate = 1;
-          utter.onend = loadPlayer;
-          utter.onerror = loadPlayer;
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(utter);
-          const fallback = setTimeout(loadPlayer, 12000);
-          utter.onend = () => {
-            clearTimeout(fallback);
-            loadPlayer();
-          };
-        } else {
-          loadPlayer();
-        }
+        loadPlayer();
       } catch (e) {
         loadPlayer();
       }
@@ -3285,7 +3275,7 @@ function VideoWidget({ videoId }) {
         } catch (e) {}
       }
     };
-  }, [videoId]);
+  }, [ids.join(",")]);
 
   function toggle() {
     const p = playerRef.current;
@@ -7850,7 +7840,7 @@ function MainApp() {
 
   return (
     <div className={`ab-root ${theme === "dark" ? "dark" : ""}`}>
-      <VideoWidget videoId="PSxCaYZpl1o" />
+      <VideoWidget videoIds={SITE_PLAYLIST} />
       <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
