@@ -3549,6 +3549,9 @@ async function skyFetchAll(table, orderCol, ascending = true) {
   return all;
 }
 
+// Google biznes rəy linki (Skyflix Azərbaycan)
+const GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJu3Kic8R9MEARY5ZKtf1zRKY";
+
 // ---- Abunəlik yeniləmə planları və hədiyyələr ----
 const RENEW_WA = "994517873090";
 const RENEW_PLANS = [
@@ -3608,6 +3611,13 @@ function SharedAccountPage({ slug }) {
   const [renewBusy, setRenewBusy] = useState(false);
   const [receiptName, setReceiptName] = useState("");
   const receiptFileRef = useRef(null);
+  const [reviewHidden, setReviewHidden] = useState(() => {
+    try { return sessionStorage.getItem("skyreview_" + slug) === "1"; } catch { return false; }
+  });
+  function hideReview() {
+    setReviewHidden(true);
+    try { sessionStorage.setItem("skyreview_" + slug, "1"); } catch {}
+  }
 
   function openNotifs() {
     setNotifOpen((v) => !v);
@@ -3987,6 +3997,13 @@ function SharedAccountPage({ slug }) {
         .sa-rnw-warn{background:rgba(225,18,42,0.1);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:11px;
           padding:11px 12px;font-size:12px;line-height:1.55;margin-bottom:12px;}
         .sa-rnw-note2{font-size:12px;color:#8f7a79;line-height:1.5;margin:0 0 14px;text-align:center;}
+        .sa-review{background:linear-gradient(145deg,#12203a,#0f1626);border:1px solid rgba(127,179,255,0.3);border-radius:16px;
+          padding:16px 16px 14px;margin:0 0 16px;text-align:center;}
+        .sa-review-stars{color:#FFC83D;font-size:20px;letter-spacing:3px;margin-bottom:8px;}
+        .sa-review-text{color:#D5E3F5;font-size:13.5px;line-height:1.55;margin:0 0 14px;}
+        .sa-review-btn{display:block;width:100%;border:0;border-radius:11px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;
+          text-decoration:none;color:#1A1210;background:linear-gradient(135deg,#FFD24B,#F5A623);box-shadow:0 6px 16px rgba(245,166,35,0.35);}
+        .sa-review-skip{margin-top:8px;background:transparent;border:0;color:#8aa0bd;font-size:12.5px;cursor:pointer;}
         .sa-field{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
         .sa-field-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#A98D8B;margin-bottom:4px;}
         .sa-value{font-family:'JetBrains Mono',monospace;font-size:17px;word-break:break-all;letter-spacing:.2px;}
@@ -4256,6 +4273,19 @@ function SharedAccountPage({ slug }) {
             <p className="sa-sub">
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
+
+            {!reviewHidden && (
+              <div className="sa-review">
+                <div className="sa-review-stars">★★★★★</div>
+                <p className="sa-review-text">
+                  Xidmətimizi tam şəffaf şəkildə dəyərləndirərək rəyinizi bildirin, zəhmət olmasa. Digər müştərilərə kömək olsun.
+                </p>
+                <a className="sa-review-btn" href={GOOGLE_REVIEW_URL} target="_blank" rel="noreferrer" onClick={hideReview}>
+                  Google-da rəy yaz
+                </a>
+                <button className="sa-review-skip" onClick={hideReview}>Bağla</button>
+              </div>
+            )}
 
             <div className="sa-field">
               <div className="sa-field-top">
