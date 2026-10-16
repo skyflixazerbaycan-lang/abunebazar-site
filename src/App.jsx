@@ -5643,6 +5643,11 @@ function SharedAccountsAdmin() {
     setDlvReqs(data || []);
     setPendingDlvCount((data || []).filter((r) => r.status === "pending").length);
   }
+  async function syncKinds() {
+    const { data } = await supabase.rpc("sync_account_kinds");
+    if (data?.status === "ok") { flashMsg("Növlər eyniləşdirildi (" + data.updated + " hesab) ✓"); loadAll(); }
+    else flashMsg("Xəta: " + (data?.status || "naməlum"));
+  }
   async function approveDelivery(id) {
     const { data } = await supabase.rpc("approve_delivery", { p_id: id });
     if (data?.status === "ok") { flashMsg("Təsdiqləndi, hesab təyin edildi ✓"); loadDeliveries(); loadAll(); }
@@ -6197,6 +6202,12 @@ function SharedAccountsAdmin() {
 
           {tab === "accounts" && (
             <>
+              <div style={{ ...S.box, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={S.small}>Hesab növü (şəxsi/ortaq) #siyahi-dən maillərə görə təyin olunur.</span>
+                <button className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13 }} onClick={syncKinds}>
+                  <RotateCw size={13} /> Hesab növlərini eyniləşdir
+                </button>
+              </div>
               <div style={S.box}>
                 <div style={{ fontWeight: 600, marginBottom: 10 }}>Yeni hesab</div>
                 <div style={{ display: "grid", gap: 8 }}>
@@ -6273,7 +6284,12 @@ function SharedAccountsAdmin() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>{acc.login_email}</div>
+                          <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {acc.login_email}
+                            {acc.kind === "ortaq" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999, background: "rgba(245,179,1,0.18)", color: "#F5B301" }}>ortaq</span>}
+                            {acc.kind === "sexsi" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999, background: "rgba(127,179,255,0.18)", color: "#7FB3FF" }}>şəxsi</span>}
+                            {!acc.kind && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: "var(--muted)" }}>naməlum</span>}
+                          </div>
                           <div style={S.small}>
                             {acc.service || "Servis yazılmayıb"}
                             {!acc.is_active && " · deaktiv"}
