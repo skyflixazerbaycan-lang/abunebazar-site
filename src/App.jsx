@@ -3583,8 +3583,12 @@ function SharedAccountPage({ slug }) {
     }
   })();
 
-  const [phone, setPhone] = useState(saved?.phone || "");
-  const [pin, setPin] = useState(saved?.pin || "");
+  // Çatdırılma linkindən gələn nömrə + PIN (QEYD kimi göstərmək üçün)
+  const dlvParams = (() => {
+    try { const q = new URLSearchParams(window.location.search); return { nf: q.get("nf") || "", pin: q.get("pin") || "" }; } catch { return { nf: "", pin: "" }; }
+  })();
+  const [phone, setPhone] = useState(saved?.phone || dlvParams.nf || "");
+  const [pin, setPin] = useState(saved?.pin || dlvParams.pin || "");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -3997,6 +4001,11 @@ function SharedAccountPage({ slug }) {
         .sa-rnw-warn{background:rgba(225,18,42,0.1);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:11px;
           padding:11px 12px;font-size:12px;line-height:1.55;margin-bottom:12px;}
         .sa-rnw-note2{font-size:12px;color:#8f7a79;line-height:1.5;margin:0 0 14px;text-align:center;}
+        .sa-qeyd{background:linear-gradient(145deg,#1f1405,#150708);border:1px solid rgba(245,179,1,0.35);border-radius:14px;padding:14px;margin:0 0 16px;}
+        .sa-qeyd-h{font-weight:700;font-size:13.5px;color:#F5B301;margin-bottom:10px;}
+        .sa-qeyd-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:13.5px;color:#A98D8B;}
+        .sa-qeyd-row b{color:#fff;font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:.5px;}
+        .sa-qeyd-t{font-size:11.8px;color:#CBB7B5;line-height:1.55;margin:9px 0 0;}
         .sa-review{background:linear-gradient(145deg,#12203a,#0f1626);border:1px solid rgba(127,179,255,0.3);border-radius:16px;
           padding:16px 16px 14px;margin:0 0 16px;text-align:center;}
         .sa-review-stars{color:#FFC83D;font-size:20px;letter-spacing:3px;margin-bottom:8px;}
@@ -4073,6 +4082,24 @@ function SharedAccountPage({ slug }) {
           <>
             <h1 className="sa-title">Hesab məlumatlarınız</h1>
             <p className="sa-sub">WhatsApp nömrənizi və sizə göndərilən 4 rəqəmli PIN-i yazın.</p>
+
+            {(dlvParams.nf || dlvParams.pin) && (
+              <div className="sa-qeyd">
+                <div className="sa-qeyd-h">📌 QEYD — giriş məlumatlarınız</div>
+                <div className="sa-qeyd-row"><span>Nömrə</span><b>+{skyNormPhone(dlvParams.nf)}</b></div>
+                <div className="sa-qeyd-row"><span>PIN kod</span><b>{dlvParams.pin}</b></div>
+                <p className="sa-qeyd-t">
+                  Netflix hesabının məlumatlarını görmək üçün burada yazılan <b>nömrənizi</b> və <b>PIN kodu</b> aşağıdakı xanalara uyğun olaraq daxil edin.
+                </p>
+                <p className="sa-qeyd-t" style={{ color: "#FFB3BA" }}>
+                  ⚠️ Bu nömrə və PIN yalnız <b>müştəri kabinetinizə</b> giriş üçündür — Netflix-ə giriş üçün deyil.
+                </p>
+                <p className="sa-qeyd-t">
+                  Bu müştəri kabinetinə giriş linkini, sizə verilən nömrənizi və PIN kodu <b>itirməyin</b>. Əks halda hesab məlumatlarına girişi itirə bilərsiniz.
+                </p>
+              </div>
+            )}
+
             {error && <div className="sa-error">{error}</div>}
             <label className="sa-label" htmlFor="sa-phone">WhatsApp nömrəsi</label>
             <input
@@ -5516,6 +5543,8 @@ function SharedAccountsAdmin() {
   const [contractSearch, setContractSearch] = useState("");
   const [renewReqs, setRenewReqs] = useState([]);
   const [pendingRenewCount, setPendingRenewCount] = useState(0);
+  const [dlvReqs, setDlvReqs] = useState([]);
+  const [pendingDlvCount, setPendingDlvCount] = useState(0);
   const [payReqs, setPayReqs] = useState([]);
   const [pendingPayCount, setPendingPayCount] = useState(0);
   const [notifForm, setNotifForm] = useState({ title: "", body: "", link: "" });
@@ -5552,6 +5581,7 @@ function SharedAccountsAdmin() {
     loadAll();
     loadPayReqs();
     loadRenewals();
+    loadDeliveries();
   }, []);
 
   function flashMsg(t) {
@@ -5606,6 +5636,22 @@ function SharedAccountsAdmin() {
     const { data } = await supabase.rpc("approve_renewal", { p_id: id });
     if (data?.status === "ok") { flashMsg("Təsdiqləndi, müddət artırıldı ✓"); loadRenewals(); loadAll(); }
     else flashMsg("Xəta: " + (data?.status || "naməlum"));
+  }
+
+  async function loadDeliveries() {
+    const { data } = await supabase.from("delivery_requests").select("*").order("created_at", { ascending: false }).limit(200);
+    setDlvReqs(data || []);
+    setPendingDlvCount((data || []).filter((r) => r.status === "pending").length);
+  }
+  async function approveDelivery(id) {
+    const { data } = await supabase.rpc("approve_delivery", { p_id: id });
+    if (data?.status === "ok") { flashMsg("Təsdiqləndi, hesab təyin edildi ✓"); loadDeliveries(); loadAll(); }
+    else if (data?.status === "full") { flashMsg("Bütün hesablar 20 limitini doldurub — yeni hesab əlavə edin!"); }
+    else flashMsg("Xəta: " + (data?.status || "naməlum"));
+  }
+  async function rejectDelivery(id) {
+    const { data } = await supabase.rpc("reject_delivery", { p_id: id });
+    if (data?.status === "ok") { flashMsg("Rədd edildi"); loadDeliveries(); }
   }
   async function rejectRenewal(id) {
     const { data } = await supabase.rpc("reject_renewal", { p_id: id });
@@ -6114,6 +6160,7 @@ function SharedAccountsAdmin() {
               ["expiring", "Bitənlər"],
               ["bulk", "Toplu yükləmə"],
               ["payments", "Ödənişlər"],
+              ["deliveries", "Çatdırılma ödənişləri"],
               ["renewals", "Yeniləmələr"],
               ["passmgmt", "Şifrə idarəsi"],
               ["contracts", "İstifadəçi şərtləri"],
@@ -6131,6 +6178,7 @@ function SharedAccountsAdmin() {
                   if (key === "payments") loadPayReqs();
                   if (key === "contracts") loadContracts();
                   if (key === "renewals") loadRenewals();
+                  if (key === "deliveries") loadDeliveries();
                 }}
               >
                 {label}
@@ -6139,6 +6187,9 @@ function SharedAccountsAdmin() {
                 )}
                 {key === "renewals" && pendingRenewCount > 0 && (
                   <span style={{ marginLeft: 6, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{pendingRenewCount}</span>
+                )}
+                {key === "deliveries" && pendingDlvCount > 0 && (
+                  <span style={{ marginLeft: 6, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{pendingDlvCount}</span>
                 )}
               </button>
             ))}
@@ -6487,6 +6538,54 @@ function SharedAccountsAdmin() {
                 </div>
               ))}
             </>
+          )}
+
+          {tab === "deliveries" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>
+                  Çatdırılma ödənişləri
+                  {pendingDlvCount > 0 && (
+                    <span style={{ marginLeft: 8, background: "#E1122A", color: "#fff", borderRadius: 999, padding: "2px 12px", fontSize: 13, fontWeight: 800 }}>
+                      {pendingDlvCount} nəfər ödəniş edib
+                    </span>
+                  )}
+                </span>
+                <button style={S.mini} onClick={loadDeliveries}><RotateCw size={12} /> Yenilə</button>
+              </div>
+              <p style={{ ...S.small, marginBottom: 10 }}>Təsdiq edəndə sistem aktiv sayı 20-dən az olan ortaq hesaba müştərini avtomatik təyin edir.</p>
+              {!dlvReqs.length && <p style={S.small}>Hələ çatdırılma sorğusu yoxdur.</p>}
+              {dlvReqs.map((r) => {
+                const deliverAt = new Date(r.deliver_at).getTime();
+                const leftH = Math.max(0, Math.round((deliverAt - Date.now()) / 3600000 * 10) / 10);
+                return (
+                  <div key={r.id} style={{ borderTop: "1px solid var(--line)", padding: "12px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: "'JetBrains Mono',monospace" }}>+{r.phone}</div>
+                        <div style={S.small}>{r.months} ay · {Number(r.amount).toFixed(2)} ₼ · {r.speed_label} · {skyFmtDate(r.created_at)}</div>
+                        {r.status === "pending" && <div style={{ ...S.small, color: "var(--gold)", marginTop: 2 }}>⏱️ Çatdırılmaya ~{leftH} saat qalıb</div>}
+                        {r.status === "approved" && <div style={{ ...S.small, color: "#1f9d55", marginTop: 2 }}>✓ Hesab verildi · PIN: {r.assigned_pin} · {r.assigned_room_name}</div>}
+                        {r.receipt_url && <a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ ...S.small, color: "#7FB3FF", display: "inline-block", marginTop: 3 }}>📎 Qəbzə bax</a>}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
+                          background: r.status === "approved" ? "rgba(31,157,85,0.2)" : r.status === "rejected" ? "rgba(225,18,42,0.2)" : "rgba(245,179,1,0.2)",
+                          color: r.status === "approved" ? "#1f9d55" : r.status === "rejected" ? "#FF6B7A" : "#F5B301" }}>
+                          {r.status === "approved" ? "çatdırıldı" : r.status === "rejected" ? "rədd edildi" : "gözləyir"}
+                        </span>
+                        {r.status === "pending" && (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13 }} onClick={() => approveDelivery(r.id)}>Təsdiqlə və hesab ver</button>
+                            <button style={S.mini} onClick={() => rejectDelivery(r.id)}><Ban size={12} /></button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
           {tab === "renewals" && (
@@ -9170,12 +9269,248 @@ function MainApp() {
   );
 }
 
+// ============================================================
+// ÖDƏNİŞ LİNKİ + ÇATDIRILMA
+// ============================================================
+const DLV_PLANS = [
+  { months: 1, amount: 3.0, label: "1 ay" },
+  { months: 3, amount: 8.0, label: "3 ay" },
+  { months: 6, amount: 15.0, label: "6 ay" },
+  { months: 12, amount: 20.0, label: "12 ay", best: true },
+];
+const DLV_SPEEDS = [
+  { label: "24 saat ərzində", sub: "Standart", hours: 24, extra: 0, free: true },
+  { label: "12 saat ərzində", sub: "Daha sürətli", hours: 12, extra: 0.57 },
+  { label: "6 saat ərzində", sub: "Sürətli", hours: 6, extra: 0.66 },
+  { label: "1 saat ərzində", sub: "Çox sürətli", hours: 1, extra: 0.82 },
+  { label: "Anında çatdırılma", sub: "Dərhal", hours: 0, extra: 0.99 },
+];
+const DLV_CSS = `
+  .dl-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:26px 16px 48px;}
+  .dl-brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;margin-bottom:18px;}
+  .dl-brand .ic{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#FF3B4E,#B00C20);display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .dl-card{width:100%;max-width:440px;background:#1D0D0E;border:1px solid rgba(255,255,255,0.1);border-radius:22px;overflow:hidden;}
+  .dl-hd{padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);background:linear-gradient(180deg,rgba(225,18,42,.1),transparent);}
+  .dl-hd h1{font-family:'Space Grotesk',sans-serif;font-size:20px;margin:0 0 4px;}
+  .dl-hd p{margin:0;color:#A98D8B;font-size:13px;}
+  .dl-sec{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.08);}
+  .dl-t{font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:#A98D8B;margin-bottom:10px;font-weight:700;}
+  .dl-opt{display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,0.12);background:#150708;border-radius:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,transform .12s;width:100%;text-align:left;color:inherit;font-family:inherit;}
+  .dl-opt:hover{transform:translateY(-1px);}
+  .dl-opt.on{border-color:#FF3B4E;background:rgba(255,59,78,0.08);}
+  .dl-opt.best{border-color:#F5B301;}
+  .dl-opt.best.on{background:rgba(245,179,1,0.1);}
+  .dl-opt-l{font-weight:700;font-size:15px;}
+  .dl-opt-sub{font-size:11.5px;color:#A98D8B;margin-top:2px;}
+  .dl-opt-p{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:16px;color:#FF8A95;}
+  .dl-opt.best .dl-opt-p{color:#F5B301;}
+  .dl-badge{display:inline-block;background:#F5B301;color:#1A1210;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle;}
+  .dl-free{color:#49d17f;font-weight:800;font-size:13px;}
+  .dl-input{width:100%;background:#150708;border:1px solid rgba(255,255,255,0.14);color:#F5EBEA;border-radius:11px;padding:13px;font-size:15px;outline:none;}
+  .dl-input:focus{border-color:#FF3B4E;}
+  .dl-pcard{background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:13px;padding:13px;margin-bottom:10px;}
+  .dl-prow{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;color:#A98D8B;}
+  .dl-prow b{color:#fff;font-family:'JetBrains Mono',monospace;}
+  .dl-upl{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px dashed rgba(255,255,255,0.25);background:#150708;color:#A98D8B;border-radius:12px;padding:14px;font-size:13.5px;cursor:pointer;}
+  .dl-upl.has{border-style:solid;border-color:#1f9d55;color:#8fe0b0;background:rgba(31,157,85,0.08);}
+  .dl-warn{background:rgba(225,18,42,0.1);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:11px;padding:11px 12px;font-size:11.5px;line-height:1.5;margin-top:10px;}
+  .dl-total{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;background:#120607;}
+  .dl-total-v{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:26px;color:#fff;}
+  .dl-pay{display:block;width:calc(100% - 36px);margin:0 18px 18px;border:0;border-radius:13px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#FF3B4E,#B00C20);box-shadow:0 8px 22px rgba(225,18,42,.4);}
+  .dl-pay:disabled{opacity:.45;cursor:not-allowed;}
+  .dl-err{background:rgba(225,18,42,0.12);border:1px solid rgba(255,59,78,0.35);color:#FFB3BA;border-radius:11px;padding:10px 12px;font-size:13px;margin:0 18px 10px;}
+  .dl-wait{text-align:center;padding:34px 24px;}
+  .dl-cd{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:40px;color:#fff;letter-spacing:1px;margin:10px 0;}
+  .dl-spin{display:inline-block;font-size:40px;animation:dlspin 1.4s linear infinite;}
+  @keyframes dlspin{to{transform:rotate(360deg);}}
+  .dl-ready-box{text-align:left;background:#150708;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px;margin:14px 0;}
+`;
+
+function DlvBrand() {
+  return (<a className="dl-brand" href={SKY_SITE_URL} style={{ textDecoration: "none", color: "inherit" }}><span className="ic">▶</span> SkyFlix Azerbaycan</a>);
+}
+
+function PayLinkPage() {
+  useGoogleFonts();
+  const [plan, setPlan] = useState(null);
+  const [speed, setSpeed] = useState(0);
+  const [wa, setWa] = useState("");
+  const [receiptName, setReceiptName] = useState("");
+  const receiptRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => { document.title = "Ödəniş — SkyFlix"; }, []);
+  const total = plan !== null ? DLV_PLANS[plan].amount + DLV_SPEEDS[speed].extra : null;
+  const ready = plan !== null && skyNormPhone(wa).length >= 9 && !!receiptName;
+
+  function pick(e) { const f = e.target.files && e.target.files[0]; receiptRef.current = f || null; setReceiptName(f ? f.name : ""); }
+
+  async function submit() {
+    if (!ready || busy) return;
+    setErr(""); setBusy(true);
+    let receiptUrl = "";
+    try {
+      const f = receiptRef.current;
+      const path = skyNormPhone(wa) + "-" + Date.now() + "-" + (f.name || "qebz").replace(/[^\w.\-]/g, "_");
+      const up = await supabase.storage.from("receipts").upload(path, f, { upsert: false });
+      if (up.error) throw up.error;
+      receiptUrl = supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || "";
+    } catch (e) { setBusy(false); setErr("Qəbz yüklənmədi. İnternetinizi yoxlayıb bir daha cəhd edin."); return; }
+    try {
+      const { data } = await supabase.rpc("create_delivery_request", {
+        p_phone: wa, p_months: DLV_PLANS[plan].months, p_amount: total,
+        p_speed_label: DLV_SPEEDS[speed].label, p_speed_hours: DLV_SPEEDS[speed].hours, p_receipt_url: receiptUrl,
+      });
+      setBusy(false);
+      if (data?.status === "ok" && data.id) { window.location.hash = "teslim-" + data.id; }
+      else setErr("Sorğu yaradılmadı. Bir daha cəhd edin.");
+    } catch (e) { setBusy(false); setErr("Bağlantı xətası. Bir daha cəhd edin."); }
+  }
+
+  return (
+    <div className="dl-root">
+      <style>{DLV_CSS}</style>
+      <DlvBrand />
+      <div className="dl-card">
+        <div className="dl-hd"><h1>Abunəlik ödənişi</h1><p>Planı seçin, ödəyin, hesabınız avtomatik çatdırılsın.</p></div>
+
+        <div className="dl-sec">
+          <div className="dl-t">1 · Abunəlik müddəti</div>
+          {DLV_PLANS.map((p, i) => (
+            <button key={i} className={`dl-opt ${p.best ? "best" : ""} ${plan === i ? "on" : ""}`} onClick={() => setPlan(i)}>
+              <span className="dl-opt-l">{p.label}{p.best && <span className="dl-badge">ƏN SƏRFƏLİ</span>}</span>
+              <span className="dl-opt-p">{p.amount.toFixed(2)} ₼</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="dl-sec">
+          <div className="dl-t">2 · Çatdırılma müddəti</div>
+          {DLV_SPEEDS.map((s, i) => (
+            <button key={i} className={`dl-opt ${speed === i ? "on" : ""}`} onClick={() => setSpeed(i)}>
+              <span><span className="dl-opt-l">{s.label}</span><span className="dl-opt-sub">{s.sub}</span></span>
+              {s.free ? <span className="dl-free">PULSUZ</span> : <span className="dl-opt-p">+{s.extra.toFixed(2)} ₼</span>}
+            </button>
+          ))}
+        </div>
+
+        <div className="dl-sec">
+          <div className="dl-t">3 · WhatsApp nömrəniz</div>
+          <input className="dl-input" type="tel" placeholder="+994 __ ___ __ __" value={wa} onChange={(e) => setWa(e.target.value)} />
+          <p style={{ fontSize: 11.5, color: "#A98D8B", margin: "7px 0 0" }}>Hesab bu nömrəyə uyğun qeydə alınacaq.</p>
+        </div>
+
+        <div className="dl-sec">
+          <div className="dl-t">4 · Ödəniş</div>
+          <div className="dl-pcard">
+            <div className="dl-prow"><span>Ad</span><b>{PAY_CARD_NAME}</b></div>
+            <div className="dl-prow"><span>Bank</span><b>{PAY_CARD_BANK}</b></div>
+            <div className="dl-prow"><span>Kart</span><b style={{ letterSpacing: 1 }}>{formatCardNumber(PAY_CARD_NUMBER)}</b></div>
+          </div>
+          <label className={`dl-upl ${receiptName ? "has" : ""}`}>
+            <Upload size={15} /> {receiptName ? "✓ " + receiptName : "Ödəniş qəbzini yüklə (MƏCBURİ)"}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={pick} />
+          </label>
+          <div className="dl-warn">⚠️ Saxta qəbz yükləmək və ya dələduzluq cəhdi aşkarlanarsa, qanunvericiliyə əsasən barənizdə cinayət işi başlana bilər. Yalnız real qəbzi yükləyin.</div>
+        </div>
+
+        <div className="dl-total"><span style={{ fontSize: 13, color: "#A98D8B" }}>Ödəniləcək məbləğ</span><span className="dl-total-v">{total !== null ? total.toFixed(2) + " ₼" : "—"}</span></div>
+        {err && <div className="dl-err">{err}</div>}
+        <button className="dl-pay" disabled={!ready || busy} onClick={submit}>{busy ? "Göndərilir..." : "Ödəniş etdim"}</button>
+      </div>
+    </div>
+  );
+}
+
+function DeliveryWaitPage({ id }) {
+  useGoogleFonts();
+  const [info, setInfo] = useState(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    document.title = "Çatdırılma — SkyFlix";
+    let stop = false;
+    const load = async () => {
+      try { const { data } = await supabase.rpc("delivery_status", { p_id: id }); if (!stop && data) setInfo(data); } catch {}
+    };
+    load();
+    const poll = setInterval(load, 5000);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => { stop = true; clearInterval(poll); clearInterval(tick); };
+  }, [id]);
+
+  function fmtLeft(ms) {
+    if (ms <= 0) return "00:00:00";
+    const s = Math.floor(ms / 1000);
+    const h = String(Math.floor(s / 3600)).padStart(2, "0");
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${h}:${m}:${ss}`;
+  }
+
+  let body;
+  if (!info) {
+    body = <div className="dl-wait"><span className="dl-spin">⏳</span><p style={{ color: "#A98D8B", marginTop: 12 }}>Yüklənir...</p></div>;
+  } else if (info.status === "notfound") {
+    body = <div className="dl-wait"><div style={{ fontSize: 40 }}>❓</div><h2 style={{ fontFamily: "Space Grotesk" }}>Sorğu tapılmadı</h2><p style={{ color: "#A98D8B" }}>Link səhvdir və ya sorğu silinib.</p></div>;
+  } else if (info.status === "rejected") {
+    body = <div className="dl-wait"><div style={{ fontSize: 40 }}>⛔</div><h2 style={{ fontFamily: "Space Grotesk" }}>Ödəniş təsdiqlənmədi</h2><p style={{ color: "#A98D8B", lineHeight: 1.6 }}>Qəbz təsdiqlənmədi. Zəhmət olmasa bizimlə əlaqə saxlayın.</p></div>;
+  } else {
+    const deliverAt = new Date(info.deliver_at).getTime();
+    const left = deliverAt - now;
+    const timeUp = left <= 0;
+    const delivered = info.ready && timeUp;
+    if (delivered) {
+      const link = `${SKY_SITE_URL}/?nf=${encodeURIComponent(info.phone)}&pin=${encodeURIComponent(info.pin)}#h-${info.slug}`;
+      body = (
+        <div className="dl-wait">
+          <div style={{ fontSize: 44 }}>✅</div>
+          <h2 style={{ fontFamily: "Space Grotesk", margin: "0 0 6px" }}>Hesabınız hazırdır!</h2>
+          <p style={{ color: "#A98D8B", lineHeight: 1.6, margin: "0 0 14px" }}>
+            Hesab məlumatları və müştəri kabinetinə giriş üçün aşağıdakı düyməyə basın.
+          </p>
+          <a className="dl-pay" style={{ display: "block", textDecoration: "none", width: "100%", margin: 0 }} href={link}>
+            Hesab məlumatlarına keç →
+          </a>
+          <p style={{ color: "#8f7a79", fontSize: 11.5, marginTop: 12, lineHeight: 1.5 }}>
+            Bu səhifənin linkini saxlayın — hesabınıza yenidən keçid üçün lazım ola bilər.
+          </p>
+        </div>
+      );
+    } else {
+      body = (
+        <div className="dl-wait">
+          <span className="dl-spin">⏳</span>
+          <h2 style={{ fontFamily: "Space Grotesk", margin: "8px 0 4px" }}>Hesabınız hazırlanır</h2>
+          <p style={{ color: "#A98D8B", fontSize: 13, margin: "0 0 4px" }}>Seçdiyiniz çatdırılma: <b style={{ color: "#F5B301" }}>{info.speed_label}</b></p>
+          <div className="dl-cd">{fmtLeft(left)}</div>
+          <p style={{ color: "#A98D8B", fontSize: 12.5, lineHeight: 1.6 }}>
+            Bu müddət ərzində hesabınız bu ekranda avtomatik görünəcək. Səhifəni bağlamayın.
+          </p>
+          {timeUp && !info.ready && <p style={{ color: "#F5B301", fontSize: 12.5, marginTop: 8 }}>Ödənişiniz son yoxlamadadır, tezliklə hazır olacaq...</p>}
+        </div>
+      );
+    }
+  }
+
+  return (
+    <div className="dl-root">
+      <style>{DLV_CSS}</style>
+      <DlvBrand />
+      <div className="dl-card">{body}</div>
+    </div>
+  );
+}
+
 // Hesab linki (#h-...) açılanda yalnız hesab səhifəsi göstərilir
 function getSharedSlug() {
   const h = window.location.hash.replace("#", "");
   if (h === "abunelikidare" || window.location.pathname.replace(/\/+$/, "") === "/abunelikidare") return "__manager__";
   if (h === "siyahi" || window.location.pathname.replace(/\/+$/, "") === "/siyahi") return "__netflixlist__";
   if (h === "artir" || window.location.pathname.replace(/\/+$/, "") === "/artir") return "__listextend__";
+  if (h === "al" || window.location.pathname.replace(/\/+$/, "") === "/al") return "__pay__";
+  if (h.startsWith("teslim-")) return "__teslim__:" + h.slice(7);
   return h.startsWith("h-") ? h.slice(2) : null;
 }
 
@@ -9189,6 +9524,8 @@ export default function App() {
   if (slug === "__manager__") return <SubscriptionManagerPage />;
   if (slug === "__netflixlist__") return <NetflixListPage />;
   if (slug === "__listextend__") return <ListExtendPage />;
+  if (slug === "__pay__") return <PayLinkPage />;
+  if (slug && slug.startsWith("__teslim__:")) return <DeliveryWaitPage key={slug} id={slug.slice(11)} />;
   if (slug) return <SharedAccountPage key={slug} slug={slug} />;
   return <MainApp />;
 }
