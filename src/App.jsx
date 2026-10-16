@@ -5515,6 +5515,7 @@ function SharedAccountsAdmin() {
   const [bulkReport, setBulkReport] = useState("");
   const [passDate, setPassDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [passDays, setPassDays] = useState(15);
+  const [passType, setPassType] = useState("all"); // all | ortaq | sexsi
   const [passExpiredOnly, setPassExpiredOnly] = useState(false);
 
   useEffect(() => {
@@ -6507,17 +6508,26 @@ function SharedAccountsAdmin() {
             const ref = new Date(passDate + "T23:59:59");
             const cutoff = new Date(ref.getTime() - (Number(passDays) || 15) * 86400000);
             const expiringOnDate = members.filter((m) => m.expires_at && new Date(m.expires_at).toISOString().slice(0, 10) === passDate);
-            const rows = expiringOnDate
+            const allRows = expiringOnDate
               .map((m) => {
                 const acc = accById[m.account_id];
                 if (!acc) return null;
                 const pu = acc.password_updated_at ? new Date(acc.password_updated_at) : null;
                 const staleP = !pu || pu <= cutoff;
                 if (!staleP) return null;
-                return { email: acc.login_email, phone: m.phone, name: m.name, service: acc.service, pu: acc.password_updated_at };
+                // Şəxsi/Ortaq təyini: otaq/rəqəm otaq → ortaq; adlı profil → şəxsi; spotify/youtube → şəxsi
+                const svcL = String(acc.service || "").toLowerCase();
+                const roomClean = String(m.room_name || "").toLowerCase().replace(/\s/g, "");
+                const noteL = String(acc.note || "").toLowerCase();
+                const isSpotifyYt = svcL.includes("spotify") || svcL.includes("youtube");
+                const ortaq = !isSpotifyYt && (noteL.includes("ortaq") || /otaq/.test(roomClean) || /^\d+$/.test(roomClean));
+                return { email: acc.login_email, phone: m.phone, name: m.name, service: acc.service, pu: acc.password_updated_at, type: ortaq ? "ortaq" : "sexsi" };
               })
               .filter(Boolean)
               .sort((x, y) => new Date(x.pu || 0) - new Date(y.pu || 0));
+            const ortaqCount = allRows.filter((r) => r.type === "ortaq").length;
+            const sexsiCount = allRows.filter((r) => r.type === "sexsi").length;
+            const rows = passType === "all" ? allRows : allRows.filter((r) => r.type === passType);
             const allPhones = [...new Set(rows.map((r) => r.phone))].filter(Boolean);
             const allMails = [...new Set(rows.map((r) => r.email))].filter(Boolean);
             const pairs = rows.map((r) => `${r.email}  —  +${r.phone}`);
@@ -6535,8 +6545,13 @@ function SharedAccountsAdmin() {
                     <input type="number" min={1} style={{ ...S.input, width: 130 }} value={passDays} onChange={(e) => setPassDays(e.target.value)} />
                   </div>
                 </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  {[["all", "Hamısı", allRows.length], ["ortaq", "Ortaq", ortaqCount], ["sexsi", "Şəxsi", sexsiCount]].map(([k, lbl, cnt]) => (
+                    <button key={k} style={S.chip(passType === k)} onClick={() => setPassType(k)}>{lbl} ({cnt})</button>
+                  ))}
+                </div>
                 <p style={{ ...S.small, marginBottom: 12 }}>
-                  <b style={{ color: "var(--gold)" }}>{skyFmtDate(passDate, false)}</b> tarixində vaxtı bitən və şifrəsi son <b>{passDays}</b> gündən çox dəyişməyən <b>{rows.length}</b> müştəri:
+                  <b style={{ color: "var(--gold)" }}>{skyFmtDate(passDate, false)}</b> tarixində vaxtı bitən və şifrəsi son <b>{passDays}</b> gündən çox dəyişməyən <b>{rows.length}</b> {passType === "ortaq" ? "ortaq" : passType === "sexsi" ? "şəxsi" : ""} müştəri:
                 </p>
 
                 {rows.length > 0 && (
@@ -6560,7 +6575,12 @@ function SharedAccountsAdmin() {
                   return (
                     <div key={i} style={{ borderTop: "1px solid var(--line)", padding: "10px 0", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{r.email}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>
+                          {r.email}
+                          <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 700, padding: "1px 7px", borderRadius: 999, verticalAlign: "middle",
+                            background: r.type === "ortaq" ? "rgba(245,179,1,0.18)" : "rgba(127,179,255,0.18)",
+                            color: r.type === "ortaq" ? "#F5B301" : "#7FB3FF" }}>{r.type === "ortaq" ? "ortaq" : "şəxsi"}</span>
+                        </div>
                         <div style={S.small}>{r.service || "—"} · +{r.phone}{r.name ? " · " + r.name : ""}</div>
                       </div>
                       <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
