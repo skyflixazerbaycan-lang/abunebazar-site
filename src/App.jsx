@@ -5514,7 +5514,8 @@ function SharedAccountsAdmin() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkReport, setBulkReport] = useState("");
   const [passDate, setPassDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [passDays, setPassDays] = useState(14);
+  const [passDays, setPassDays] = useState(15);
+  const [passExpiredOnly, setPassExpiredOnly] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -6502,40 +6503,43 @@ function SharedAccountsAdmin() {
           )}
 
           {tab === "passmgmt" && (() => {
-            // Seçilən tarixdən geriyə N gündən çox şifrəsi dəyişməyən hesablar
+            // SEÇİLƏN TARİXDƏ vaxtı bitən müştərilər → onların hesablarından şifrəsi N gündən çox dəyişməyənlər
             const ref = new Date(passDate + "T23:59:59");
-            const cutoff = new Date(ref.getTime() - (Number(passDays) || 14) * 86400000);
-            const stale = accounts
-              .filter((a) => {
-                const pu = a.password_updated_at ? new Date(a.password_updated_at) : null;
-                return !pu || pu <= cutoff;
+            const cutoff = new Date(ref.getTime() - (Number(passDays) || 15) * 86400000);
+            const expiringOnDate = members.filter((m) => m.expires_at && new Date(m.expires_at).toISOString().slice(0, 10) === passDate);
+            const rows = expiringOnDate
+              .map((m) => {
+                const acc = accById[m.account_id];
+                if (!acc) return null;
+                const pu = acc.password_updated_at ? new Date(acc.password_updated_at) : null;
+                const staleP = !pu || pu <= cutoff;
+                if (!staleP) return null;
+                return { email: acc.login_email, phone: m.phone, name: m.name, service: acc.service, pu: acc.password_updated_at };
               })
-              .map((a) => {
-                const phones = members.filter((m) => m.account_id === a.id).map((m) => m.phone);
-                return { ...a, phones };
-              })
-              .sort((x, y) => new Date(x.password_updated_at || 0) - new Date(y.password_updated_at || 0));
-            const allPhones = [...new Set(stale.flatMap((a) => a.phones))].filter(Boolean);
-            const allMails = [...new Set(stale.map((a) => a.login_email))].filter(Boolean);
-            const pairs = stale.map((a) => `${a.login_email}  —  ${a.phones.join(", ")}`);
+              .filter(Boolean)
+              .sort((x, y) => new Date(x.pu || 0) - new Date(y.pu || 0));
+            const allPhones = [...new Set(rows.map((r) => r.phone))].filter(Boolean);
+            const allMails = [...new Set(rows.map((r) => r.email))].filter(Boolean);
+            const pairs = rows.map((r) => `${r.email}  —  +${r.phone}`);
             return (
               <div style={S.box}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>Şifrə idarəsi</div>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Şifrə idarəsi</div>
+                <p style={{ ...S.small, marginBottom: 12 }}>Seçilən tarixdə vaxtı bitən müştərilərdən, hesab şifrəsi çoxdan dəyişməyənləri göstərir.</p>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
                   <div>
-                    <div style={S.small}>Tarix</div>
+                    <div style={S.small}>Vaxtı bitən tarix</div>
                     <input type="date" style={{ ...S.input, width: 170 }} value={passDate} onChange={(e) => setPassDate(e.target.value)} />
                   </div>
                   <div>
-                    <div style={S.small}>Neçə gündən çox</div>
-                    <input type="number" min={1} style={{ ...S.input, width: 110 }} value={passDays} onChange={(e) => setPassDays(e.target.value)} />
+                    <div style={S.small}>Şifrə neçə gündən çox dəyişməyib</div>
+                    <input type="number" min={1} style={{ ...S.input, width: 130 }} value={passDays} onChange={(e) => setPassDays(e.target.value)} />
                   </div>
                 </div>
                 <p style={{ ...S.small, marginBottom: 12 }}>
-                  <b style={{ color: "var(--gold)" }}>{skyFmtDate(passDate, false)}</b> tarixinə görə son <b>{passDays}</b> gündən çox şifrəsi dəyişməyən <b>{stale.length}</b> hesab:
+                  <b style={{ color: "var(--gold)" }}>{skyFmtDate(passDate, false)}</b> tarixində vaxtı bitən və şifrəsi son <b>{passDays}</b> gündən çox dəyişməyən <b>{rows.length}</b> müştəri:
                 </p>
 
-                {stale.length > 0 && (
+                {rows.length > 0 && (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
                     <button style={S.mini} onClick={async () => (await skyCopy(allPhones.join("\n"))) && flashMsg(allPhones.length + " nömrə kopyalandı ✓")}>
                       <Copy size={12} /> Bütün nömrələr ({allPhones.length})
@@ -6549,23 +6553,21 @@ function SharedAccountsAdmin() {
                   </div>
                 )}
 
-                {!stale.length && <p style={S.small}>Bu şərtə uyğun hesab yoxdur.</p>}
-                {stale.map((a) => {
-                  const pu = a.password_updated_at ? new Date(a.password_updated_at) : null;
+                {!rows.length && <p style={S.small}>Bu tarixdə vaxtı bitən və şifrəsi köhnə olan müştəri yoxdur.</p>}
+                {rows.map((r, i) => {
+                  const pu = r.pu ? new Date(r.pu) : null;
                   const daysAgo = pu ? Math.floor((ref.getTime() - pu.getTime()) / 86400000) : null;
                   return (
-                    <div key={a.id} style={{ borderTop: "1px solid var(--line)", padding: "10px 0", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <div key={i} style={{ borderTop: "1px solid var(--line)", padding: "10px 0", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{a.login_email}</div>
-                        <div style={S.small}>
-                          {a.service || "—"}{a.phones.length ? " · " + a.phones.map((p) => "+" + p).join(", ") : " · (nömrə yoxdur)"}
-                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{r.email}</div>
+                        <div style={S.small}>{r.service || "—"} · +{r.phone}{r.name ? " · " + r.name : ""}</div>
                       </div>
                       <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <div style={{ ...S.small, color: daysAgo >= 30 ? "#FF6B7A" : "var(--gold)" }}>
                           {pu ? `${daysAgo} gün əvvəl` : "heç vaxt"}
                         </div>
-                        <div style={{ ...S.small, fontSize: 11 }}>{pu ? skyFmtDate(a.password_updated_at, false) : "—"}</div>
+                        <div style={{ ...S.small, fontSize: 11 }}>{pu ? skyFmtDate(r.pu, false) : "—"}</div>
                       </div>
                     </div>
                   );
