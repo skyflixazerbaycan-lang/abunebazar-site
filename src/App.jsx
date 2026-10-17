@@ -9529,12 +9529,404 @@ function DeliveryWaitPage({ id }) {
   );
 }
 
+/* ===================== #hesabgiris — PREMIUM PORTAL ===================== */
+const PORTAL_CSS = `
+  .pt-root{min-height:100vh;background:
+      radial-gradient(1200px 600px at 50% -10%,rgba(225,18,42,.18),transparent 60%),
+      radial-gradient(900px 500px at 100% 100%,rgba(245,179,1,.08),transparent 55%),
+      #0B0506;color:#F6EEED;font-family:Inter,system-ui,sans-serif;
+      display:flex;flex-direction:column;align-items:center;padding:0 16px 56px;}
+  .pt-top{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;padding:22px 2px 16px;}
+  .pt-brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:18px;letter-spacing:.3px;}
+  .pt-brand .ic{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#FF3B4E,#B00C20);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 6px 16px rgba(225,18,42,.45);}
+  .pt-secure{font-size:11px;color:#9A8382;display:flex;align-items:center;gap:5px;}
+  .pt-card{width:100%;max-width:480px;background:linear-gradient(180deg,rgba(32,16,17,.96),rgba(18,9,10,.96));
+      border:1px solid rgba(255,255,255,.09);border-radius:26px;overflow:hidden;
+      box-shadow:0 40px 90px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(8px);}
+  .pt-hero{position:relative;height:216px;overflow:hidden;}
+  .pt-hero img{width:100%;height:100%;object-fit:cover;object-position:center 32%;filter:saturate(1.05) contrast(1.02);}
+  .pt-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,5,6,.15) 0%,rgba(11,5,6,.55) 55%,#1a0d0e 100%);}
+  .pt-hero-txt{position:absolute;left:22px;right:22px;bottom:16px;z-index:2;}
+  .pt-hero-txt h1{font-family:'Space Grotesk',sans-serif;font-size:23px;margin:0 0 4px;letter-spacing:.3px;text-shadow:0 2px 14px rgba(0,0,0,.6);}
+  .pt-hero-txt p{margin:0;font-size:12.5px;color:#E7CFCE;text-shadow:0 1px 8px rgba(0,0,0,.7);}
+  .pt-hero-badge{position:absolute;top:14px;right:14px;z-index:2;background:rgba(10,5,6,.6);border:1px solid rgba(245,179,1,.4);
+      color:#F5B301;font-size:10px;font-weight:800;letter-spacing:1px;padding:5px 10px;border-radius:999px;backdrop-filter:blur(6px);}
+  .pt-tabs{display:flex;gap:6px;margin:16px 18px 2px;background:#140a0b;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:5px;}
+  .pt-tab{flex:1;border:0;background:transparent;color:#A98D8B;font-family:inherit;font-weight:700;font-size:14px;padding:11px;border-radius:10px;cursor:pointer;transition:.18s;}
+  .pt-tab.on{background:linear-gradient(135deg,#FF3B4E,#B00C20);color:#fff;box-shadow:0 8px 20px rgba(225,18,42,.4);}
+  .pt-body{padding:18px;}
+  .pt-lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:#A98D8B;margin:0 0 7px;font-weight:800;}
+  .pt-input{width:100%;background:#120707;border:1px solid rgba(255,255,255,.14);color:#F6EEED;border-radius:13px;padding:14px;font-size:15px;outline:none;transition:.15s;box-sizing:border-box;}
+  .pt-input:focus{border-color:#FF3B4E;box-shadow:0 0 0 3px rgba(225,18,42,.18);}
+  .pt-pin{letter-spacing:12px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;padding:15px;}
+  .pt-field{margin-bottom:15px;}
+  .pt-hint{font-size:11.5px;color:#8f7a79;margin:7px 0 0;line-height:1.5;}
+  .pt-btn{display:block;width:100%;border:0;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;color:#fff;
+      background:linear-gradient(135deg,#FF3B4E,#B00C20);box-shadow:0 12px 28px rgba(225,18,42,.42);transition:.15s;font-family:inherit;}
+  .pt-btn:hover{transform:translateY(-1px);}
+  .pt-btn:disabled{opacity:.42;cursor:not-allowed;transform:none;box-shadow:none;}
+  .pt-btn.gold{background:linear-gradient(135deg,#F7C948,#E0A000);color:#1a1008;box-shadow:0 12px 28px rgba(245,179,1,.38);}
+  .pt-err{background:rgba(225,18,42,.12);border:1px solid rgba(255,59,78,.35);color:#FFB3BA;border-radius:12px;padding:11px 13px;font-size:13px;margin-bottom:13px;line-height:1.5;}
+  .pt-opt{display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(255,255,255,.12);background:#120707;border-radius:13px;padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:.15s;width:100%;text-align:left;color:inherit;font-family:inherit;}
+  .pt-opt:hover{transform:translateY(-1px);}
+  .pt-opt.on{border-color:#FF3B4E;background:rgba(255,59,78,.08);}
+  .pt-opt.best{border-color:#F5B301;}
+  .pt-opt.best.on{background:rgba(245,179,1,.1);}
+  .pt-opt-l{font-weight:700;font-size:15px;}
+  .pt-opt-sub{font-size:11.5px;color:#A98D8B;margin-top:2px;}
+  .pt-opt-p{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:16px;color:#FF8A95;}
+  .pt-opt.best .pt-opt-p{color:#F5B301;}
+  .pt-badge{display:inline-block;background:#F5B301;color:#1A1210;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle;}
+  .pt-free{color:#49d17f;font-weight:800;font-size:13px;}
+  .pt-sec-t{font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:#A98D8B;margin:18px 0 10px;font-weight:800;}
+  .pt-pcard{background:#120707;border:1px solid rgba(255,255,255,.1);border-radius:13px;padding:13px;margin-bottom:11px;}
+  .pt-prow{display:flex;justify-content:space-between;font-size:13.5px;padding:3px 0;color:#A98D8B;}
+  .pt-prow b{color:#fff;font-family:'JetBrains Mono',monospace;}
+  .pt-upl{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px dashed rgba(255,255,255,.25);background:#120707;color:#A98D8B;border-radius:13px;padding:14px;font-size:13.5px;cursor:pointer;}
+  .pt-upl.has{border-style:solid;border-color:#1f9d55;color:#8fe0b0;background:rgba(31,157,85,.08);}
+  .pt-warn{background:rgba(225,18,42,.1);border:1px solid rgba(255,59,78,.35);color:#FFB3BA;border-radius:12px;padding:11px 12px;font-size:11.5px;line-height:1.5;margin-top:10px;}
+  .pt-total{display:flex;justify-content:space-between;align-items:center;padding:15px 0 4px;}
+  .pt-total-v{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:27px;color:#fff;}
+  .pt-rules-tg{display:flex;align-items:center;justify-content:space-between;width:100%;border:1px solid rgba(255,255,255,.14);
+      background:#120707;color:#F6EEED;border-radius:13px;padding:13px 14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .pt-rules-tg .cv{transition:.2s;}
+  .pt-rules-tg.open .cv{transform:rotate(180deg);}
+  .pt-rules-scroll{max-height:240px;overflow-y:auto;margin-top:10px;padding:14px;background:#0e0607;border:1px solid rgba(255,255,255,.08);border-radius:13px;}
+  .pt-cgroup{margin-bottom:14px;}
+  .pt-cgroup-h{font-size:12.5px;font-weight:800;color:#F5B301;margin-bottom:6px;}
+  .pt-cline{font-size:11.5px;color:#C9B4B2;line-height:1.55;margin:0 0 6px;display:flex;gap:7px;}
+  .pt-cnum{color:#FF8A95;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+  .pt-cdot{color:#FF8A95;flex-shrink:0;}
+  .pt-agree{display:flex;align-items:flex-start;gap:10px;margin:14px 0;font-size:13px;color:#E7CFCE;line-height:1.5;cursor:pointer;}
+  .pt-agree input{width:19px;height:19px;margin-top:1px;accent-color:#FF3B4E;flex-shrink:0;}
+  .pt-wait{text-align:center;padding:30px 22px 34px;}
+  .pt-cd{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:44px;color:#fff;letter-spacing:1.5px;margin:12px 0;}
+  .pt-spin{display:inline-block;font-size:42px;animation:ptspin 1.4s linear infinite;}
+  @keyframes ptspin{to{transform:rotate(360deg);}}
+  .pt-step{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px;font-size:12px;color:#8f7a79;}
+  .pt-step b{color:#F5B301;}
+  .pt-foot{text-align:center;font-size:11px;color:#6f5c5b;margin-top:16px;max-width:480px;line-height:1.6;}
+  .pt-link{background:none;border:0;color:#FF8A95;font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0;}
+`;
+
+function portalFmtLeft(ms) {
+  if (ms <= 0) return "00:00:00";
+  const s = Math.floor(ms / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${ss}`;
+}
+
+function PortalPage() {
+  useGoogleFonts();
+  const [tab, setTab] = useState("login");         // login | register
+  const [screen, setScreen] = useState("auth");    // auth | pay | wait
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // ortaq sahələr
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+
+  // qeydiyyat
+  const [agree, setAgree] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+
+  // ödəniş
+  const [plan, setPlan] = useState(null);
+  const [speed, setSpeed] = useState(0);
+  const [receiptName, setReceiptName] = useState("");
+  const receiptRef = useRef(null);
+
+  // gözləmə / hazır
+  const [reqId, setReqId] = useState("");
+  const [info, setInfo] = useState(null);
+  const [ready, setReady] = useState(null);        // {slug, phone, pin}
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => { document.title = "Hesab girişi — SkyFlix"; }, []);
+
+  const onPin = (v) => setPin(v.replace(/\D/g, "").slice(0, 4));
+  const total = plan !== null ? DLV_PLANS[plan].amount + DLV_SPEEDS[speed].extra : null;
+
+  // gözləmə ekranı: status poll + saniyə sayğacı
+  useEffect(() => {
+    if (screen !== "wait" || !reqId) return;
+    let stop = false;
+    const load = async () => {
+      try { const { data } = await supabase.rpc("delivery_status", { p_id: reqId }); if (!stop && data) setInfo(data); } catch {}
+    };
+    load();
+    const poll = setInterval(load, 5000);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => { stop = true; clearInterval(poll); clearInterval(tick); };
+  }, [screen, reqId]);
+
+  function pickReceipt(e) {
+    const f = e.target.files && e.target.files[0];
+    receiptRef.current = f || null;
+    setReceiptName(f ? f.name : "");
+  }
+
+  // GİRİŞ: nömrə + PIN → portal_lookup
+  async function doLogin() {
+    if (busy) return;
+    const ph = skyNormPhone(phone);
+    if (ph.length < 9) { setErr("Nömrəni düzgün daxil edin."); return; }
+    if (!/^\d{4}$/.test(pin)) { setErr("PIN 4 rəqəm olmalıdır."); return; }
+    setErr(""); setBusy(true);
+    try {
+      const { data } = await supabase.rpc("portal_lookup", { p_phone: ph, p_pin: pin });
+      setBusy(false);
+      if (data?.status === "ready") { setReady({ slug: data.slug, phone: data.phone || ph, pin: data.pin || pin }); setScreen("wait"); setInfo({ ready: true, _login: true }); }
+      else if (data?.status === "pending") { setReqId(data.id); setInfo(null); setScreen("wait"); }
+      else if (data?.status === "rejected") { setErr("Ödənişiniz təsdiqlənmədi. Zəhmət olmasa bizimlə əlaqə saxlayın."); }
+      else { setErr("Nömrə və ya PIN yanlışdır. Yeni müştərisinizsə Qeydiyyatdan keçin."); }
+    } catch { setBusy(false); setErr("Bağlantı xətası. Bir daha cəhd edin."); }
+  }
+
+  // QEYDİYYAT → ödəniş ekranına keç
+  async function doRegister() {
+    const ph = skyNormPhone(phone);
+    if (ph.length < 9) { setErr("Nömrəni düzgün daxil edin."); return; }
+    if (!/^\d{4}$/.test(pin)) { setErr("4 rəqəmli PIN təyin edin."); return; }
+    if (!agree) { setErr("Davam etmək üçün istifadəçi şərtlərini qəbul edin."); return; }
+    setErr("");
+    try { await supabase.rpc("accept_contract", { p_phone: ph, p_name: "", p_version: CONTRACT_VERSION }); } catch {}
+    setScreen("pay");
+  }
+
+  // ÖDƏNİŞ → qəbz yüklə + sorğu yarat → gözləmə
+  async function submitPay() {
+    const ph = skyNormPhone(phone);
+    if (plan === null || !receiptName || busy) return;
+    setErr(""); setBusy(true);
+    let receiptUrl = "";
+    try {
+      const f = receiptRef.current;
+      const path = ph + "-" + Date.now() + "-" + (f.name || "qebz").replace(/[^\w.\-]/g, "_");
+      const up = await supabase.storage.from("receipts").upload(path, f, { upsert: false });
+      if (up.error) throw up.error;
+      receiptUrl = supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || "";
+    } catch { setBusy(false); setErr("Qəbz yüklənmədi. İnternetinizi yoxlayıb bir daha cəhd edin."); return; }
+    try {
+      const { data } = await supabase.rpc("create_delivery_request", {
+        p_phone: ph, p_months: DLV_PLANS[plan].months, p_amount: total,
+        p_speed_label: DLV_SPEEDS[speed].label, p_speed_hours: DLV_SPEEDS[speed].hours,
+        p_receipt_url: receiptUrl, p_pin: pin,
+      });
+      setBusy(false);
+      if (data?.status === "ok" && data.id) { setReqId(data.id); setInfo(null); setScreen("wait"); }
+      else setErr("Sorğu yaradılmadı. Bir daha cəhd edin.");
+    } catch { setBusy(false); setErr("Bağlantı xətası. Bir daha cəhd edin."); }
+  }
+
+  /* ---------- EKRAN: GÖZLƏMƏ / HAZIR ---------- */
+  function renderWait() {
+    // login "ready" halı
+    const deliveredLogin = ready && (!info || info._login);
+    let cabLink = null, body;
+
+    if (deliveredLogin) {
+      cabLink = `${SKY_SITE_URL}/?nf=${encodeURIComponent(ready.phone)}&pin=${encodeURIComponent(ready.pin)}#h-${ready.slug}`;
+    }
+
+    if (!info && !deliveredLogin) {
+      body = <div className="pt-wait"><span className="pt-spin">⏳</span><p style={{ color: "#A98D8B", marginTop: 12 }}>Yüklənir...</p></div>;
+    } else if (info && info.status === "notfound") {
+      body = <div className="pt-wait"><div style={{ fontSize: 40 }}>❓</div><h2 style={{ fontFamily: "Space Grotesk" }}>Sorğu tapılmadı</h2><p style={{ color: "#A98D8B" }}>Yenidən cəhd edin.</p></div>;
+    } else if (info && info.status === "rejected") {
+      body = <div className="pt-wait"><div style={{ fontSize: 40 }}>⛔</div><h2 style={{ fontFamily: "Space Grotesk" }}>Ödəniş təsdiqlənmədi</h2><p style={{ color: "#A98D8B", lineHeight: 1.6 }}>Qəbz təsdiqlənmədi. Zəhmət olmasa bizimlə əlaqə saxlayın.</p></div>;
+    } else {
+      const deliverAt = info && info.deliver_at ? new Date(info.deliver_at).getTime() : 0;
+      const left = deliverAt - now;
+      const timeUp = deliverAt ? left <= 0 : true;
+      const delivered = deliveredLogin || (info && info.ready && timeUp);
+      if (delivered) {
+        const link = cabLink || `${SKY_SITE_URL}/?nf=${encodeURIComponent(info.phone)}&pin=${encodeURIComponent(info.pin)}#h-${info.slug}`;
+        body = (
+          <div className="pt-wait">
+            <div style={{ fontSize: 46 }}>✅</div>
+            <h2 style={{ fontFamily: "Space Grotesk", margin: "0 0 6px" }}>Hesabınız hazırdır!</h2>
+            <p style={{ color: "#A98D8B", lineHeight: 1.6, margin: "0 0 16px" }}>
+              Hesab məlumatlarını görmək üçün müştəri kabinetinizə keçin. Kabinetdə yeni istifadəçi şərtlərini qəbul etdikdən sonra Netflix mail/şifrəniz görünəcək.
+            </p>
+            <a className="pt-btn gold" style={{ textDecoration: "none" }} href={link}>Müştəri kabinetinə keç →</a>
+            <p className="pt-hint" style={{ marginTop: 14 }}>
+              Qeyd: kabinetə giriş üçün nömrəniz və PIN kodunuz yalnız müştəri kabineti üçündür — Netflixə giriş üçün deyil.
+            </p>
+          </div>
+        );
+      } else {
+        body = (
+          <div className="pt-wait">
+            <span className="pt-spin">⏳</span>
+            <h2 style={{ fontFamily: "Space Grotesk", margin: "10px 0 4px" }}>Hesabınız hazırlanır</h2>
+            {info && info.speed_label && <div className="pt-step">Çatdırılma: <b>{info.speed_label}</b></div>}
+            <div className="pt-cd">{portalFmtLeft(left)}</div>
+            <p style={{ color: "#A98D8B", fontSize: 12.5, lineHeight: 1.6 }}>
+              Vaxt bitdikdə hesabınız bu ekranda avtomatik görünəcək. İstəsəniz bu səhifəni bağlaya bilərsiniz —
+              istənilən vaxt <b style={{ color: "#F5B301" }}>#hesabgiris</b> bölməsindən nömrə və PIN ilə yenidən daxil olub vəziyyətinizi yoxlaya bilərsiniz.
+            </p>
+            {info && info.deliver_at && timeUp && !info.ready && <p style={{ color: "#F5B301", fontSize: 12.5, marginTop: 8 }}>Ödənişiniz son yoxlamadadır, tezliklə hazır olacaq...</p>}
+          </div>
+        );
+      }
+    }
+    return (
+      <div className="pt-card">
+        {body}
+        <div style={{ padding: "0 18px 18px", textAlign: "center" }}>
+          <button className="pt-link" onClick={() => { setScreen("auth"); setInfo(null); setReady(null); setReqId(""); }}>← Girişə qayıt</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- EKRAN: ÖDƏNİŞ ---------- */
+  function renderPay() {
+    const canPay = plan !== null && !!receiptName && !busy;
+    return (
+      <div className="pt-card">
+        <div className="pt-body">
+          <div className="pt-step" style={{ justifyContent: "flex-start", marginBottom: 14 }}>
+            <button className="pt-link" onClick={() => setScreen("auth")}>← Geri</button>
+            <span style={{ marginLeft: "auto", color: "#F5B301" }}>Qeydiyyat tamamlandı ✓</span>
+          </div>
+          <h2 style={{ fontFamily: "Space Grotesk", margin: "0 0 4px", fontSize: 20 }}>Abunəlik ödənişi</h2>
+          <p style={{ color: "#A98D8B", fontSize: 13, margin: "0 0 4px" }}>Nömrə: <b style={{ color: "#fff", fontFamily: "'JetBrains Mono',monospace" }}>+{skyNormPhone(phone)}</b></p>
+
+          <div className="pt-sec-t">1 · Abunəlik müddəti</div>
+          {DLV_PLANS.map((p, i) => (
+            <button key={i} className={`pt-opt ${p.best ? "best" : ""} ${plan === i ? "on" : ""}`} onClick={() => setPlan(i)}>
+              <span className="pt-opt-l">{p.label}{p.best && <span className="pt-badge">ƏN SƏRFƏLİ</span>}</span>
+              <span className="pt-opt-p">{p.amount.toFixed(2)} ₼</span>
+            </button>
+          ))}
+
+          <div className="pt-sec-t">2 · Çatdırılma müddəti</div>
+          {DLV_SPEEDS.map((s, i) => (
+            <button key={i} className={`pt-opt ${speed === i ? "on" : ""}`} onClick={() => setSpeed(i)}>
+              <span><span className="pt-opt-l">{s.label}</span><span className="pt-opt-sub">{s.sub}</span></span>
+              {s.free ? <span className="pt-free">PULSUZ</span> : <span className="pt-opt-p">+{s.extra.toFixed(2)} ₼</span>}
+            </button>
+          ))}
+
+          <div className="pt-sec-t">3 · Ödəniş</div>
+          <div className="pt-pcard">
+            <div className="pt-prow"><span>Ad</span><b>{PAY_CARD_NAME}</b></div>
+            <div className="pt-prow"><span>Bank</span><b>{PAY_CARD_BANK}</b></div>
+            <div className="pt-prow"><span>Kart</span><b style={{ letterSpacing: 1 }}>{formatCardNumber(PAY_CARD_NUMBER)}</b></div>
+          </div>
+          <label className={`pt-upl ${receiptName ? "has" : ""}`}>
+            <Upload size={15} /> {receiptName ? "✓ " + receiptName : "Ödəniş qəbzini yüklə (MƏCBURİ)"}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={pickReceipt} />
+          </label>
+          <div className="pt-warn">⚠️ Saxta qəbz yükləmək və ya dələduzluq cəhdi aşkarlanarsa, qanunvericiliyə əsasən barənizdə cinayət işi başlana bilər. Yalnız real qəbzi yükləyin.</div>
+
+          <div className="pt-total"><span style={{ fontSize: 13, color: "#A98D8B" }}>Ödəniləcək məbləğ</span><span className="pt-total-v">{total !== null ? total.toFixed(2) + " ₼" : "—"}</span></div>
+          {err && <div className="pt-err" style={{ marginTop: 10 }}>{err}</div>}
+          <button className="pt-btn" style={{ marginTop: 12 }} disabled={!canPay} onClick={submitPay}>{busy ? "Göndərilir..." : "Ödəniş etdim"}</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- EKRAN: GİRİŞ / QEYDİYYAT ---------- */
+  function renderAuth() {
+    return (
+      <div className="pt-card">
+        <div className="pt-hero">
+          <span className="pt-hero-badge">SKYFLIX PREMIUM</span>
+          <img src={HEIST_IMG} alt="SkyFlix" loading="eager" />
+          <div className="pt-hero-txt">
+            <h1>{tab === "login" ? "Hesabınıza daxil olun" : "Qeydiyyatdan keçin"}</h1>
+            <p>{tab === "login" ? "Nömrə və PIN ilə hesabınızın vəziyyətini görün" : "Nömrənizi yazın, PIN təyin edin — hesabınız sizə çatdırılsın"}</p>
+          </div>
+        </div>
+
+        <div className="pt-tabs">
+          <button className={`pt-tab ${tab === "login" ? "on" : ""}`} onClick={() => { setTab("login"); setErr(""); }}>Giriş</button>
+          <button className={`pt-tab ${tab === "register" ? "on" : ""}`} onClick={() => { setTab("register"); setErr(""); }}>Qeydiyyat</button>
+        </div>
+
+        <div className="pt-body">
+          {err && <div className="pt-err">{err}</div>}
+
+          <div className="pt-field">
+            <p className="pt-lbl">WhatsApp nömrəniz</p>
+            <input className="pt-input" type="tel" inputMode="tel" placeholder="+994 __ ___ __ __" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+
+          <div className="pt-field">
+            <p className="pt-lbl">{tab === "login" ? "PIN kodunuz" : "4 rəqəmli PIN təyin edin"}</p>
+            <input className="pt-input pt-pin" type="tel" inputMode="numeric" placeholder="••••" value={pin} onChange={(e) => onPin(e.target.value)} maxLength={4} />
+            <p className="pt-hint">{tab === "login" ? "Hesabınıza keçid üçün yalnız bu PIN lazımdır." : "Bu PIN kabinetinizə girişiniz üçün istifadə olunacaq. Yadda saxlayın."}</p>
+          </div>
+
+          {tab === "register" && (
+            <>
+              <button className={`pt-rules-tg ${rulesOpen ? "open" : ""}`} onClick={() => setRulesOpen((v) => !v)}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><FileText size={16} /> İstifadəçi şərtləri</span>
+                <ChevronDown size={18} className="cv" />
+              </button>
+              {rulesOpen && (
+                <div className="pt-rules-scroll">
+                  {RULE_GROUPS_AZ.map((g, gi) => (
+                    <div className="pt-cgroup" key={"o" + gi}>
+                      <div className="pt-cgroup-h">{g.heading}</div>
+                      {g.items.map((it, ii) => (<p className="pt-cline" key={ii}><span className="pt-cnum">{it.n}</span>{it.text}</p>))}
+                    </div>
+                  ))}
+                  {CONTRACT_EXTRA_GROUPS.map((g, gi) => (
+                    <div className="pt-cgroup" key={"n" + gi}>
+                      <div className="pt-cgroup-h">{g.heading}</div>
+                      {g.items.map((it, ii) => (<p className="pt-cline" key={ii}><span className="pt-cdot">•</span>{it}</p>))}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="pt-agree">
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+                <span>Xidmət şərtlərini qəbul edirəm.</span>
+              </label>
+            </>
+          )}
+
+          {tab === "login"
+            ? <button className="pt-btn" disabled={busy} onClick={doLogin}>{busy ? "Yoxlanılır..." : "Daxil ol"}</button>
+            : <button className="pt-btn" onClick={doRegister}>Davam et →</button>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-root">
+      <style>{PORTAL_CSS}</style>
+      <div className="pt-top">
+        <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
+        <div className="pt-secure">🔒 Təhlükəsiz</div>
+      </div>
+      {screen === "auth" && renderAuth()}
+      {screen === "pay" && renderPay()}
+      {screen === "wait" && renderWait()}
+      <div className="pt-foot">
+        Bu bölməni yadda saxlayın: <b>skyflixazerbaycan.com/#hesabgiris</b><br />
+        İstənilən vaxt nömrə və PIN ilə daxil olub hesabınızın vəziyyətini və məlumatlarını görə bilərsiniz.
+      </div>
+    </div>
+  );
+}
+
 // Hesab linki (#h-...) açılanda yalnız hesab səhifəsi göstərilir
 function getSharedSlug() {
   const h = window.location.hash.replace("#", "");
   if (h === "abunelikidare" || window.location.pathname.replace(/\/+$/, "") === "/abunelikidare") return "__manager__";
   if (h === "siyahi" || window.location.pathname.replace(/\/+$/, "") === "/siyahi") return "__netflixlist__";
   if (h === "artir" || window.location.pathname.replace(/\/+$/, "") === "/artir") return "__listextend__";
+  if (h === "hesabgiris" || window.location.pathname.replace(/\/+$/, "") === "/hesabgiris") return "__portal__";
   if (h === "al" || window.location.pathname.replace(/\/+$/, "") === "/al") return "__pay__";
   if (h.startsWith("teslim-")) return "__teslim__:" + h.slice(7);
   return h.startsWith("h-") ? h.slice(2) : null;
@@ -9550,6 +9942,7 @@ export default function App() {
   if (slug === "__manager__") return <SubscriptionManagerPage />;
   if (slug === "__netflixlist__") return <NetflixListPage />;
   if (slug === "__listextend__") return <ListExtendPage />;
+  if (slug === "__portal__") return <PortalPage />;
   if (slug === "__pay__") return <PayLinkPage />;
   if (slug && slug.startsWith("__teslim__:")) return <DeliveryWaitPage key={slug} id={slug.slice(11)} />;
   if (slug) return <SharedAccountPage key={slug} slug={slug} />;
