@@ -6583,6 +6583,16 @@ function SharedAccountsAdmin() {
                         {r.status === "pending" && <div style={{ ...S.small, color: "var(--gold)", marginTop: 2 }}>⏱️ Çatdırılmaya ~{leftH} saat qalıb</div>}
                         {r.status === "approved" && <div style={{ ...S.small, color: "#1f9d55", marginTop: 2 }}>✓ Hesab verildi · PIN: {r.assigned_pin} · {r.assigned_room_name}</div>}
                         {r.receipt_url && <a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ ...S.small, color: "#7FB3FF", display: "inline-block", marginTop: 3 }}>📎 Qəbzə bax</a>}
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                          <button style={S.mini} onClick={async () => { if (await skyCopy(`${SKY_SITE_URL}/#teslim-${r.id}`)) flashMsg("Gözləmə linki kopyalandı ✓"); }}>
+                            <Copy size={12} /> Gözləmə linki
+                          </button>
+                          {r.status === "approved" && r.assigned_slug && (
+                            <button style={S.mini} onClick={async () => { if (await skyCopy(`${SKY_SITE_URL}/?nf=${r.phone}&pin=${r.assigned_pin}#h-${r.assigned_slug}`)) flashMsg("Kabinet linki kopyalandı ✓"); }}>
+                              <Copy size={12} /> Kabinet linki
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
