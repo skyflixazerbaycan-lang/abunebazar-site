@@ -3572,7 +3572,7 @@ function giftFor(months, path) {
 // -----------------------------------------------------
 // MÜŞTƏRİ SƏHİFƏSİ: skyflixazerbaycan.com/#h-<kod>
 // -----------------------------------------------------
-function SharedAccountPage({ slug }) {
+function SharedAccountPage({ slug, embedPhone, embedPin }) {
   useGoogleFonts();
   const storageKey = "skyacc:" + slug;
   const saved = (() => {
@@ -3587,8 +3587,8 @@ function SharedAccountPage({ slug }) {
   const dlvParams = (() => {
     try { const q = new URLSearchParams(window.location.search); return { nf: q.get("nf") || "", pin: q.get("pin") || "" }; } catch { return { nf: "", pin: "" }; }
   })();
-  const [phone, setPhone] = useState(saved?.phone || dlvParams.nf || "");
-  const [pin, setPin] = useState(saved?.pin || dlvParams.pin || "");
+  const [phone, setPhone] = useState(saved?.phone || embedPhone || dlvParams.nf || "");
+  const [pin, setPin] = useState(saved?.pin || embedPin || dlvParams.pin || "");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -3673,6 +3673,7 @@ function SharedAccountPage({ slug }) {
         if (data && data[0]?.value) setWhatsapp(data[0].value);
       });
     if (saved?.phone && saved?.pin) check(saved.phone, saved.pin);
+    else if (embedPhone && embedPin) check(embedPhone, embedPin);
     return () => document.head.removeChild(meta);
   }, []);
 
@@ -9900,6 +9901,19 @@ function PortalPage() {
         </div>
       </div>
     );
+  }
+
+  // HAZIR olduqda → birbaşa müştəri kabinetini portal içində göstər (keçid yoxdur)
+  let cab = null;
+  if (screen === "wait") {
+    if (ready && (!info || info._login) && ready.slug) {
+      cab = { slug: ready.slug, phone: ready.phone, pin: ready.pin };
+    } else if (info && info.ready && info.slug && info.deliver_at && now >= new Date(info.deliver_at).getTime()) {
+      cab = { slug: info.slug, phone: info.phone, pin: info.pin };
+    }
+  }
+  if (cab && cab.slug) {
+    return <SharedAccountPage key={"portalcab-" + cab.slug + cab.phone} slug={cab.slug} embedPhone={cab.phone} embedPin={cab.pin} />;
   }
 
   return (
