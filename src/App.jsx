@@ -3572,7 +3572,7 @@ function giftFor(months, path) {
 // -----------------------------------------------------
 // MÜŞTƏRİ SƏHİFƏSİ: skyflixazerbaycan.com/#h-<kod>
 // -----------------------------------------------------
-function SharedAccountPage({ slug, embedPhone, embedPin }) {
+function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   useGoogleFonts();
   const storageKey = "skyacc:" + slug;
   const saved = (() => {
@@ -3750,6 +3750,7 @@ function SharedAccountPage({ slug, embedPhone, embedPin }) {
     setContractAccepted(null);
     setAgreeChecked(false);
     setRulesOpen(false);
+    if (onExit) onExit();   // portal içindədirsə → #hesabgiris giriş səhifəsinə qayıt
   }
 
   async function copy(label, text) {
@@ -5546,6 +5547,10 @@ function SharedAccountsAdmin() {
   const [pendingRenewCount, setPendingRenewCount] = useState(0);
   const [dlvReqs, setDlvReqs] = useState([]);
   const [pendingDlvCount, setPendingDlvCount] = useState(0);
+  const [videos, setVideos] = useState([]);
+  const [vidTitle, setVidTitle] = useState("");
+  const [vidUploading, setVidUploading] = useState(false);
+  const vidFileRef = useRef(null);
   const [payReqs, setPayReqs] = useState([]);
   const [pendingPayCount, setPendingPayCount] = useState(0);
   const [notifForm, setNotifForm] = useState({ title: "", body: "", link: "" });
@@ -5643,6 +5648,39 @@ function SharedAccountsAdmin() {
     const { data } = await supabase.from("delivery_requests").select("*").order("created_at", { ascending: false }).limit(200);
     setDlvReqs(data || []);
     setPendingDlvCount((data || []).filter((r) => r.status === "pending").length);
+  }
+  async function loadVideos() {
+    const { data } = await supabase.from("login_videos").select("*").order("sort", { ascending: true }).order("created_at", { ascending: false });
+    setVideos(data || []);
+  }
+  async function uploadVideo(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (f.size > 100 * 1024 * 1024) { flashMsg("Video 100 MB-dan böyük olmamalıdır"); e.target.value = ""; return; }
+    setVidUploading(true);
+    try {
+      const path = "login-" + Date.now() + "-" + (f.name || "video").replace(/[^\w.\-]/g, "_");
+      const up = await supabase.storage.from("videos").upload(path, f, { upsert: false, contentType: f.type || "video/mp4" });
+      if (up.error) throw up.error;
+      const url = supabase.storage.from("videos").getPublicUrl(path).data?.publicUrl || "";
+      const sort = videos.length ? Math.max(...videos.map((v) => v.sort || 0)) + 1 : 0;
+      const ins = await supabase.from("login_videos").insert({ url, title: vidTitle || "", sort });
+      if (ins.error) throw ins.error;
+      setVidTitle("");
+      flashMsg("Video yükləndi ✓");
+      loadVideos();
+    } catch (err) { flashMsg("Video yüklənmədi: " + (err.message || err)); }
+    setVidUploading(false);
+    e.target.value = "";
+  }
+  async function toggleVideo(v) {
+    await supabase.from("login_videos").update({ is_active: !v.is_active }).eq("id", v.id);
+    loadVideos();
+  }
+  async function deleteVideo(v) {
+    await supabase.from("login_videos").delete().eq("id", v.id);
+    flashMsg("Video silindi");
+    loadVideos();
   }
   async function syncKinds() {
     const { data } = await supabase.rpc("sync_account_kinds");
@@ -6171,6 +6209,7 @@ function SharedAccountsAdmin() {
               ["passmgmt", "Şifrə idarəsi"],
               ["contracts", "İstifadəçi şərtləri"],
               ["notify", "Bildiriş göndər"],
+              ["videos", "Videolar"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
@@ -6185,6 +6224,7 @@ function SharedAccountsAdmin() {
                   if (key === "contracts") loadContracts();
                   if (key === "renewals") loadRenewals();
                   if (key === "deliveries") loadDeliveries();
+                  if (key === "videos") loadVideos();
                 }}
               >
                 {label}
@@ -6612,6 +6652,38 @@ function SharedAccountsAdmin() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {tab === "videos" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Giriş səhifəsi videoları</span>
+                <button style={S.mini} onClick={loadVideos}><RotateCw size={12} /> Yenilə</button>
+              </div>
+              <p style={{ ...S.small, marginBottom: 12 }}>Buraya yüklədiyiniz videolar <b>#hesabgiris</b> giriş səhifəsində avtomatik reels-feed kimi göstərilir. MP4 tövsiyə olunur (maks. 100 MB).</p>
+              <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                <input style={{ ...S.input, marginBottom: 8 }} placeholder="Video başlığı (istəyə bağlı)" value={vidTitle} onChange={(e) => setVidTitle(e.target.value)} />
+                <label className="ab-btn ab-btn-gold" style={{ display: "inline-flex", alignItems: "center", gap: 7, cursor: vidUploading ? "wait" : "pointer", opacity: vidUploading ? 0.6 : 1 }}>
+                  <Upload size={14} /> {vidUploading ? "Yüklənir..." : "Video yüklə"}
+                  <input type="file" accept="video/*" style={{ display: "none" }} disabled={vidUploading} onChange={uploadVideo} ref={vidFileRef} />
+                </label>
+              </div>
+              {!videos.length && <p style={S.small}>Hələ video yoxdur. İlk videonu yükləyin.</p>}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 12 }}>
+                {videos.map((v) => (
+                  <div key={v.id} style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", opacity: v.is_active ? 1 : 0.5 }}>
+                    <video src={v.url} style={{ width: "100%", height: 180, objectFit: "cover", background: "#000", display: "block" }} controls preload="metadata" />
+                    <div style={{ padding: 8 }}>
+                      {v.title && <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>{v.title}</div>}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button style={S.mini} onClick={() => toggleVideo(v)}>{v.is_active ? "Gizlət" : "Göstər"}</button>
+                        <button style={S.mini} onClick={() => deleteVideo(v)}><Ban size={12} /> Sil</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -9608,6 +9680,16 @@ const PORTAL_CSS = `
   .pt-step b{color:#F5B301;}
   .pt-foot{text-align:center;font-size:11px;color:#6f5c5b;margin-top:16px;max-width:480px;line-height:1.6;}
   .pt-link{background:none;border:0;color:#FF8A95;font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0;}
+  .pt-reels-wrap{width:100%;max-width:480px;margin-top:20px;}
+  .pt-reels-t{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:15px;margin:0 2px 11px;letter-spacing:.3px;}
+  .pt-reels{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .pt-reels::-webkit-scrollbar{height:6px;}
+  .pt-reels::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px;}
+  .pt-reel{flex:0 0 auto;width:180px;scroll-snap-align:start;border-radius:16px;overflow:hidden;position:relative;
+      border:1px solid rgba(255,255,255,.1);background:#000;box-shadow:0 10px 26px rgba(0,0,0,.5);}
+  .pt-reel video{width:180px;height:320px;object-fit:cover;display:block;background:#000;}
+  .pt-reel-cap{position:absolute;left:0;right:0;bottom:0;padding:18px 10px 9px;font-size:12px;font-weight:600;color:#fff;
+      background:linear-gradient(transparent,rgba(0,0,0,.8));pointer-events:none;}
 `;
 
 function portalFmtLeft(ms) {
@@ -9645,8 +9727,12 @@ function PortalPage() {
   const [info, setInfo] = useState(null);
   const [ready, setReady] = useState(null);        // {slug, phone, pin}
   const [now, setNow] = useState(Date.now());
+  const [vids, setVids] = useState([]);
 
-  useEffect(() => { document.title = "Hesab girişi — SkyFlix"; }, []);
+  useEffect(() => {
+    document.title = "Hesab girişi — SkyFlix";
+    (async () => { try { const { data } = await supabase.rpc("list_login_videos"); if (Array.isArray(data)) setVids(data); } catch {} })();
+  }, []);
 
   const onPin = (v) => setPin(v.replace(/\D/g, "").slice(0, 4));
   const total = plan !== null ? DLV_PLANS[plan].amount + DLV_SPEEDS[speed].extra : null;
@@ -9903,6 +9989,25 @@ function PortalPage() {
     );
   }
 
+  /* ---------- Giriş səhifəsi video feed ---------- */
+  function renderReels() {
+    if (!vids.length) return null;
+    return (
+      <div className="pt-reels-wrap">
+        <div className="pt-reels-t">🎬 Maraqlı videolar</div>
+        <div className="pt-reels">
+          {vids.map((v) => (
+            <div className="pt-reel" key={v.id}>
+              <video src={v.url} playsInline muted loop preload="metadata" controls
+                onClick={(e) => { e.currentTarget.muted = !e.currentTarget.muted; e.currentTarget.play().catch(() => {}); }} />
+              {v.title && <div className="pt-reel-cap">{v.title}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // HAZIR olduqda → birbaşa müştəri kabinetini portal içində göstər (keçid yoxdur)
   let cab = null;
   if (screen === "wait") {
@@ -9913,7 +10018,8 @@ function PortalPage() {
     }
   }
   if (cab && cab.slug) {
-    return <SharedAccountPage key={"portalcab-" + cab.slug + cab.phone} slug={cab.slug} embedPhone={cab.phone} embedPin={cab.pin} />;
+    return <SharedAccountPage key={"portalcab-" + cab.slug + cab.phone} slug={cab.slug} embedPhone={cab.phone} embedPin={cab.pin}
+      onExit={() => { setScreen("auth"); setTab("login"); setReady(null); setInfo(null); setReqId(""); setPhone(""); setPin(""); setErr(""); }} />;
   }
 
   return (
@@ -9924,6 +10030,7 @@ function PortalPage() {
         <div className="pt-secure">🔒 Təhlükəsiz</div>
       </div>
       {screen === "auth" && renderAuth()}
+      {screen === "auth" && renderReels()}
       {screen === "pay" && renderPay()}
       {screen === "wait" && renderWait()}
       <div className="pt-foot">
