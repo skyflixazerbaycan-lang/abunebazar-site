@@ -9682,14 +9682,17 @@ const PORTAL_CSS = `
   .pt-link{background:none;border:0;color:#FF8A95;font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0;}
   .pt-reels-wrap{width:100%;max-width:480px;margin-top:20px;}
   .pt-reels-t{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:15px;margin:0 2px 11px;letter-spacing:.3px;}
-  .pt-reels{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
-  .pt-reels::-webkit-scrollbar{height:6px;}
-  .pt-reels::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:999px;}
-  .pt-reel{flex:0 0 auto;width:180px;scroll-snap-align:start;border-radius:16px;overflow:hidden;position:relative;
-      border:1px solid rgba(255,255,255,.1);background:#000;box-shadow:0 10px 26px rgba(0,0,0,.5);}
-  .pt-reel video{width:180px;height:320px;object-fit:cover;display:block;background:#000;}
-  .pt-reel-cap{position:absolute;left:0;right:0;bottom:0;padding:18px 10px 9px;font-size:12px;font-weight:600;color:#fff;
-      background:linear-gradient(transparent,rgba(0,0,0,.8));pointer-events:none;}
+  .pt-vreels{height:74vh;max-height:640px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:20px;background:#000;
+      border:1px solid rgba(255,255,255,.1);-webkit-overflow-scrolling:touch;box-shadow:0 20px 50px rgba(0,0,0,.55);}
+  .pt-vreels::-webkit-scrollbar{display:none;}
+  .pt-vreel{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#000;}
+  .pt-vreel video{width:100%;height:100%;object-fit:cover;background:#000;display:block;}
+  .pt-vreel-cap{position:absolute;left:14px;right:64px;bottom:20px;color:#fff;font-size:14px;font-weight:600;z-index:2;
+      text-shadow:0 1px 12px rgba(0,0,0,.9);line-height:1.4;}
+  .pt-vmute{position:absolute;right:14px;bottom:18px;z-index:3;width:44px;height:44px;border-radius:50%;
+      background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:18px;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);}
+  .pt-vhint{text-align:center;font-size:11px;color:#8f7a79;margin-top:9px;}
 `;
 
 function portalFmtLeft(ms) {
@@ -9699,6 +9702,82 @@ function portalFmtLeft(ms) {
   const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
   const ss = String(s % 60).padStart(2, "0");
   return `${h}:${m}:${ss}`;
+}
+
+function PortalReels({ videos }) {
+  const scrollerRef = useRef(null);
+  const vidRefs = useRef([]);
+  const [muted, setMuted] = useState(true);
+  const mutedRef = useRef(true);
+  const curRef = useRef(0);
+
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+
+  // Görünən videonu avtomatik oynat, qalanlarını dayandır (TikTok kimi)
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        const idx = Number(en.target.getAttribute("data-i"));
+        const v = vidRefs.current[idx];
+        if (!v) return;
+        if (en.isIntersecting && en.intersectionRatio >= 0.6) {
+          curRef.current = idx;
+          v.muted = mutedRef.current;
+          v.play().catch(() => {});
+          vidRefs.current.forEach((o, i) => { if (o && i !== idx) o.pause(); });
+        } else {
+          v.pause();
+        }
+      });
+    }, { root, threshold: [0, 0.6, 0.9] });
+    vidRefs.current.forEach((v) => { if (v) io.observe(v); });
+    return () => io.disconnect();
+  }, [videos]);
+
+  // Brauzer siyasəti: ilk toxunuş/klik/sürüşmədə səsi avtomatik aç
+  useEffect(() => {
+    const unmute = () => {
+      setMuted(false);
+      const v = vidRefs.current[curRef.current] || vidRefs.current[0];
+      if (v) { v.muted = false; v.play().catch(() => {}); }
+      window.removeEventListener("touchstart", unmute);
+      window.removeEventListener("pointerdown", unmute);
+    };
+    window.addEventListener("touchstart", unmute, { once: true });
+    window.addEventListener("pointerdown", unmute, { once: true });
+    return () => {
+      window.removeEventListener("touchstart", unmute);
+      window.removeEventListener("pointerdown", unmute);
+    };
+  }, []);
+
+  function toggleMute(e) {
+    e.stopPropagation();
+    const nm = !muted;
+    setMuted(nm);
+    const v = vidRefs.current[curRef.current] || vidRefs.current[0];
+    if (v) { v.muted = nm; v.play().catch(() => {}); }
+  }
+
+  if (!videos.length) return null;
+  return (
+    <div className="pt-reels-wrap">
+      <div className="pt-reels-t">🎬 Maraqlı videolar</div>
+      <div className="pt-vreels" ref={scrollerRef}>
+        {videos.map((v, i) => (
+          <div className="pt-vreel" key={v.id}>
+            <video ref={(el) => { if (el) { vidRefs.current[i] = el; el.muted = mutedRef.current; } }} data-i={i}
+              src={v.url} autoPlay loop playsInline preload="auto" />
+            {v.title && <div className="pt-vreel-cap">{v.title}</div>}
+            <button className="pt-vmute" onClick={toggleMute}>{muted ? "🔇" : "🔊"}</button>
+          </div>
+        ))}
+      </div>
+      <div className="pt-vhint">Aşağı sürüşdürün · səs üçün toxunun</div>
+    </div>
+  );
 }
 
 function PortalPage() {
@@ -9989,25 +10068,6 @@ function PortalPage() {
     );
   }
 
-  /* ---------- Giriş səhifəsi video feed ---------- */
-  function renderReels() {
-    if (!vids.length) return null;
-    return (
-      <div className="pt-reels-wrap">
-        <div className="pt-reels-t">🎬 Maraqlı videolar</div>
-        <div className="pt-reels">
-          {vids.map((v) => (
-            <div className="pt-reel" key={v.id}>
-              <video src={v.url} playsInline muted loop preload="metadata" controls
-                onClick={(e) => { e.currentTarget.muted = !e.currentTarget.muted; e.currentTarget.play().catch(() => {}); }} />
-              {v.title && <div className="pt-reel-cap">{v.title}</div>}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   // HAZIR olduqda → birbaşa müştəri kabinetini portal içində göstər (keçid yoxdur)
   let cab = null;
   if (screen === "wait") {
@@ -10030,7 +10090,7 @@ function PortalPage() {
         <div className="pt-secure">🔒 Təhlükəsiz</div>
       </div>
       {screen === "auth" && renderAuth()}
-      {screen === "auth" && renderReels()}
+      {screen === "auth" && <PortalReels videos={vids} />}
       {screen === "pay" && renderPay()}
       {screen === "wait" && renderWait()}
       <div className="pt-foot">
