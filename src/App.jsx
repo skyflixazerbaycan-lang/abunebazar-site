@@ -6625,16 +6625,17 @@ function SharedAccountsAdmin() {
                         {r.status === "approved" && <div style={{ ...S.small, color: "#1f9d55", marginTop: 2 }}>✓ Hesab verildi · PIN: {r.assigned_pin} · {r.assigned_room_name}</div>}
                         {r.receipt_url && <a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ ...S.small, color: "#7FB3FF", display: "inline-block", marginTop: 3 }}>📎 Qəbzə bax</a>}
                         {(() => {
-                          const portalLink = `${SKY_SITE_URL}/?nf=${r.phone}#hesabgiris`;
-                          const waMsg = `Salam! SkyFlix müştəri kabinetinizə keçid:\n${portalLink}\n\nNömrəniz və PIN kodunuzla daxil olaraq Netflix məlumatlarınızı əldə edə bilərsiniz. Yeni sifariş vermisinizsə, birbaşa öz kabinetinizə girib çatdırılma vaxtını canlı olaraq izləyə bilərsiniz.`;
+                          const portalLink = `${SKY_SITE_URL}/#hesabgiris`;
+                          const pinShow = r.assigned_pin || r.pin || "";
+                          const waMsg = `Salam! SkyFlix müştəri kabinetinizə giriş məlumatlarınız:\n\nNömrə: +${r.phone}\nPIN kod: ${pinShow}\nKeçid: ${portalLink}\n\nNömrəniz və PIN kodunuzla daxil olaraq Netflix məlumatlarınızı əldə edə bilərsiniz. Yeni sifariş vermisinizsə, kabinetinizdə çatdırılma vaxtını canlı olaraq izləyə bilərsiniz.`;
                           return (
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                               <button className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13 }}
                                 onClick={() => window.open(`https://wa.me/${r.phone}?text=${encodeURIComponent(waMsg)}`, "_blank")}>
                                 <Send size={13} /> Link göndər
                               </button>
-                              <button style={S.mini} onClick={async () => { if (await skyCopy(portalLink)) flashMsg("Link kopyalandı ✓"); }}>
-                                <Copy size={12} /> Linki kopyala
+                              <button style={S.mini} onClick={async () => { if (await skyCopy(waMsg)) flashMsg("Mesaj kopyalandı ✓"); }}>
+                                <Copy size={12} /> Mesajı kopyala
                               </button>
                             </div>
                           );
