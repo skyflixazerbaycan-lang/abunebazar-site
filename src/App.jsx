@@ -3692,14 +3692,26 @@ const HW_CSS = `
   .pt-vreel-cap{background:linear-gradient(transparent,rgba(0,0,0,.2) 35%,rgba(0,0,0,.88)) !important;
     padding:30px 14px 18px !important;left:0 !important;right:0 !important;font-size:15px !important;}
   .pt-reels-t{color:#ffb14d !important;text-shadow:0 0 14px rgba(255,122,26,.4);}
+
+  /* ƏSAS SAYT — tam qaranlıq Halloween takeover */
+  .ab-root.hw-on{
+    --bg:#0a0613; --surface:rgba(20,10,28,.6); --surface2:rgba(30,15,40,.68);
+    --gold:#ff7a1a; --teal:#ff3a1a; --text:#f4ecff; --muted:#b49ccf; --line:rgba(255,122,26,.22);
+    background:
+      linear-gradient(rgba(6,3,12,.74),rgba(6,3,12,.9)),
+      url('${HW_SKYFLIX_IMG}') center 18%/min(560px,92vw) no-repeat fixed,
+      radial-gradient(900px 500px at 85% -5%,rgba(138,43,226,.25),transparent 60%),
+      linear-gradient(180deg,#0a0614,#060310 60%,#040208) !important;
+  }
+  .ab-root.hw-on .hw-banner{margin:16px auto 6px;}
 `;
 
-function HalloweenFX() {
+function HalloweenFX({ noDemon }) {
   return (
     <div className="hw-fx" aria-hidden="true">
       <style>{HW_CSS}</style>
       <div className="hw-glow"></div>
-      <img className="hw-demon" src={HW_SKYFLIX_IMG} alt="" loading="eager" />
+      {!noDemon && <img className="hw-demon" src={HW_SKYFLIX_IMG} alt="" loading="eager" />}
       <div className="hw-moon"></div>
       {/* uçan cadılar */}
       <div className="hw-witch" style={{ top: "54px", animationDuration: "18s" }}>🧙‍♀️</div>
@@ -8336,7 +8348,9 @@ function MainApp() {
   };
 
   return (
-    <div className={`ab-root ${theme === "dark" ? "dark" : ""}`}>
+    <div className={`ab-root ${theme === "dark" ? "dark" : ""}${HALLOWEEN ? " hw-on" : ""}`}>
+      {HALLOWEEN && <HalloweenFX noDemon />}
+      <HwBanner />
       <VideoWidget videoIds={SITE_PLAYLIST} />
       <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
