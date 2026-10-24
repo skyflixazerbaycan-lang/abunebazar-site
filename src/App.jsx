@@ -3572,6 +3572,102 @@ function giftFor(months, path) {
 // -----------------------------------------------------
 // MÜŞTƏRİ SƏHİFƏSİ: skyflixazerbaycan.com/#h-<kod>
 // -----------------------------------------------------
+/* ===================== HALLOWEEN (2 Noyabr 2026-a qədər) ===================== */
+const HALLOWEEN = (() => { try { return Date.now() < new Date("2026-11-03T00:00:00+04:00").getTime(); } catch { return false; } })();
+const HW_LAUGH_URL = "/hw-laugh.mp3";
+const HW_SONG_URL = "/hw-song.mp3";
+let hwLaughEl = null, hwSongEl = null, hwSongHandler = null;
+function hwAudioInit() {
+  if (hwLaughEl) return;
+  try {
+    hwLaughEl = new Audio(HW_LAUGH_URL); hwLaughEl.volume = 1;
+    hwSongEl = new Audio(HW_SONG_URL); hwSongEl.loop = true; hwSongEl.volume = 0.55;
+  } catch (e) {}
+}
+// Hər girişdə: gülüş dərhal, mahnı ilk toxunuşda (brauzer səs qaydasına uyğun)
+function hwPlayLaugh() {
+  if (!HALLOWEEN) return;
+  hwAudioInit();
+  try { hwSongEl && hwSongEl.pause(); } catch (e) {}
+  try { hwLaughEl.currentTime = 0; hwLaughEl.play().catch(() => {}); } catch (e) {}
+  if (hwSongHandler) {
+    document.removeEventListener("pointerdown", hwSongHandler, true);
+    document.removeEventListener("touchstart", hwSongHandler, true);
+  }
+  hwSongHandler = () => {
+    document.removeEventListener("pointerdown", hwSongHandler, true);
+    document.removeEventListener("touchstart", hwSongHandler, true);
+    hwSongHandler = null;
+    try { hwLaughEl && hwLaughEl.pause(); } catch (e) {}
+    try { hwSongEl.currentTime = 0; hwSongEl.play().catch(() => {}); } catch (e) {}
+  };
+  setTimeout(() => {
+    if (hwSongHandler) {
+      document.addEventListener("pointerdown", hwSongHandler, true);
+      document.addEventListener("touchstart", hwSongHandler, true);
+    }
+  }, 500);
+}
+
+const HW_CSS = `
+  .hw-fx{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+  .hw-moon{position:fixed;top:26px;right:28px;width:96px;height:96px;border-radius:50%;z-index:2;pointer-events:none;
+    background:radial-gradient(circle at 38% 36%,#fff6d8,#f2d98a 55%,#caa94e 78%,#9c7f36);
+    box-shadow:0 0 60px 16px rgba(255,220,130,.3);}
+  .hw-witch{position:fixed;top:54px;left:-120px;font-size:40px;z-index:3;pointer-events:none;
+    filter:drop-shadow(0 6px 10px rgba(0,0,0,.6));animation:hwfly 18s linear infinite;}
+  @keyframes hwfly{0%{transform:translate(-10vw,0) rotate(-6deg);opacity:0}8%{opacity:1}
+    50%{transform:translate(55vw,-30px) rotate(-10deg)}92%{opacity:1}100%{transform:translate(120vw,10px);opacity:0}}
+  .hw-bat{position:fixed;font-size:20px;z-index:3;pointer-events:none;opacity:.85;
+    animation:hwflap 1s ease-in-out infinite, hwdrift 16s linear infinite;}
+  @keyframes hwflap{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.6)}}
+  @keyframes hwdrift{0%{transform:translate(0,0)}100%{transform:translate(-120vw,-30px)}}
+  .hw-web{position:fixed;width:130px;height:130px;z-index:3;opacity:.45;pointer-events:none;}
+  .hw-web.tl{top:0;left:0;} .hw-web.tr{top:0;right:0;transform:scaleX(-1);}
+  .hw-spider{position:fixed;top:0;left:50%;z-index:3;transform:translateX(-50%);text-align:center;pointer-events:none;
+    animation:hwswing 5s ease-in-out infinite;transform-origin:top center;}
+  .hw-thread{width:2px;height:100px;margin:0 auto;background:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.1));}
+  .hw-body{font-size:26px;margin-top:-4px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6));}
+  @keyframes hwswing{0%,100%{transform:translateX(-50%) rotate(-7deg)}50%{transform:translateX(-50%) rotate(7deg)}}
+  .hw-fog{position:fixed;left:0;right:0;bottom:-10px;height:170px;z-index:2;pointer-events:none;
+    background:radial-gradient(60% 100% at 20% 100%,rgba(170,130,255,.14),transparent 70%),
+               radial-gradient(60% 100% at 80% 100%,rgba(255,140,40,.12),transparent 70%);
+    filter:blur(6px);animation:hwfog 12s ease-in-out infinite alternate;}
+  @keyframes hwfog{to{transform:translateX(26px)}}
+  .hw-pk{position:fixed;z-index:2;pointer-events:none;font-size:30px;filter:drop-shadow(0 0 10px rgba(255,122,26,.5));}
+  .hw-pk1{bottom:18px;left:14px;} .hw-pk2{bottom:16px;right:14px;}
+
+  /* kök fon + məzmunu dekordan yuxarı saxla */
+  .sa-root.hw-on, .pt-root.hw-on{background:
+      radial-gradient(900px 500px at 85% -5%,rgba(138,43,226,.22),transparent 60%),
+      radial-gradient(800px 460px at 10% 10%,rgba(255,122,26,.14),transparent 55%),
+      linear-gradient(180deg,#0a0614,#060310 60%,#040208) !important;}
+  .hw-on .sa-brand, .hw-on .sa-card, .hw-on .pt-top, .hw-on .pt-card, .hw-on .pt-reels-wrap, .hw-on .pt-foot{position:relative;z-index:5;}
+  .hw-on .sa-cmodal, .hw-on .sa-rnw{z-index:60 !important;}
+  .hw-on .sa-brand{color:#ffa23a !important;text-shadow:0 0 16px rgba(255,122,26,.45);}
+  .hw-on .sa-card, .hw-on .pt-card{border-color:rgba(255,122,26,.3) !important;
+    box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 46px rgba(138,43,226,.14) !important;}
+`;
+
+function HalloweenFX() {
+  return (
+    <div className="hw-fx" aria-hidden="true">
+      <style>{HW_CSS}</style>
+      <div className="hw-moon"></div>
+      <div className="hw-witch">🧙‍♀️</div>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span className="hw-bat" key={i} style={{ top: (8 + i * 12) + "%", left: (60 + i * 8) + "%", animationDelay: (i * 1.7) + "s", fontSize: (16 + i * 3) + "px" }}>🦇</span>
+      ))}
+      <svg className="hw-web tl" viewBox="0 0 100 100"><g fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1"><path d="M0 0 L100 100 M0 0 L70 0 M0 0 L0 70 M0 0 L100 45 M0 0 L45 100" /><path d="M20 0 Q24 24 0 20 M44 0 Q52 52 0 44 M68 0 Q80 80 0 68" /></g></svg>
+      <svg className="hw-web tr" viewBox="0 0 100 100"><g fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1"><path d="M0 0 L100 100 M0 0 L70 0 M0 0 L0 70 M0 0 L100 45 M0 0 L45 100" /><path d="M20 0 Q24 24 0 20 M44 0 Q52 52 0 44 M68 0 Q80 80 0 68" /></g></svg>
+      <div className="hw-spider"><div className="hw-thread"></div><div className="hw-body">🕷️</div></div>
+      <div className="hw-fog"></div>
+      <div className="hw-pk hw-pk1">🎃</div>
+      <div className="hw-pk hw-pk2">🎃</div>
+    </div>
+  );
+}
+
 function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   useGoogleFonts();
   const storageKey = "skyacc:" + slug;
@@ -3833,7 +3929,8 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   }
 
   return (
-    <div className="sa-root">
+    <div className={"sa-root" + (HALLOWEEN ? " hw-on" : "")}>
+      {HALLOWEEN && <HalloweenFX />}
       <style>{`
         .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;
           display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
@@ -4123,9 +4220,9 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
               placeholder="••••"
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-              onKeyDown={(e) => e.key === "Enter" && check()}
+              onKeyDown={(e) => { if (e.key === "Enter") { hwPlayLaugh(); check(); } }}
             />
-            <button className="sa-btn" onClick={() => check()} disabled={loading}>
+            <button className="sa-btn" onClick={() => { hwPlayLaugh(); check(); }} disabled={loading}>
               {loading ? "Yoxlanılır..." : "Məlumatları göstər"}
             </button>
             <a className="sa-btn sa-btn-ghost" href={`https://wa.me/${waDigits}?text=${encodeURIComponent(renewText)}`} target="_blank" rel="noreferrer">
@@ -9849,6 +9946,7 @@ function PortalPage() {
     if (ph.length < 9) { setErr("Nömrəni düzgün daxil edin."); return; }
     if (!/^\d{4}$/.test(pin)) { setErr("PIN 4 rəqəm olmalıdır."); return; }
     setErr(""); setBusy(true);
+    hwPlayLaugh();   // Halloween: gülüş (toxunuş icazəsi ilə)
     try {
       const { data } = await supabase.rpc("portal_lookup", { p_phone: ph, p_pin: pin });
       setBusy(false);
@@ -10090,8 +10188,9 @@ function PortalPage() {
   }
 
   return (
-    <div className="pt-root">
+    <div className={"pt-root" + (HALLOWEEN ? " hw-on" : "")}>
       <style>{PORTAL_CSS}</style>
+      {HALLOWEEN && <HalloweenFX />}
       <div className="pt-top">
         <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
         <div className="pt-secure">🔒 Təhlükəsiz</div>
