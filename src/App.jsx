@@ -3609,8 +3609,24 @@ function hwPlayLaugh() {
   }, 500);
 }
 
+const HW_SKYFLIX_IMG = "/hw-skyflix.png";
 const HW_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Nosifer&display=swap');
   .hw-fx{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+  .hw-demon{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;
+    width:min(620px,98vw);opacity:.6;filter:saturate(1.12) contrast(1.06);
+    -webkit-mask-image:radial-gradient(62% 60% at 50% 42%,#000 52%,transparent 80%);
+            mask-image:radial-gradient(62% 60% at 50% 42%,#000 52%,transparent 80%);
+    animation:hwdemon 7s ease-in-out infinite;}
+  @keyframes hwdemon{0%,100%{opacity:.5;filter:saturate(1.1) contrast(1.05) brightness(.95)}
+    50%{opacity:.72;filter:saturate(1.2) contrast(1.1) brightness(1.08)}}
+  .hw-banner{position:relative;z-index:5;width:100%;max-width:460px;text-align:center;margin:0 0 18px;line-height:1.08;}
+  .hw-banner .l1{display:block;font-family:'Creepster',cursive;letter-spacing:1.5px;font-size:27px;color:#ff4a24;
+    text-shadow:0 0 16px rgba(255,50,15,.65),0 0 38px rgba(255,90,25,.4);}
+  .hw-banner .l2{display:block;font-family:'Creepster',cursive;letter-spacing:1.5px;font-size:33px;color:#ff7a2a;
+    text-shadow:0 0 22px rgba(255,90,20,.75);animation:hwglowtext 2.2s ease-in-out infinite;margin-top:2px;}
+  @keyframes hwglowtext{0%,100%{opacity:.86;filter:drop-shadow(0 0 6px rgba(255,60,10,.5))}
+    50%{opacity:1;filter:drop-shadow(0 0 18px rgba(255,90,20,.95))}}
   .hw-moon{position:fixed;top:26px;right:28px;width:96px;height:96px;border-radius:50%;z-index:2;pointer-events:none;
     background:radial-gradient(circle at 38% 36%,#fff6d8,#f2d98a 55%,#caa94e 78%,#9c7f36);
     box-shadow:0 0 60px 16px rgba(255,220,130,.3);}
@@ -3646,14 +3662,12 @@ const HW_CSS = `
   .hw-on .sa-cmodal, .hw-on .sa-rnw{z-index:60 !important;}
   .hw-on .sa-brand{color:#ffb14d !important;text-shadow:0 0 18px rgba(255,122,26,.55);}
 
-  /* ŞÜŞƏ kartlar — Halloween fonu arxadan görünsün */
+  /* Kartlar — BLUR YOXDUR, fon birbaşa görünür (yarımşəffaf) */
   .hw-on .sa-card, .hw-on .pt-card{
-    background:rgba(18,9,26,.55) !important;
-    -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
-    border:1px solid rgba(255,122,26,.38) !important;
-    box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 50px rgba(255,122,26,.12),inset 0 1px 0 rgba(255,255,255,.05) !important;}
-  .hw-on .sa-field{background:rgba(10,5,16,.5) !important;border-color:rgba(255,122,26,.22) !important;
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+    background:rgba(8,4,13,.58) !important;
+    border:1px solid rgba(255,122,26,.4) !important;
+    box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 50px rgba(255,122,26,.14),inset 0 1px 0 rgba(255,255,255,.05) !important;}
+  .hw-on .sa-field{background:rgba(5,2,9,.5) !important;border-color:rgba(255,122,26,.24) !important;}
 
   /* əlavə yaradıcı dekor: ruhlar, şam, nəbz işığı, ikinci hörümçək */
   .hw-ghost{position:fixed;z-index:3;pointer-events:none;font-size:30px;opacity:0;
@@ -3685,15 +3699,20 @@ function HalloweenFX() {
     <div className="hw-fx" aria-hidden="true">
       <style>{HW_CSS}</style>
       <div className="hw-glow"></div>
+      <img className="hw-demon" src={HW_SKYFLIX_IMG} alt="" loading="eager" />
       <div className="hw-moon"></div>
-      <div className="hw-witch">🧙‍♀️</div>
+      {/* uçan cadılar */}
+      <div className="hw-witch" style={{ top: "54px", animationDuration: "18s" }}>🧙‍♀️</div>
+      <div className="hw-witch" style={{ top: "150px", animationDuration: "24s", animationDelay: "5s", fontSize: "32px" }}>🧙‍♀️</div>
+      <div className="hw-witch" style={{ top: "250px", animationDuration: "30s", animationDelay: "11s", fontSize: "28px" }}>🧙‍♀️</div>
       <div className="hw-ghost" style={{ top: "40%", left: "6%" }}>👻</div>
       <div className="hw-ghost g2" style={{ top: "62%", right: "8%", left: "auto" }}>👻</div>
       <div className="hw-candle" style={{ bottom: "72px", left: "20px" }}>🕯️</div>
       <div className="hw-candle" style={{ bottom: "70px", right: "22px", animationDelay: ".6s" }}>🕯️</div>
-      <div className="hw-spider2"><div className="hw-thread"></div><div className="hw-body">🕸️</div></div>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span className="hw-bat" key={i} style={{ top: (8 + i * 12) + "%", left: (60 + i * 8) + "%", animationDelay: (i * 1.7) + "s", fontSize: (16 + i * 3) + "px" }}>🦇</span>
+      <div className="hw-spider2" style={{ left: "22%" }}><div className="hw-thread"></div><div className="hw-body">🕷️</div></div>
+      <div className="hw-spider2" style={{ left: "72%", animationDuration: "7.5s" }}><div className="hw-thread" style={{ height: "54px" }}></div><div className="hw-body" style={{ fontSize: "18px" }}>🕸️</div></div>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <span className="hw-bat" key={i} style={{ top: (5 + i * 10) + "%", left: (55 + (i % 4) * 12) + "%", animationDelay: (i * 1.3) + "s", fontSize: (14 + (i % 4) * 5) + "px", animationDuration: (12 + i * 1.5) + "s, " + (0.6 + (i % 3) * 0.2) + "s" }}>🦇</span>
       ))}
       <svg className="hw-web tl" viewBox="0 0 100 100"><g fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1"><path d="M0 0 L100 100 M0 0 L70 0 M0 0 L0 70 M0 0 L100 45 M0 0 L45 100" /><path d="M20 0 Q24 24 0 20 M44 0 Q52 52 0 44 M68 0 Q80 80 0 68" /></g></svg>
       <svg className="hw-web tr" viewBox="0 0 100 100"><g fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="1"><path d="M0 0 L100 100 M0 0 L70 0 M0 0 L0 70 M0 0 L100 45 M0 0 L45 100" /><path d="M20 0 Q24 24 0 20 M44 0 Q52 52 0 44 M68 0 Q80 80 0 68" /></g></svg>
@@ -3701,6 +3720,16 @@ function HalloweenFX() {
       <div className="hw-fog"></div>
       <div className="hw-pk hw-pk1">🎃</div>
       <div className="hw-pk hw-pk2">🎃</div>
+    </div>
+  );
+}
+
+function HwBanner() {
+  if (!HALLOWEEN) return null;
+  return (
+    <div className="hw-banner">
+      <span className="l1">SkyFlix Halloween-ə hazırdır.</span>
+      <span className="l2">Bəs sən?? 😈</span>
     </div>
   );
 }
@@ -4190,6 +4219,8 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
         <img src="/skyflix-icon.png" alt="" />
         SkyFlix Azerbaycan
       </a>
+
+      <HwBanner />
 
       <div className="sa-card" key={result ? result.status : "form"}>
         {(result?.status === "ok" || result?.status === "expired") && (
@@ -10232,6 +10263,7 @@ function PortalPage() {
         <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
         <div className="pt-secure">🔒 Təhlükəsiz</div>
       </div>
+      <HwBanner />
       {screen === "auth" && renderAuth()}
       {screen === "auth" && <PortalReels videos={vids} />}
       {screen === "pay" && renderPay()}
