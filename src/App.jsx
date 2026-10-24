@@ -3644,17 +3644,54 @@ const HW_CSS = `
       linear-gradient(180deg,#0a0614,#060310 60%,#040208) !important;}
   .hw-on .sa-brand, .hw-on .sa-card, .hw-on .pt-top, .hw-on .pt-card, .hw-on .pt-reels-wrap, .hw-on .pt-foot{position:relative;z-index:5;}
   .hw-on .sa-cmodal, .hw-on .sa-rnw{z-index:60 !important;}
-  .hw-on .sa-brand{color:#ffa23a !important;text-shadow:0 0 16px rgba(255,122,26,.45);}
-  .hw-on .sa-card, .hw-on .pt-card{border-color:rgba(255,122,26,.3) !important;
-    box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 46px rgba(138,43,226,.14) !important;}
+  .hw-on .sa-brand{color:#ffb14d !important;text-shadow:0 0 18px rgba(255,122,26,.55);}
+
+  /* ŞÜŞƏ kartlar — Halloween fonu arxadan görünsün */
+  .hw-on .sa-card, .hw-on .pt-card{
+    background:rgba(18,9,26,.55) !important;
+    -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
+    border:1px solid rgba(255,122,26,.38) !important;
+    box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 50px rgba(255,122,26,.12),inset 0 1px 0 rgba(255,255,255,.05) !important;}
+  .hw-on .sa-field{background:rgba(10,5,16,.5) !important;border-color:rgba(255,122,26,.22) !important;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+
+  /* əlavə yaradıcı dekor: ruhlar, şam, nəbz işığı, ikinci hörümçək */
+  .hw-ghost{position:fixed;z-index:3;pointer-events:none;font-size:30px;opacity:0;
+    filter:drop-shadow(0 0 12px rgba(200,180,255,.5));animation:hwghost 16s ease-in-out infinite;}
+  .hw-ghost.g2{font-size:22px;animation-duration:21s;animation-delay:6s;}
+  @keyframes hwghost{0%{opacity:0;transform:translate(0,30px)}12%{opacity:.85}
+    50%{transform:translate(30px,-40px)}88%{opacity:.85}100%{opacity:0;transform:translate(-24px,-80px)}}
+  .hw-candle{position:fixed;z-index:3;pointer-events:none;font-size:26px;filter:drop-shadow(0 0 14px rgba(255,150,40,.7));
+    animation:hwflick 1.8s ease-in-out infinite;}
+  @keyframes hwflick{0%,100%{opacity:.85;transform:scale(1)}45%{opacity:1;transform:scale(1.06) rotate(-2deg)}70%{opacity:.78;transform:scale(.97)}}
+  .hw-glow{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(560px 420px at 50% 40%,rgba(255,122,26,.10),transparent 70%);
+    animation:hwpulse 3.8s ease-in-out infinite;}
+  @keyframes hwpulse{0%,100%{opacity:.45}50%{opacity:1}}
+  .hw-spider2{position:fixed;top:0;left:22%;z-index:3;pointer-events:none;transform-origin:top center;animation:hwswing2 6.5s ease-in-out infinite;}
+  .hw-spider2 .hw-thread{height:72px;} .hw-spider2 .hw-body{font-size:20px;}
+  @keyframes hwswing2{0%,100%{transform:rotate(7deg)}50%{transform:rotate(-7deg)}}
+
+  /* reels / slaydlar — daha premium */
+  .pt-vreels{border:1px solid rgba(255,122,26,.3) !important;
+    box-shadow:0 22px 55px rgba(0,0,0,.6),0 0 44px rgba(255,122,26,.12) !important;}
+  .pt-vreel-cap{background:linear-gradient(transparent,rgba(0,0,0,.2) 35%,rgba(0,0,0,.88)) !important;
+    padding:30px 14px 18px !important;left:0 !important;right:0 !important;font-size:15px !important;}
+  .pt-reels-t{color:#ffb14d !important;text-shadow:0 0 14px rgba(255,122,26,.4);}
 `;
 
 function HalloweenFX() {
   return (
     <div className="hw-fx" aria-hidden="true">
       <style>{HW_CSS}</style>
+      <div className="hw-glow"></div>
       <div className="hw-moon"></div>
       <div className="hw-witch">🧙‍♀️</div>
+      <div className="hw-ghost" style={{ top: "40%", left: "6%" }}>👻</div>
+      <div className="hw-ghost g2" style={{ top: "62%", right: "8%", left: "auto" }}>👻</div>
+      <div className="hw-candle" style={{ bottom: "72px", left: "20px" }}>🕯️</div>
+      <div className="hw-candle" style={{ bottom: "70px", right: "22px", animationDelay: ".6s" }}>🕯️</div>
+      <div className="hw-spider2"><div className="hw-thread"></div><div className="hw-body">🕸️</div></div>
       {[0, 1, 2, 3, 4].map((i) => (
         <span className="hw-bat" key={i} style={{ top: (8 + i * 12) + "%", left: (60 + i * 8) + "%", animationDelay: (i * 1.7) + "s", fontSize: (16 + i * 3) + "px" }}>🦇</span>
       ))}
