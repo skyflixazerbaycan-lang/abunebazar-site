@@ -329,13 +329,14 @@ const cvEl=document.getElementById('c');
 const clampP=v=>Math.max(-1.5,Math.min(1.5,v));
 // Minecraft idarəsi: qısa klik = blok QOY, basılı saxla = DAĞIT
 let md=false,msx=0,msy=0,moved=false,fired=false,holdTimer=null;
-const HOLD_MS=260;
+const HOLD_MS=350;
 cvEl.addEventListener('mousedown',e=>{
   if(e.button!==0 && e.button!==2) return;
   md=true; msx=e.clientX; msy=e.clientY; moved=false; fired=false;
   if(e.button===2){ doBreak(); fired=true; return; }   // sağ klik = dərhal dağıt
   clearTimeout(holdTimer);
-  holdTimer=setTimeout(()=>{ if(md&&!moved){ doBreak(); fired=true; } }, HOLD_MS); // basılı saxla = dağıt
+  // basılı saxla: YALNIZ mövcud blokun üstündə isə dağıt; boş yerdə heç nə (klik qoyacaq)
+  holdTimer=setTimeout(()=>{ if(md&&!moved){ const h=raycast(); if(h&&h.y>=0){ doBreak(); fired=true; } } }, HOLD_MS);
   if(!locked && cvEl.requestPointerLock){ try{ cvEl.requestPointerLock(); }catch(_){} }
 });
 document.addEventListener('mouseup',e=>{ if(!md)return; md=false; clearTimeout(holdTimer);
@@ -345,7 +346,7 @@ document.addEventListener('mousemove',e=>{
   if(locked){ player.yaw-=e.movementX*0.0024; player.pitch=clampP(player.pitch-e.movementY*0.0024); return; }
   if(md){ const dx=e.movementX||0, dy=e.movementY||0;
     player.yaw-=dx*0.004; player.pitch=clampP(player.pitch-dy*0.004);
-    if(Math.abs(e.clientX-msx)+Math.abs(e.clientY-msy)>8){ moved=true; clearTimeout(holdTimer); } }
+    if(Math.abs(e.clientX-msx)+Math.abs(e.clientY-msy)>14){ moved=true; clearTimeout(holdTimer); } }
 });
 cvEl.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cvEl;});
