@@ -3771,6 +3771,7 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   const [codeCopied, setCodeCopied] = useState(-1);
   const [nowTick, setNowTick] = useState(Date.now());
   const [contractAccepted, setContractAccepted] = useState(null); // null=bilinmir, true/false
+  const [duckBoard, setDuckBoard] = useState([]);
   const [contractChecking, setContractChecking] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [agreeChecked, setAgreeChecked] = useState(false);
@@ -3870,6 +3871,13 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
     if (result?.status === "ok" && contractAccepted === null && !contractChecking) {
       checkContract(phone);
     }
+  }, [result?.status]);
+
+  // Ördək ovu lider lövhəsi (kabinetdə göstərmək üçün)
+  useEffect(() => {
+    if (result?.status !== "ok") return;
+    supabase.from("mc_duck_scores").select("name,score,is_admin").order("score", { ascending: false }).limit(5)
+      .then(({ data }) => setDuckBoard(data || [])).catch(() => {});
   }, [result?.status]);
 
   // Bildirişləri yüklə (giriş olanda, hamıya olan bildirişlər)
@@ -4503,6 +4511,39 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
                 <div style={{ position: "absolute", right: 10, top: 10, fontSize: 30, opacity: .85 }}>🧱</div>
               </div>
             </a>
+
+            {/* ===== Ördək Ovu — oyun + lider lövhəsi ===== */}
+            <div style={{ margin: "4px 0 16px", borderRadius: 16, overflow: "hidden", border: "2px solid #ff7a1a",
+              boxShadow: "0 12px 30px rgba(255,122,26,.3)", background: "linear-gradient(135deg,#2a1708,#3a2410 55%,#1a1030)" }}>
+              <a href={`${SKY_SITE_URL}/skyflix-ordek-ovu.html?nf=${skyNormPhone(phone)}&pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(result.name || "")}`}
+                 target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block" }}>
+                <div style={{ padding: "16px 16px 12px", color: "#fff" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#ffc98a", marginBottom: 6 }}>🦆 SKYFLIX ÖRDƏK OVU · ONLAYN</div>
+                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1.15, marginBottom: 6 }}>
+                    Göydəki ördəkləri vur, <span style={{ color: "#ffd54a" }}>liderliyə yüksəl!</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "#f0d9c9", lineHeight: 1.5, marginBottom: 12 }}>
+                    PUBG kimi atış poliqonu. <b style={{ color: "#fff" }}>Ən çox ördək öldürən 1-ci yer</b>
+                    <b style={{ color: "#ffd54a" }}> 1 aylıq PULSUZ NETFLIX</b> qazanır! 🏆
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,#ffd54a,#ff7a1a)",
+                    color: "#2a1400", fontWeight: 900, fontSize: 15, padding: "11px 20px", borderRadius: 12 }}>
+                    🔫 Oyuna gir və ovla →
+                  </div>
+                </div>
+              </a>
+              {duckBoard.length > 0 && (
+                <div style={{ padding: "10px 16px 14px", borderTop: "1px solid rgba(255,255,255,.1)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "#ffd54a", marginBottom: 7 }}>🏆 LİDER LÖVHƏSİ</div>
+                  {duckBoard.map((r, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#fff", fontSize: 13.5, padding: "3px 0" }}>
+                      <span>{i + 1}. {r.is_admin ? "SkyFlix Admin" : (r.name || "Qonaq")}</span>
+                      <b style={{ color: "#8be05a" }}>{r.score} 🦆</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {!reviewHidden && (
               <div className="sa-review">
@@ -5750,6 +5791,7 @@ function SharedAccountsAdmin() {
   const [pendingDlvCount, setPendingDlvCount] = useState(0);
   const [videos, setVideos] = useState([]);
   const [craftPlayers, setCraftPlayers] = useState([]);
+  const [duckScores, setDuckScores] = useState([]);
   const [craftWinner, setCraftWinner] = useState(null);
   const [craftKey, setCraftKey] = useState("SKYFLIX-ADMIN-2026");
   const [vidTitle, setVidTitle] = useState("");
@@ -5871,6 +5913,20 @@ function SharedAccountsAdmin() {
     const note = prompt("Qalib üçün qeyd (məs. Otaq adı / ev təsviri):", "");
     const { data } = await supabase.rpc("mc_set_winner", { p_phone: phone, p_note: note || "" });
     if (data?.status === "ok") { flashMsg("Qalib seçildi ✓"); loadCraft(); }
+    else flashMsg("Xəta: " + (data?.status || "naməlum"));
+  }
+  async function loadDucks() {
+    try {
+      const { data } = await supabase.from("mc_duck_scores").select("*").order("score", { ascending: false });
+      setDuckScores(data || []);
+      const s = await supabase.from("settings").select("value").eq("key", "mc_admin_key").maybeSingle();
+      if (s.data?.value) setCraftKey(s.data.value);
+    } catch (e) { flashMsg("Ördək məlumatı yüklənmədi — server SQL-i işə salınıb?"); }
+  }
+  async function resetDucks() {
+    if (!confirm("Bütün ördək xalları sıfırlansın? (yeni tur)")) return;
+    const { data } = await supabase.rpc("mc_duck_reset");
+    if (data?.status === "ok") { flashMsg("Xallar sıfırlandı ✓"); loadDucks(); }
     else flashMsg("Xəta: " + (data?.status || "naməlum"));
   }
   async function uploadVideo(e) {
@@ -6431,6 +6487,7 @@ function SharedAccountsAdmin() {
               ["notify", "Bildiriş göndər"],
               ["videos", "Videolar"],
               ["craft", "🎮 Craft"],
+              ["ducks", "🦆 Ördək"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
@@ -6447,6 +6504,7 @@ function SharedAccountsAdmin() {
                   if (key === "deliveries") loadDeliveries();
                   if (key === "videos") loadVideos();
                   if (key === "craft") loadCraft();
+                  if (key === "ducks") loadDucks();
                 }}
               >
                 {label}
@@ -6943,6 +7001,36 @@ function SharedAccountsAdmin() {
                   {!p.is_admin && (
                     <button className="ab-btn ab-btn-gold" style={{ padding: "6px 11px", fontSize: 12.5 }} onClick={() => setCraftWinnerFn(p.phone)}>🏆 Qalib seç</button>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "ducks" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>🦆 Ördək Ovu — lider lövhəsi</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <a className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13, textDecoration: "none" }}
+                     href={`${SKY_SITE_URL}/skyflix-ordek-ovu.html?admin=1&k=${encodeURIComponent(craftKey)}`} target="_blank" rel="noreferrer">
+                    🛡️ Oyna (Admin)
+                  </a>
+                  <button style={S.mini} onClick={loadDucks}><RotateCw size={12} /> Yenilə</button>
+                  <button style={S.mini} onClick={resetDucks}><Ban size={12} /> Sıfırla</button>
+                </div>
+              </div>
+              <p style={{ ...S.small, marginBottom: 10 }}>Ən çox ördək öldürən 1-ci yer → 1 aylıq Netflix. Kim hansı adla oynayıb (yalnız sən görürsən).</p>
+              {!duckScores.length && <p style={S.small}>Hələ oyunçu yoxdur. Server SQL-ini işə salıb oyunu açanda görünəcək.</p>}
+              {duckScores.map((p, i) => (
+                <div key={p.phone} style={{ borderTop: "1px solid var(--line)", padding: "9px 0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : (i + 1) + ". "}
+                      {p.is_admin ? "🛡️ SkyFlix Admin" : (p.name || "(adsız)")}
+                    </div>
+                    <div style={S.small}>+{p.phone}</div>
+                  </div>
+                  <b style={{ fontSize: 17, color: "#1f9d55" }}>{p.score} 🦆</b>
                 </div>
               ))}
             </div>
