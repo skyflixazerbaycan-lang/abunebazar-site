@@ -115,7 +115,7 @@
   <p>Hamı eyni geniş dünyada öz evini tikir. Sən yalnız öz sahəndə tikə bilərsən — kimsə sənin evini poza bilməz. Ən gözəl evi tikən 1 aylıq Netflix qazanır! 🏆</p>
   <input class="inp" id="nameInp" placeholder="Adını yaz..." maxlength="16" value="Qonaq"/>
   <button class="play" id="playBtn">▶ DÜNYAYA GİR</button>
-  <div class="keys"><span>WASD/joystick — hərəkət</span><span>Siçan/sürüşdür — bax</span><span>Boşluq — tullan</span><span>Sol/⛏ qır</span><span>Sağ/＋ qoy</span></div>
+  <div class="keys"><span>WASD/joystick — hərəkət</span><span>Siçan/sürüşdür — bax</span><span>Boşluq — tullan</span><span>Klik — blok QOY</span><span>Basılı saxla — DAĞIT</span></div>
   <p style="font-size:11.5px;color:#9ab">Demo: tək-oyunçu önizləmə. Real serverdə hamı eyni anda görünəcək.</p>
 </div>
 
@@ -327,22 +327,25 @@ addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); keys[k===' '?' ':k]=f
 addEventListener('wheel',e=>{ if(!running)return; sel=(sel+(e.deltaY>0?1:HOTBAR.length-1))%HOTBAR.length; updHot(); },{passive:true});
 const cvEl=document.getElementById('c');
 const clampP=v=>Math.max(-1.5,Math.min(1.5,v));
-let md=false,mb=0,msx=0,msy=0,moved=false;
+// Minecraft idarəsi: qısa klik = blok QOY, basılı saxla = DAĞIT
+let md=false,msx=0,msy=0,moved=false,fired=false,holdTimer=null;
+const HOLD_MS=260;
 cvEl.addEventListener('mousedown',e=>{
-  if(locked){ if(e.button===0)doBreak(); else if(e.button===2)doPlace(); return; }
-  // kilid yoxdursa (iframe) — sürüşdürməklə bax
-  md=true; mb=e.button; msx=e.clientX; msy=e.clientY; moved=false;
-  if(cvEl.requestPointerLock) try{ cvEl.requestPointerLock(); }catch(_){}
+  if(e.button!==0 && e.button!==2) return;
+  md=true; msx=e.clientX; msy=e.clientY; moved=false; fired=false;
+  if(e.button===2){ doBreak(); fired=true; return; }   // sağ klik = dərhal dağıt
+  clearTimeout(holdTimer);
+  holdTimer=setTimeout(()=>{ if(md&&!moved){ doBreak(); fired=true; } }, HOLD_MS); // basılı saxla = dağıt
+  if(!locked && cvEl.requestPointerLock){ try{ cvEl.requestPointerLock(); }catch(_){} }
 });
-document.addEventListener('mouseup',e=>{ if(!md)return; md=false;
-  if(locked) return;                    // kilid rejimi klikləri mousedown-da işlədir
-  if(!moved){ if(mb===0)doBreak(); else if(mb===2)doPlace(); }
+document.addEventListener('mouseup',e=>{ if(!md)return; md=false; clearTimeout(holdTimer);
+  if(!fired && !moved){ doPlace(); }   // qısa klik = blok qoy
 });
 document.addEventListener('mousemove',e=>{
   if(locked){ player.yaw-=e.movementX*0.0024; player.pitch=clampP(player.pitch-e.movementY*0.0024); return; }
   if(md){ const dx=e.movementX||0, dy=e.movementY||0;
     player.yaw-=dx*0.004; player.pitch=clampP(player.pitch-dy*0.004);
-    if(Math.abs(e.clientX-msx)+Math.abs(e.clientY-msy)>6) moved=true; }
+    if(Math.abs(e.clientX-msx)+Math.abs(e.clientY-msy)>8){ moved=true; clearTimeout(holdTimer); } }
 });
 cvEl.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cvEl;});
