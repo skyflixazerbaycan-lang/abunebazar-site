@@ -4480,6 +4480,30 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
 
+            {/* ===== SkyFlix Craft — oyun reklamı ===== */}
+            <a href={`${SKY_SITE_URL}/skyflix-craft.html?nf=${skyNormPhone(phone)}&pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(result.name || "")}`}
+               target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+              <div style={{ position: "relative", margin: "4px 0 16px", borderRadius: 16, overflow: "hidden",
+                border: "2px solid #4caf2f", boxShadow: "0 12px 30px rgba(76,175,47,.35)",
+                background: "linear-gradient(135deg,#1e2d12,#2a4a1a 55%,#13331a)" }}>
+                <div style={{ padding: "16px 16px 14px", color: "#fff" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#8be05a", marginBottom: 6 }}>🎮 SKYFLIX CRAFT · ONLAYN</div>
+                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1.15, marginBottom: 6 }}>
+                    Minecraft tərzi serverə gir, <span style={{ color: "#8be05a" }}>evini tik!</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "#cfe6c9", lineHeight: 1.5, marginBottom: 12 }}>
+                    Hamı eyni dünyada öz evini qurur. <b style={{ color: "#fff" }}>Ən yaxşı ev seçilib</b> abunəliyinin üstünə
+                    <b style={{ color: "#ffd54a" }}> 1 aylıq PULSUZ NETFLIX</b> qazanır! 🏆
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,#8be05a,#4caf2f)",
+                    color: "#10220f", fontWeight: 900, fontSize: 15, padding: "11px 20px", borderRadius: 12 }}>
+                    ⛏️ Oyuna gir və ev tik →
+                  </div>
+                </div>
+                <div style={{ position: "absolute", right: 10, top: 10, fontSize: 30, opacity: .85 }}>🧱</div>
+              </div>
+            </a>
+
             {!reviewHidden && (
               <div className="sa-review">
                 <div className="sa-review-stars">★★★★★</div>
@@ -5725,6 +5749,9 @@ function SharedAccountsAdmin() {
   const [dlvReqs, setDlvReqs] = useState([]);
   const [pendingDlvCount, setPendingDlvCount] = useState(0);
   const [videos, setVideos] = useState([]);
+  const [craftPlayers, setCraftPlayers] = useState([]);
+  const [craftWinner, setCraftWinner] = useState(null);
+  const [craftKey, setCraftKey] = useState("SKYFLIX-ADMIN-2026");
   const [vidTitle, setVidTitle] = useState("");
   const [vidUploading, setVidUploading] = useState(false);
   const vidFileRef = useRef(null);
@@ -5829,6 +5856,22 @@ function SharedAccountsAdmin() {
   async function loadVideos() {
     const { data } = await supabase.from("login_videos").select("*").order("sort", { ascending: true }).order("created_at", { ascending: false });
     setVideos(data || []);
+  }
+  async function loadCraft() {
+    try {
+      const { data } = await supabase.from("mc_plots").select("*").order("created_at", { ascending: true });
+      setCraftPlayers(data || []);
+      const w = await supabase.from("mc_winner").select("*").eq("id", 1).maybeSingle();
+      setCraftWinner(w.data || null);
+      const s = await supabase.from("settings").select("value").eq("key", "mc_admin_key").maybeSingle();
+      if (s.data?.value) setCraftKey(s.data.value);
+    } catch (e) { flashMsg("Craft məlumatı yüklənmədi — server SQL-i işə salınıb?"); }
+  }
+  async function setCraftWinnerFn(phone) {
+    const note = prompt("Qalib üçün qeyd (məs. Otaq adı / ev təsviri):", "");
+    const { data } = await supabase.rpc("mc_set_winner", { p_phone: phone, p_note: note || "" });
+    if (data?.status === "ok") { flashMsg("Qalib seçildi ✓"); loadCraft(); }
+    else flashMsg("Xəta: " + (data?.status || "naməlum"));
   }
   async function uploadVideo(e) {
     const f = e.target.files && e.target.files[0];
@@ -6387,6 +6430,7 @@ function SharedAccountsAdmin() {
               ["contracts", "İstifadəçi şərtləri"],
               ["notify", "Bildiriş göndər"],
               ["videos", "Videolar"],
+              ["craft", "🎮 Craft"],
               ["codes", "Netflix kodları"],
               ["logs", "Giriş tarixçəsi"],
             ].map(([key, label]) => (
@@ -6402,6 +6446,7 @@ function SharedAccountsAdmin() {
                   if (key === "renewals") loadRenewals();
                   if (key === "deliveries") loadDeliveries();
                   if (key === "videos") loadVideos();
+                  if (key === "craft") loadCraft();
                 }}
               >
                 {label}
@@ -6867,6 +6912,39 @@ function SharedAccountsAdmin() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {tab === "craft" && (
+            <div style={S.box}>
+              <div style={{ ...S.row, justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>🎮 SkyFlix Craft oyunçuları</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <a className="ab-btn ab-btn-gold" style={{ padding: "7px 12px", fontSize: 13, textDecoration: "none" }}
+                     href={`${SKY_SITE_URL}/skyflix-craft.html?admin=1&k=${encodeURIComponent(craftKey)}`} target="_blank" rel="noreferrer">
+                    🛡️ Serverə gir (Admin)
+                  </a>
+                  <button style={S.mini} onClick={loadCraft}><RotateCw size={12} /> Yenilə</button>
+                </div>
+              </div>
+              <p style={{ ...S.small, marginBottom: 10 }}>Kim hansı adla girib (yalnız sən görürsən). Ən yaxşı evi tikəni seçib qalib et → ona 1 aylıq Netflix.</p>
+              {craftWinner && craftWinner.phone && (
+                <div style={{ background: "rgba(76,175,47,.15)", border: "1px solid rgba(76,175,47,.5)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
+                  🏆 Cari qalib: <b>{craftWinner.name || "—"}</b> (+{craftWinner.phone}) {craftWinner.note ? "· " + craftWinner.note : ""}
+                </div>
+              )}
+              {!craftPlayers.length && <p style={S.small}>Hələ oyunçu yoxdur. Server SQL-ini işə salıb oyunu açanda burada görünəcək.</p>}
+              {craftPlayers.map((p) => (
+                <div key={p.phone} style={{ borderTop: "1px solid var(--line)", padding: "10px 0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.is_admin ? "🛡️ " : "👤 "}{p.name || "(adsız)"}</div>
+                    <div style={S.small}>+{p.phone} · Plot ({p.plot_x},{p.plot_z})</div>
+                  </div>
+                  {!p.is_admin && (
+                    <button className="ab-btn ab-btn-gold" style={{ padding: "6px 11px", fontSize: 12.5 }} onClick={() => setCraftWinnerFn(p.phone)}>🏆 Qalib seç</button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
