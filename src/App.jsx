@@ -5867,11 +5867,20 @@ function SharedAccountsAdmin() {
   }
 
   async function loadContracts() {
-    const { data } = await supabase
-      .from("contract_acceptances")
-      .select("*")
-      .order("accepted_at", { ascending: false });
-    setContracts(data || []);
+    // Supabase sorğusu maks. 1000 sətir qaytarır — hamısını səhifə-səhifə gətir
+    const all = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("contract_acceptances")
+        .select("*")
+        .order("accepted_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+    }
+    setContracts(all);
   }
 
   async function loadRenewals() {
