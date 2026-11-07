@@ -3192,7 +3192,10 @@ function LiveChatButton({ settings }) {
 
 // Saytın arxa fon musiqi playlisti — YouTube video ID-ləri (sırayla çalınır, təkrarlanır).
 // Mahnıları dəyişmək üçün bu siyahını yenilə.
-const SITE_PLAYLIST = ["PSxCaYZpl1o"];
+// Zəfər Günü (8 Noyabr) teması — 20 Noyabra qədər aktiv
+const VICTORY = (() => { try { return Date.now() < new Date("2026-11-20T00:00:00+04:00").getTime(); } catch { return false; } })();
+const SITE_PLAYLIST = VICTORY ? ["pacadC0gjuo"] : ["PSxCaYZpl1o"];
+const SITE_MUSIC_START = VICTORY ? 46 : 0;
 
 function VideoWidget({ videoIds }) {
   const ids = Array.isArray(videoIds) ? videoIds.filter(Boolean) : [videoIds].filter(Boolean);
@@ -3222,6 +3225,7 @@ function VideoWidget({ videoIds }) {
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
+          start: SITE_MUSIC_START,
         },
         events: {
           onReady: (e) => {
@@ -3230,7 +3234,7 @@ function VideoWidget({ videoIds }) {
             setShowControl(true);
           },
           onStateChange: (e) => {
-            if (e.data === 1) setIsPlaying(true);
+            if (e.data === 1) { setIsPlaying(true); try { if (SITE_MUSIC_START && e.target.getCurrentTime() < SITE_MUSIC_START - 2) e.target.seekTo(SITE_MUSIC_START, true); } catch (_) {} }
             if (e.data === 2) setIsPlaying(false);
           },
         },
@@ -3746,6 +3750,77 @@ function HwBanner() {
   );
 }
 
+
+/* ===================== ZƏFƏR GÜNÜ (8 Noyabr) ===================== */
+function vcStar(cx, cy, r1, r2) { let p = ""; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 2; const r = i % 2 ? r2 : r1; p += (cx + Math.cos(a) * r).toFixed(1) + "," + (cy + Math.sin(a) * r).toFixed(1) + " "; } return p.trim(); }
+function VictoryFlag({ w = 210, cls = "" }) {
+  const h = w * 0.5;
+  return (
+    <svg className={"vc-flag " + cls} viewBox="0 0 300 150" width={w} height={h} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <defs>
+        <filter id="vcwave" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="3" result="n">
+            <animate attributeName="baseFrequency" dur="7s" values="0.012 0.02;0.02 0.014;0.012 0.02" repeatCount="indefinite" />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="16" />
+        </filter>
+      </defs>
+      <g filter="url(#vcwave)">
+        <rect width="300" height="50" y="0" fill="#0092bc" />
+        <rect width="300" height="50" y="50" fill="#e4002b" />
+        <rect width="300" height="50" y="100" fill="#00953b" />
+        <circle cx="128" cy="75" r="22" fill="#fff" />
+        <circle cx="139" cy="75" r="18" fill="#e4002b" />
+        <polygon points={vcStar(176, 75, 15, 6.5)} fill="#fff" />
+      </g>
+    </svg>
+  );
+}
+const VC_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');
+  .vc-fx{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+  .vc-conf{position:fixed;top:-20px;width:9px;height:14px;border-radius:2px;opacity:.9;animation:vcfall linear infinite;}
+  .vc-conf.c0{background:#0092bc;} .vc-conf.c1{background:#e4002b;} .vc-conf.c2{background:#00953b;} .vc-conf.c3{background:#f2d06b;}
+  @keyframes vcfall{0%{transform:translateY(-20px) rotate(0);opacity:0}8%{opacity:.95}100%{transform:translateY(106vh) rotate(560deg);opacity:.25}}
+  .vc-spark{position:fixed;color:#f2d06b;font-size:15px;opacity:0;filter:drop-shadow(0 0 8px rgba(242,208,107,.7));animation:vctw 2.6s ease-in-out infinite;}
+  @keyframes vctw{0%,100%{opacity:0;transform:scale(.6)}50%{opacity:1;transform:scale(1.15)}}
+  .vc-flag{filter:drop-shadow(0 10px 22px rgba(0,0,0,.45));}
+  .vc-banner{position:relative;z-index:5;width:100%;max-width:480px;margin:0 auto 18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 4px 2px;}
+  .vc-title{font-family:'Playfair Display','Space Grotesk',serif;font-weight:800;font-size:clamp(18px,4.6vw,24px);color:#f3d680;text-shadow:0 2px 16px rgba(226,160,30,.45);letter-spacing:.3px;}
+  .vc-msg{font-size:13.5px;line-height:1.55;color:#eef3fb;max-width:430px;background:rgba(10,16,30,.5);border:1px solid rgba(242,208,107,.35);border-radius:12px;padding:10px 14px;}
+  .sa-root.vc-on, .pt-root.vc-on, .ab-root.vc-on{ --gold:#e8c35a;
+    background:
+      radial-gradient(900px 520px at 50% -8%, rgba(226,180,60,.15), transparent 60%),
+      radial-gradient(700px 460px at 8% 108%, rgba(0,150,190,.12), transparent 60%),
+      radial-gradient(700px 460px at 92% 108%, rgba(0,150,60,.12), transparent 60%),
+      linear-gradient(180deg,#0a1020,#070b16 60%,#05080f) !important; }
+  .vc-on .sa-brand{color:#f3d680 !important;text-shadow:0 0 16px rgba(226,160,30,.4);}
+  .vc-on .sa-card, .vc-on .pt-card{border-color:rgba(242,208,107,.35) !important;}
+`;
+function VictoryFX() {
+  return (
+    <div className="vc-fx" aria-hidden="true">
+      <style>{VC_CSS}</style>
+      {Array.from({ length: 28 }).map((_, i) => (
+        <span className={"vc-conf c" + (i % 4)} key={i} style={{ left: ((i * 3.6) % 100) + "%", animationDelay: (i * 0.33) + "s", animationDuration: (5 + (i % 5)) + "s" }} />
+      ))}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <span className="vc-spark" key={"s" + i} style={{ left: (7 + i * 9) + "%", top: (8 + (i % 4) * 7) + "%", animationDelay: (i * 0.5) + "s" }}>✦</span>
+      ))}
+    </div>
+  );
+}
+function VictoryBanner() {
+  if (!VICTORY) return null;
+  return (
+    <div className="vc-banner">
+      <VictoryFlag w={200} />
+      <div className="vc-title">8 Noyabr — Zəfər Günü Mübarək! 🇦🇿</div>
+      <div className="vc-msg">Allahdan şəhidlərə rəhmət, qazilərimizə can sağlığı arzu edirik.</div>
+    </div>
+  );
+}
+
 function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   useGoogleFonts();
   const storageKey = "skyacc:" + slug;
@@ -4015,8 +4090,9 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
   }
 
   return (
-    <div className={"sa-root" + (HALLOWEEN ? " hw-on" : "")}>
+    <div className={"sa-root" + (HALLOWEEN ? " hw-on" : "") + (VICTORY ? " vc-on" : "")}>
       {HALLOWEEN && <HalloweenFX />}
+      {VICTORY && <VictoryFX />}
       <style>{`
         .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;
           display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
@@ -4241,6 +4317,7 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
       </a>
 
       <HwBanner />
+      <VictoryBanner />
 
       <div className="sa-card" key={result ? result.status : "form"}>
         {(result?.status === "ok" || result?.status === "expired") && (
@@ -4487,63 +4564,6 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
             <p className="sa-sub">
               {result.name ? `${result.name}, ` : ""}şifrə dəyişəndə bu səhifədə avtomatik yenilənir.
             </p>
-
-            {/* ===== SkyFlix Craft — oyun reklamı ===== */}
-            <a href={`${SKY_SITE_URL}/skyflix-craft.html?nf=${skyNormPhone(phone)}&pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(result.name || "")}`}
-               target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-              <div style={{ position: "relative", margin: "4px 0 16px", borderRadius: 16, overflow: "hidden",
-                border: "2px solid #4caf2f", boxShadow: "0 12px 30px rgba(76,175,47,.35)",
-                background: "linear-gradient(135deg,#1e2d12,#2a4a1a 55%,#13331a)" }}>
-                <div style={{ padding: "16px 16px 14px", color: "#fff" }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#8be05a", marginBottom: 6 }}>🎮 SKYFLIX CRAFT · ONLAYN</div>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1.15, marginBottom: 6 }}>
-                    Minecraft tərzi serverə gir, <span style={{ color: "#8be05a" }}>evini tik!</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "#cfe6c9", lineHeight: 1.5, marginBottom: 12 }}>
-                    Hamı eyni dünyada öz evini qurur. <b style={{ color: "#fff" }}>Ən yaxşı ev seçilib</b> abunəliyinin üstünə
-                    <b style={{ color: "#ffd54a" }}> 1 aylıq PULSUZ NETFLIX</b> qazanır! 🏆
-                  </div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,#8be05a,#4caf2f)",
-                    color: "#10220f", fontWeight: 900, fontSize: 15, padding: "11px 20px", borderRadius: 12 }}>
-                    ⛏️ Oyuna gir və ev tik →
-                  </div>
-                </div>
-                <div style={{ position: "absolute", right: 10, top: 10, fontSize: 30, opacity: .85 }}>🧱</div>
-              </div>
-            </a>
-
-            {/* ===== Ördək Ovu — oyun + lider lövhəsi ===== */}
-            <div style={{ margin: "4px 0 16px", borderRadius: 16, overflow: "hidden", border: "2px solid #ff7a1a",
-              boxShadow: "0 12px 30px rgba(255,122,26,.3)", background: "linear-gradient(135deg,#2a1708,#3a2410 55%,#1a1030)" }}>
-              <a href={`${SKY_SITE_URL}/skyflix-ordek-ovu.html?nf=${skyNormPhone(phone)}&pin=${encodeURIComponent(pin)}&name=${encodeURIComponent(result.name || "")}`}
-                 target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block" }}>
-                <div style={{ padding: "16px 16px 12px", color: "#fff" }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#ffc98a", marginBottom: 6 }}>🦆 SKYFLIX ÖRDƏK OVU · ONLAYN</div>
-                  <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1.15, marginBottom: 6 }}>
-                    Göydəki ördəkləri vur, <span style={{ color: "#ffd54a" }}>liderliyə yüksəl!</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "#f0d9c9", lineHeight: 1.5, marginBottom: 12 }}>
-                    PUBG kimi atış poliqonu. <b style={{ color: "#fff" }}>Ən çox ördək öldürən 1-ci yer</b>
-                    <b style={{ color: "#ffd54a" }}> 1 aylıq PULSUZ NETFLIX</b> qazanır! 🏆
-                  </div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,#ffd54a,#ff7a1a)",
-                    color: "#2a1400", fontWeight: 900, fontSize: 15, padding: "11px 20px", borderRadius: 12 }}>
-                    🔫 Oyuna gir və ovla →
-                  </div>
-                </div>
-              </a>
-              {duckBoard.length > 0 && (
-                <div style={{ padding: "10px 16px 14px", borderTop: "1px solid rgba(255,255,255,.1)" }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "#ffd54a", marginBottom: 7 }}>🏆 LİDER LÖVHƏSİ</div>
-                  {duckBoard.map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#fff", fontSize: 13.5, padding: "3px 0" }}>
-                      <span>{i + 1}. {r.is_admin ? "SkyFlix Admin" : (r.name || "Qonaq")}</span>
-                      <b style={{ color: "#8be05a" }}>{r.score} 🦆</b>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {!reviewHidden && (
               <div className="sa-review">
@@ -8523,9 +8543,11 @@ function MainApp() {
   };
 
   return (
-    <div className={`ab-root ${theme === "dark" ? "dark" : ""}${HALLOWEEN ? " hw-on" : ""}`}>
+    <div className={`ab-root ${theme === "dark" ? "dark" : ""}${HALLOWEEN ? " hw-on" : ""}${VICTORY ? " vc-on" : ""}`}>
       {HALLOWEEN && <HalloweenFX noDemon />}
+      {VICTORY && <VictoryFX />}
       <HwBanner />
+      <VictoryBanner />
       <VideoWidget videoIds={SITE_PLAYLIST} />
       <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
@@ -10445,14 +10467,16 @@ function PortalPage() {
   }
 
   return (
-    <div className={"pt-root" + (HALLOWEEN ? " hw-on" : "")}>
+    <div className={"pt-root" + (HALLOWEEN ? " hw-on" : "") + (VICTORY ? " vc-on" : "")}>
       <style>{PORTAL_CSS}</style>
       {HALLOWEEN && <HalloweenFX />}
+      {VICTORY && <VictoryFX />}
       <div className="pt-top">
         <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
         <div className="pt-secure">🔒 Təhlükəsiz</div>
       </div>
       <HwBanner />
+      <VictoryBanner />
       {screen === "auth" && renderAuth()}
       {screen === "auth" && <PortalReels videos={vids} />}
       {screen === "pay" && renderPay()}
