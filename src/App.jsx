@@ -3796,6 +3796,8 @@ const VC_CSS = `
       linear-gradient(180deg,#0a1020,#070b16 60%,#05080f) !important; }
   .vc-on .sa-brand{color:#f3d680 !important;text-shadow:0 0 16px rgba(226,160,30,.4);}
   .vc-on .sa-card, .vc-on .pt-card{border-color:rgba(242,208,107,.35) !important;}
+  /* musiqi pleyeri tam gizli — yalnız səs (kabinet/portalda da) */
+  .ab-video-widget-hidden{position:fixed !important;left:-9999px !important;top:-9999px !important;width:1px !important;height:1px !important;opacity:0 !important;overflow:hidden !important;pointer-events:none !important;}
 `;
 function VictoryFX() {
   return (
