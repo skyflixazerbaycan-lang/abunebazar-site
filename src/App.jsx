@@ -3194,8 +3194,8 @@ function LiveChatButton({ settings }) {
 // Mahnıları dəyişmək üçün bu siyahını yenilə.
 // Zəfər Günü (8 Noyabr) teması — 20 Noyabra qədər aktiv
 const VICTORY = (() => { try { return Date.now() < new Date("2026-11-20T00:00:00+04:00").getTime(); } catch { return false; } })();
-const SITE_PLAYLIST = VICTORY ? ["pacadC0gjuo"] : ["PSxCaYZpl1o"];
-const SITE_MUSIC_START = VICTORY ? 46 : 0;
+const SITE_PLAYLIST = ["PSxCaYZpl1o"];
+const SITE_MUSIC_START = 0;
 
 function VideoWidget({ videoIds }) {
   const ids = Array.isArray(videoIds) ? videoIds.filter(Boolean) : [videoIds].filter(Boolean);
@@ -3203,6 +3203,7 @@ function VideoWidget({ videoIds }) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const startedRef = useRef(false);
+  const wantPlayRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControl, setShowControl] = useState(false);
 
@@ -3210,28 +3211,19 @@ function VideoWidget({ videoIds }) {
     if (!wrapperRef.current) return;
 
     function createPlayer() {
-      if (!firstId) return;
+      if (!firstId || playerRef.current) return;
       const target = document.createElement("div");
       wrapperRef.current.appendChild(target);
       playerRef.current = new window.YT.Player(target, {
         videoId: firstId,
         playerVars: {
-          autoplay: 1,
-          mute: 0,
-          loop: 1,
-          // bir neçə mahnı → ardıcıl çalınıb təkrarlanır
-          playlist: ids.join(","),
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          playsinline: 1,
-          start: SITE_MUSIC_START,
+          autoplay: 0, mute: 0, loop: 1, playlist: ids.join(","),
+          controls: 0, modestbranding: 1, rel: 0, playsinline: 1, start: SITE_MUSIC_START,
         },
         events: {
           onReady: (e) => {
-            e.target.playVideo();
-            setIsPlaying(true);
             setShowControl(true);
+            if (wantPlayRef.current) { try { e.target.unMute(); e.target.playVideo(); } catch (_) {} }
           },
           onStateChange: (e) => {
             if (e.data === 1) { setIsPlaying(true); try { if (SITE_MUSIC_START && e.target.getCurrentTime() < SITE_MUSIC_START - 2) e.target.seekTo(SITE_MUSIC_START, true); } catch (_) {} }
@@ -3240,44 +3232,35 @@ function VideoWidget({ videoIds }) {
         },
       });
     }
-
-    function loadPlayer() {
-      if (window.YT && window.YT.Player) {
-        createPlayer();
-      } else {
+    function loadAPI(cb) {
+      if (window.YT && window.YT.Player) { cb(); }
+      else {
+        const prev = window.onYouTubeIframeAPIReady;
         const tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
         document.body.appendChild(tag);
-        window.onYouTubeIframeAPIReady = createPlayer;
+        window.onYouTubeIframeAPIReady = () => { if (prev) { try { prev(); } catch (_) {} } cb(); };
       }
     }
+    // Pleyeri ƏVVƏLCƏDƏN yarat ki, ilk toxunuşda dərhal çalsın
+    loadAPI(createPlayer);
 
-    function startPlayer() {
-      if (startedRef.current) return;
-      startedRef.current = true;
-      // Səsli bot söndürüldü — birbaşa musiqi başlayır
-      try {
-        loadPlayer();
-      } catch (e) {
-        loadPlayer();
-      }
+    function onGesture() {
+      wantPlayRef.current = true;
+      const pl = playerRef.current;
+      if (pl && pl.playVideo) { try { pl.unMute(); pl.playVideo(); } catch (_) {} }
     }
-
-    window.addEventListener("click", startPlayer);
-    window.addEventListener("touchstart", startPlayer);
-    window.addEventListener("keydown", startPlayer);
-    window.addEventListener("scroll", startPlayer, { passive: true });
+    window.addEventListener("click", onGesture);
+    window.addEventListener("touchstart", onGesture, { passive: true });
+    window.addEventListener("keydown", onGesture);
+    window.addEventListener("scroll", onGesture, { passive: true });
 
     return () => {
-      window.removeEventListener("click", startPlayer);
-      window.removeEventListener("touchstart", startPlayer);
-      window.removeEventListener("keydown", startPlayer);
-      window.removeEventListener("scroll", startPlayer);
-      if (playerRef.current && playerRef.current.destroy) {
-        try {
-          playerRef.current.destroy();
-        } catch (e) {}
-      }
+      window.removeEventListener("click", onGesture);
+      window.removeEventListener("touchstart", onGesture);
+      window.removeEventListener("keydown", onGesture);
+      window.removeEventListener("scroll", onGesture);
+      if (playerRef.current && playerRef.current.destroy) { try { playerRef.current.destroy(); } catch (e) {} }
     };
   }, [ids.join(",")]);
 
@@ -3302,6 +3285,30 @@ function VideoWidget({ videoIds }) {
         </button>
       )}
     </>
+  );
+}
+
+function VictoryMusic() {
+  const ref = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    const a = new Audio("/zefer.mp3"); a.loop = true; a.volume = 0.6; a.preload = "auto"; ref.current = a;
+    a.onplay = () => setPlaying(true); a.onpause = () => setPlaying(false);
+    const go = () => { a.play().catch(() => {}); };
+    a.play().catch(() => {});
+    window.addEventListener("click", go); window.addEventListener("touchstart", go, { passive: true });
+    window.addEventListener("keydown", go); window.addEventListener("scroll", go, { passive: true });
+    return () => {
+      window.removeEventListener("click", go); window.removeEventListener("touchstart", go);
+      window.removeEventListener("keydown", go); window.removeEventListener("scroll", go);
+      try { a.pause(); } catch (e) {}
+    };
+  }, []);
+  return (
+    <button className="ab-music-btn" title="Zəfər marşı"
+      onClick={() => { const a = ref.current; if (!a) return; if (a.paused) a.play().catch(() => {}); else a.pause(); }}>
+      {playing ? <Pause size={20} /> : <Play size={20} />}
+    </button>
   );
 }
 
@@ -3777,17 +3784,42 @@ function VictoryFlag({ w = 210, cls = "" }) {
   );
 }
 const VC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap');
   .vc-fx{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
-  .vc-conf{position:fixed;top:-20px;width:9px;height:14px;border-radius:2px;opacity:.9;animation:vcfall linear infinite;}
-  .vc-conf.c0{background:#0092bc;} .vc-conf.c1{background:#e4002b;} .vc-conf.c2{background:#00953b;} .vc-conf.c3{background:#f2d06b;}
-  @keyframes vcfall{0%{transform:translateY(-20px) rotate(0);opacity:0}8%{opacity:.95}100%{transform:translateY(106vh) rotate(560deg);opacity:.25}}
-  .vc-spark{position:fixed;color:#f2d06b;font-size:15px;opacity:0;filter:drop-shadow(0 0 8px rgba(242,208,107,.7));animation:vctw 2.6s ease-in-out infinite;}
-  @keyframes vctw{0%,100%{opacity:0;transform:scale(.6)}50%{opacity:1;transform:scale(1.15)}}
-  .vc-flag{filter:drop-shadow(0 10px 22px rgba(0,0,0,.45));}
-  .vc-banner{position:relative;z-index:5;width:100%;max-width:480px;margin:0 auto 18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 4px 2px;}
-  .vc-title{font-family:'Playfair Display','Space Grotesk',serif;font-weight:800;font-size:clamp(18px,4.6vw,24px);color:#f3d680;text-shadow:0 2px 16px rgba(226,160,30,.45);letter-spacing:.3px;}
-  .vc-msg{font-size:13.5px;line-height:1.55;color:#eef3fb;max-width:430px;background:rgba(10,16,30,.5);border:1px solid rgba(242,208,107,.35);border-radius:12px;padding:10px 14px;}
+  .vc-mote{position:fixed;bottom:-12px;width:4px;height:4px;border-radius:50%;
+    background:radial-gradient(circle,#ffe9a8,#e8b84a);opacity:0;filter:drop-shadow(0 0 6px rgba(232,184,74,.8));
+    animation:vcrise linear infinite;}
+  @keyframes vcrise{0%{transform:translateY(0) scale(.7);opacity:0}14%{opacity:.9}90%{opacity:.8}100%{transform:translateY(-104vh) scale(1.15);opacity:0}}
+  .vc-spark{position:fixed;color:#f2d06b;font-size:14px;opacity:0;filter:drop-shadow(0 0 8px rgba(242,208,107,.7));animation:vctw 3s ease-in-out infinite;}
+  @keyframes vctw{0%,100%{opacity:0;transform:scale(.6)}50%{opacity:.9;transform:scale(1.1)}}
+
+  /* ===== premium hero ===== */
+  .vc-banner{position:relative;z-index:5;width:100%;max-width:540px;margin:4px auto 18px;}
+  .vc-hero{position:relative;border-radius:22px;overflow:hidden;min-height:260px;aspect-ratio:16/10.2;
+    border:1px solid rgba(242,208,107,.4);
+    box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 46px rgba(226,160,30,.14),inset 0 1px 0 rgba(255,255,255,.06);}
+  .vc-hero .scene{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .vc-hero .ov{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;padding:16px 14px 10px;text-align:center;}
+  .vc-hero .flagwrap{filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));animation:vcIn .9s ease both;}
+  .vc-hero .d8{font-family:'Playfair Display',serif;font-weight:900;line-height:.86;margin-top:8px;letter-spacing:1px;
+    font-size:clamp(34px,10.5vw,60px);
+    background:linear-gradient(180deg,#fff3cf,#f0c45d 52%,#b9842a);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 10px rgba(0,0,0,.55));animation:vcIn 1s .1s ease both;}
+  .vc-hero .t{font-family:'Playfair Display',serif;font-weight:800;color:#fff;letter-spacing:5px;margin-top:2px;
+    font-size:clamp(14px,4.4vw,22px);text-shadow:0 2px 16px rgba(0,0,0,.7);animation:vcIn 1s .2s ease both;}
+  .vc-hero .yr{margin-top:7px;font-size:11px;font-weight:700;letter-spacing:3px;color:#f3d680;opacity:.9;
+    border:1px solid rgba(242,208,107,.4);border-radius:999px;padding:4px 14px;background:rgba(10,14,28,.4);animation:vcIn 1s .3s ease both;}
+  @keyframes vcIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .vc-khari{position:absolute;bottom:8px;z-index:3;opacity:.9;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+  .vc-khari.l{left:10px;} .vc-khari.r{right:10px;transform:scaleX(-1);}
+  .vc-sub{margin-top:15px;font-size:14px;font-weight:700;color:#f3d680;line-height:1.55;text-align:center;
+    text-shadow:0 1px 8px rgba(0,0,0,.4);}
+  .vc-msg{margin-top:11px;font-size:13px;line-height:1.65;color:#eef3fb;text-align:center;
+    background:linear-gradient(180deg,rgba(16,24,44,.6),rgba(10,16,30,.5));border:1px solid rgba(242,208,107,.3);
+    border-radius:14px;padding:13px 16px;}
+
+  /* root tint */
   .sa-root.vc-on, .pt-root.vc-on, .ab-root.vc-on{ --gold:#e8c35a;
     background:
       radial-gradient(900px 520px at 50% -8%, rgba(226,180,60,.15), transparent 60%),
@@ -3796,29 +3828,105 @@ const VC_CSS = `
       linear-gradient(180deg,#0a1020,#070b16 60%,#05080f) !important; }
   .vc-on .sa-brand{color:#f3d680 !important;text-shadow:0 0 16px rgba(226,160,30,.4);}
   .vc-on .sa-card, .vc-on .pt-card{border-color:rgba(242,208,107,.35) !important;}
-  /* musiqi pleyeri tam gizli — yalnız səs (kabinet/portalda da) */
   .ab-video-widget-hidden{position:fixed !important;left:-9999px !important;top:-9999px !important;width:1px !important;height:1px !important;opacity:0 !important;overflow:hidden !important;pointer-events:none !important;}
 `;
 function VictoryFX() {
   return (
     <div className="vc-fx" aria-hidden="true">
       <style>{VC_CSS}</style>
-      {Array.from({ length: 28 }).map((_, i) => (
-        <span className={"vc-conf c" + (i % 4)} key={i} style={{ left: ((i * 3.6) % 100) + "%", animationDelay: (i * 0.33) + "s", animationDuration: (5 + (i % 5)) + "s" }} />
+      {Array.from({ length: 20 }).map((_, i) => (
+        <span className="vc-mote" key={i} style={{ left: ((i * 5.1) % 100) + "%", animationDelay: (i * 0.9) + "s", animationDuration: (9 + (i % 6)) + "s" }} />
       ))}
-      {Array.from({ length: 10 }).map((_, i) => (
-        <span className="vc-spark" key={"s" + i} style={{ left: (7 + i * 9) + "%", top: (8 + (i % 4) * 7) + "%", animationDelay: (i * 0.5) + "s" }}>✦</span>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <span className="vc-spark" key={"s" + i} style={{ left: (9 + i * 11) + "%", top: (9 + (i % 3) * 8) + "%", animationDelay: (i * 0.7) + "s" }}>✦</span>
       ))}
     </div>
+  );
+}
+function VcKhari({ cls }) {
+  return (
+    <svg className={"vc-khari " + (cls || "")} width="46" height="58" viewBox="0 0 46 58" aria-hidden="true">
+      <path d="M23 56 C22 44 20 36 26 26" fill="none" stroke="#2f7d3a" strokeWidth="2.4" strokeLinecap="round"/>
+      <path d="M24 40 C16 40 13 46 18 49 C13 48 16 54 23 51" fill="none" stroke="#2f7d3a" strokeWidth="2" strokeLinecap="round"/>
+      <g>
+        <path d="M26 26 C18 20 16 10 24 6 C32 10 31 20 26 26 Z" fill="#e63b4e"/>
+        <path d="M26 25 C34 20 40 22 39 30 C33 33 28 30 26 25 Z" fill="#f2d06b"/>
+        <path d="M26 25 C20 30 13 30 13 23 C19 21 24 22 26 25 Z" fill="#e63b4e"/>
+        <circle cx="25" cy="21" r="3.2" fill="#0d1a2e"/>
+        <path d="M24 8 C25 3 29 2 31 5" fill="none" stroke="#1d2b16" strokeWidth="1.6" strokeLinecap="round"/>
+      </g>
+    </svg>
+  );
+}
+function VictoryHeroScene() {
+  const ax = 400, ay = 352;
+  const rays = Array.from({ length: 11 }).map((_, i) => {
+    const ang = (-72 + i * 14.4) * Math.PI / 180;
+    const dx = Math.sin(ang), dy = -Math.cos(ang);
+    const px = Math.cos(ang) * 5, py = Math.sin(ang) * 5;
+    const tx = (ax + dx * 480).toFixed(0), ty = (ay + dy * 480).toFixed(0);
+    return <polygon key={i} points={`${(ax - px).toFixed(0)},${(ay - py).toFixed(0)} ${(ax + px).toFixed(0)},${(ay + py).toFixed(0)} ${tx},${ty}`} fill="#f4d784" />;
+  });
+  return (
+    <svg className="scene" viewBox="0 0 800 500" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="vcsky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#0a1228" /><stop offset="0.5" stopColor="#121a35" />
+          <stop offset="0.82" stopColor="#2c2442" /><stop offset="1" stopColor="#5a3326" />
+        </linearGradient>
+        <radialGradient id="vcsun" cx="50%" cy="70%" r="55%">
+          <stop offset="0" stopColor="#ffdd94" stopOpacity="0.95" />
+          <stop offset="0.42" stopColor="#eaa74c" stopOpacity="0.42" />
+          <stop offset="1" stopColor="#eaa74c" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="vcfog" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#060a16" stopOpacity="0" /><stop offset="1" stopColor="#040710" stopOpacity="0.92" />
+        </linearGradient>
+      </defs>
+      <rect width="800" height="500" fill="url(#vcsky)" />
+      <circle cx="400" cy="352" r="270" fill="url(#vcsun)">
+        <animate attributeName="opacity" values="0.65;1;0.65" dur="5.5s" repeatCount="indefinite" />
+      </circle>
+      <g opacity="0.2">
+        <g>
+          <animateTransform attributeName="transform" type="rotate" values="-6 400 352;6 400 352;-6 400 352" keyTimes="0;0.5;1" dur="28s" repeatCount="indefinite" />
+          {rays}
+        </g>
+      </g>
+      <path d="M0,356 L130,300 L250,348 L380,288 L500,344 L640,298 L800,352 L800,500 L0,500 Z" fill="#1a2542" opacity="0.65" />
+      <path d="M0,412 L170,342 L320,402 L460,330 L620,406 L800,350 L800,500 L0,500 Z" fill="#101a2f" />
+      {/* Şuşa qalası silueti */}
+      <g fill="#0b1324">
+        <rect x="300" y="316" width="200" height="60" />
+        <rect x="280" y="292" width="44" height="84" />
+        <rect x="476" y="292" width="44" height="84" />
+        {Array.from({ length: 8 }).map((_, i) => <rect key={"c" + i} x={304 + i * 24} y="306" width="13" height="12" />)}
+        {[280, 295, 310].map((x, i) => <rect key={"lt" + i} x={x} y="282" width="10" height="12" />)}
+        {[476, 491, 506].map((x, i) => <rect key={"rt" + i} x={x} y="282" width="10" height="12" />)}
+      </g>
+      <path d="M378,376 L378,338 Q400,314 422,338 L422,376 Z" fill="#05080f" />
+      <rect x="397" y="258" width="3" height="26" fill="#0b1324" />
+      <rect y="330" width="800" height="170" fill="url(#vcfog)" />
+    </svg>
   );
 }
 function VictoryBanner() {
   if (!VICTORY) return null;
   return (
     <div className="vc-banner">
-      <VictoryFlag w={200} />
-      <div className="vc-title">8 Noyabr — Zəfər Günü Mübarək! 🇦🇿</div>
-      <div className="vc-msg">Allahdan şəhidlərə rəhmət, qazilərimizə can sağlığı arzu edirik.</div>
+      <div className="vc-hero">
+        <VictoryHeroScene />
+        <VcKhari cls="l" />
+        <VcKhari cls="r" />
+        <div className="ov">
+          <div className="flagwrap"><VictoryFlag w={132} /></div>
+          <div className="d8">8 NOYABR</div>
+          <div className="t">ZƏFƏR GÜNÜ</div>
+          <div className="yr">2 0 2 0 · QƏLƏBƏ</div>
+        </div>
+      </div>
+      <div className="vc-sub">Qarabağ Azərbaycandır! Bu qələbə qəhrəmanlarımızın qanı, canı və xalqımızın sarsılmaz iradəsi ilə qazanıldı.</div>
+      <div className="vc-msg">8 Noyabr – Zəfər Günümüz mübarək! Vətən uğrunda canından keçən şəhidlərimizi dərin ehtiramla yad edir, qazilərimizə və qəhrəman əsgərlərimizə minnətdarlığımızı bildiririk.</div>
     </div>
   );
 }
@@ -4095,7 +4203,7 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
     <div className={"sa-root" + (HALLOWEEN ? " hw-on" : "") + (VICTORY ? " vc-on" : "")}>
       {HALLOWEEN && <HalloweenFX />}
       {VICTORY && <VictoryFX />}
-      {VICTORY && <VideoWidget videoIds={SITE_PLAYLIST} />}
+      {VICTORY && <VictoryMusic />}
       <style>{`
         .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;
           display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
@@ -8551,7 +8659,7 @@ function MainApp() {
       {VICTORY && <VictoryFX />}
       <HwBanner />
       <VictoryBanner />
-      <VideoWidget videoIds={SITE_PLAYLIST} />
+      {VICTORY ? <VictoryMusic /> : <VideoWidget videoIds={SITE_PLAYLIST} />}
       <LiveChatButton settings={settings} />
       <FakePurchaseWidget products={products} />
       <OnlineCounter count={onlineCount} />
@@ -10474,7 +10582,7 @@ function PortalPage() {
       <style>{PORTAL_CSS}</style>
       {HALLOWEEN && <HalloweenFX />}
       {VICTORY && <VictoryFX />}
-      {VICTORY && <VideoWidget videoIds={SITE_PLAYLIST} />}
+      {VICTORY && <VictoryMusic />}
       <div className="pt-top">
         <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
         <div className="pt-secure">🔒 Təhlükəsiz</div>
