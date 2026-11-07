@@ -4093,6 +4093,7 @@ function SharedAccountPage({ slug, embedPhone, embedPin, onExit }) {
     <div className={"sa-root" + (HALLOWEEN ? " hw-on" : "") + (VICTORY ? " vc-on" : "")}>
       {HALLOWEEN && <HalloweenFX />}
       {VICTORY && <VictoryFX />}
+      {VICTORY && <VideoWidget videoIds={SITE_PLAYLIST} />}
       <style>{`
         .sa-root{min-height:100vh;background:#150708;color:#F5EBEA;font-family:Inter,system-ui,sans-serif;
           display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;}
@@ -10471,6 +10472,7 @@ function PortalPage() {
       <style>{PORTAL_CSS}</style>
       {HALLOWEEN && <HalloweenFX />}
       {VICTORY && <VictoryFX />}
+      {VICTORY && <VideoWidget videoIds={SITE_PLAYLIST} />}
       <div className="pt-top">
         <div className="pt-brand"><span className="ic">▶</span> SkyFlix Azerbaycan</div>
         <div className="pt-secure">🔒 Təhlükəsiz</div>
