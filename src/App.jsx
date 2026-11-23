@@ -868,6 +868,25 @@ function HomePage({ go, products, onAdd, lang, t, reviews, onOpenReviews, favori
         </div>
       </div>
 
+      {/* ⚡ SKYFLIX RUNNERS — onlayn 3D oyun */}
+      <a href={`${SKY_SITE_URL}/skyflix-runners.html`}
+         style={{ display:"block", textDecoration:"none", margin:"8px auto 0", maxWidth:1120,
+           borderRadius:22, padding:"22px 24px", color:"#fff", position:"relative", overflow:"hidden",
+           background:"linear-gradient(135deg,#1a0033,#2a0050 55%,#120028)",
+           border:"1px solid rgba(176,38,255,.5)",
+           boxShadow:"0 16px 44px rgba(176,38,255,.32), inset 0 0 44px rgba(0,229,255,.08)" }}>
+        <div style={{ fontSize:13, letterSpacing:2, color:"#9ad7ff" }}>🎮 ONLAYN OYUN</div>
+        <div style={{ fontSize:28, fontWeight:900, margin:"4px 0",
+          background:"linear-gradient(90deg,#00e5ff,#b026ff,#ff2ea6)",
+          WebkitBackgroundClip:"text", backgroundClip:"text", color:"transparent" }}>
+          ⚡ SKYFLIX RUNNERS
+        </div>
+        <div style={{ fontSize:14.5, color:"#c9b8ff" }}>3 nəfərlik onlayn yarış — dostlarını çağır, maneələri keç, qalib ol!</div>
+        <span style={{ marginTop:14, display:"inline-block", padding:"10px 20px", borderRadius:12,
+          fontWeight:800, background:"linear-gradient(135deg,#b026ff,#ff2ea6)",
+          boxShadow:"0 8px 22px rgba(255,46,166,.4)" }}>🎮 İNDİ OYNA</span>
+      </a>
+
       <Reveal className="ab-trustbadges">
         <div className="ab-trustbadge">
           <BadgeCheck size={20} strokeWidth={1.75} />
@@ -3193,7 +3212,7 @@ function LiveChatButton({ settings }) {
 // Saytın arxa fon musiqi playlisti — YouTube video ID-ləri (sırayla çalınır, təkrarlanır).
 // Mahnıları dəyişmək üçün bu siyahını yenilə.
 // Zəfər Günü (8 Noyabr) teması — 20 Noyabra qədər aktiv
-const VICTORY = (() => { try { return Date.now() < new Date("2026-11-20T00:00:00+04:00").getTime(); } catch { return false; } })();
+const VICTORY = false; // 8 Noyabr Zəfər Günü teması söndürüldü (əvvəlki hala qaytarıldı)
 const SITE_PLAYLIST = ["PSxCaYZpl1o"];
 const SITE_MUSIC_START = 0;
 
@@ -5332,10 +5351,18 @@ function NetflixListPage() {
     if (!toInsert.length && !toUpdate.length) return setBulkReport("Dəyişiklik yoxdur. (Dəyişməyən: " + unchanged + ", faylda təkrar: " + dupFile + ")");
     setBulkBusy(true);
     let ok = 0, err = 0, upd = 0;
-    // yeni sətirlər
+    const failed = []; // problemli sətirlər (nömrə + səbəb)
+    // yeni sətirlər — partiya uğursuz olsa, bir-bir yazıb yaxşıları saxla
     for (let i = 0; i < toInsert.length; i += 500) {
-      const { error } = await supabase.from("netflix_list").insert(toInsert.slice(i, i + 500));
-      if (error) err++; else ok += toInsert.slice(i, i + 500).length;
+      const chunk = toInsert.slice(i, i + 500);
+      const { error } = await supabase.from("netflix_list").insert(chunk);
+      if (!error) { ok += chunk.length; continue; }
+      // Partiyada kimsə xəta verdi → həmin partiyanı bir-bir yaz
+      for (const row of chunk) {
+        const { error: e2 } = await supabase.from("netflix_list").insert(row);
+        if (e2) { err++; failed.push("+" + row.phone + " (" + (e2.message || "xəta").slice(0, 60) + ")"); }
+        else ok++;
+      }
     }
     // mövcudların yenilənməsi (20-lik paralel partiyalarla)
     for (let i = 0; i < toUpdate.length; i += 20) {
@@ -5350,7 +5377,8 @@ function NetflixListPage() {
     setBulkReport("Əlavə olundu: " + ok + " yeni." + (upd ? " Yeniləndi: " + upd + "." : "") +
       (unchanged ? " Dəyişməyən: " + unchanged + "." : "") +
       (dupFile ? " Faylda təkrar: " + dupFile + "." : "") +
-      (err ? " Xəta: " + err + "." : ""));
+      (err ? " Xəta: " + err + "." : "") +
+      (failed.length ? "\nYazılmayan nömrələr:\n" + failed.join("\n") : ""));
     setBulkText("");
   }
 
